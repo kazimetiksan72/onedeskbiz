@@ -24,10 +24,18 @@ jobs:
       - name: Install dependencies
         run: npm ci --include=optional
 
-      - name: Ensure rolldown native binding exists on Linux
+      - name: Ensure Linux native optional bindings exist
         run: |
+          set -euo pipefail
+
           if [ ! -d "frontend/node_modules/@rolldown/binding-linux-x64-gnu" ]; then
-            npm install --no-save --workspace=frontend @rolldown/binding-linux-x64-gnu@1.0.0-rc.15
+            ROLLDOWN_VERSION=$(node -p "require('./frontend/node_modules/rolldown/package.json').version")
+            npm install --no-save --workspace=frontend "@rolldown/binding-linux-x64-gnu@${ROLLDOWN_VERSION}"
+          fi
+
+          if [ ! -d "frontend/node_modules/lightningcss-linux-x64-gnu" ]; then
+            LIGHTNINGCSS_VERSION=$(node -p "require('./frontend/node_modules/lightningcss/package.json').version")
+            npm install --no-save --workspace=frontend "lightningcss-linux-x64-gnu@${LIGHTNINGCSS_VERSION}"
           fi
 
       - name: Build
