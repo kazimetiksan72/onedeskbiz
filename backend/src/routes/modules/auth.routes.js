@@ -5,13 +5,15 @@ const { validate } = require('../../middleware/validate');
 const {
   registerSchema,
   loginSchema,
-  refreshSchema
+  refreshSchema,
+  changePasswordSchema
 } = require('../../validators/modules/auth.validator');
 
 const router = express.Router();
 
 router.post('/register', validate(registerSchema), authController.register);
 router.post('/login', validate(loginSchema), authController.login);
+router.post('/change-password', auth, validate(changePasswordSchema), authController.changePassword);
 router.post('/refresh', validate(refreshSchema), authController.refresh);
 router.post('/logout', validate(refreshSchema), authController.logout);
 router.get('/me', auth, authController.me);

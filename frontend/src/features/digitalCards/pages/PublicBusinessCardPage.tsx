@@ -37,18 +37,18 @@ function buildVCard(data: any) {
 }
 
 export function PublicBusinessCardPage() {
-  const { slug } = useParams();
+  const { userId } = useParams();
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState('');
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
 
   useEffect(() => {
-    if (!slug) return;
+    if (!userId) return;
 
-    getPublicBusinessCard(slug)
+    getPublicBusinessCard(userId)
       .then(setData)
       .catch(() => setError('Business card not found'));
-  }, [slug]);
+  }, [userId]);
 
   useEffect(() => {
     if (!data) return;

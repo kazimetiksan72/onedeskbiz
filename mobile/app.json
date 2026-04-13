@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "SmallBiz Mobile",
+    "slug": "smallbiz-mobile",
+    "scheme": "smallbizmobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {},
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

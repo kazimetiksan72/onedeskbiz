@@ -8,9 +8,9 @@ const customerSchema = new mongoose.Schema(
     contactPhone: { type: String, trim: true },
     address: { type: String, trim: true },
     notes: { type: String, trim: true },
-    ownerEmployeeId: {
+    ownerUserId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      ref: 'User',
       default: null,
       index: true
     },

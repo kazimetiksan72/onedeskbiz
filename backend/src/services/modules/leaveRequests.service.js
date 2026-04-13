@@ -1,19 +1,15 @@
 const { differenceInCalendarDays } = require('date-fns');
 const { LeaveRequest } = require('../../models/LeaveRequest');
-const { Employee } = require('../../models/Employee');
+const { User } = require('../../models/User');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
 
 async function createLeaveRequest(payload, actorUser) {
-  const employeeId = payload.employeeId || actorUser.employeeId;
+  const userId = actorUser._id;
 
-  if (!employeeId) {
-    throw new ApiError(400, 'employeeId is required for this account');
-  }
-
-  const employee = await Employee.findById(employeeId).lean();
-  if (!employee) {
-    throw new ApiError(404, 'Employee not found');
+  const user = await User.findById(userId).lean();
+  if (!user || !user.isActive || user.status === 'INACTIVE') {
+    throw new ApiError(404, 'User not found');
   }
 
   const startDate = new Date(payload.startDate);
@@ -26,7 +22,7 @@ async function createLeaveRequest(payload, actorUser) {
   const days = differenceInCalendarDays(endDate, startDate) + 1;
 
   return LeaveRequest.create({
-    employeeId,
+    userId,
     leaveType: payload.leaveType,
     startDate,
     endDate,
@@ -35,16 +31,16 @@ async function createLeaveRequest(payload, actorUser) {
   });
 }
 
-async function listLeaveRequests({ status, employeeId, page, limit }) {
+async function listLeaveRequests({ status, userId, page, limit }) {
   const { skip } = getPagination({ page, limit });
   const query = {};
 
   if (status) query.status = status;
-  if (employeeId) query.employeeId = employeeId;
+  if (userId) query.userId = userId;
 
   const [items, total] = await Promise.all([
     LeaveRequest.find(query)
-      .populate('employeeId', 'firstName lastName workEmail department')
+      .populate('userId', 'firstName lastName workEmail department')
       .populate('reviewerId', 'email role')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -75,7 +71,7 @@ async function reviewLeaveRequest(id, payload, reviewerUser) {
   await leaveRequest.save();
 
   return LeaveRequest.findById(id)
-    .populate('employeeId', 'firstName lastName workEmail department')
+    .populate('userId', 'firstName lastName workEmail department')
     .populate('reviewerId', 'email role')
     .lean();
 }

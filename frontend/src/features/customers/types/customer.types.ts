@@ -8,6 +8,6 @@ export interface Customer {
   contactPhone?: string;
   address?: string;
   notes?: string;
-  ownerEmployeeId?: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'department'>;
+  ownerUserId?: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'department'>;
   status: 'ACTIVE' | 'INACTIVE';
 }

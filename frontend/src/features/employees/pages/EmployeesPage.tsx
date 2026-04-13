@@ -1,14 +1,27 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { createEmployee, deleteEmployee, getEmployees, updateEmployee } from '../api/employees.api';
+import PhoneInputImport from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
+import {
+  createEmployee,
+  deleteEmployee,
+  getEmployees,
+  updateEmployee,
+  type EmployeePayload
+} from '../api/employees.api';
 import type { Employee } from '../types/employee.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { useAuthStore } from '../../auth/auth.store';
+import { getCompanySettings } from '../../companySettings/api/companySettings.api';
+
+const PhoneInput =
+  (PhoneInputImport as unknown as { default?: any }).default ?? (PhoneInputImport as any);
 
 const initialForm: Partial<Employee> = {
   firstName: '',
   lastName: '',
   workEmail: '',
+  phone: '',
   department: '',
   title: '',
   startDate: new Date().toISOString(),
@@ -22,7 +35,9 @@ export function EmployeesPage() {
   const [items, setItems] = useState<Employee[]>([]);
   const [selected, setSelected] = useState<Employee | null>(null);
   const [form, setForm] = useState<Partial<Employee>>(initialForm);
+  const [temporaryPassword, setTemporaryPassword] = useState('');
   const [search, setSearch] = useState('');
+  const [departments, setDepartments] = useState<string[]>([]);
 
   const load = async () => {
     const result = await getEmployees(search);
@@ -31,15 +46,19 @@ export function EmployeesPage() {
 
   useEffect(() => {
     load();
+    getCompanySettings().then((settings) => {
+      setDepartments(settings?.departments || []);
+    });
   }, []);
 
   const onSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
 
-    const payload = {
+    const payload: EmployeePayload = {
       ...form,
-      startDate: form.startDate || new Date().toISOString()
+      startDate: form.startDate || new Date().toISOString(),
+      temporaryPassword: temporaryPassword || (selected ? undefined : '')
     };
 
     if (selected) {
@@ -50,12 +69,14 @@ export function EmployeesPage() {
 
     setSelected(null);
     setForm(initialForm);
+    setTemporaryPassword('');
     await load();
   };
 
   const onEdit = (item: Employee) => {
     setSelected(item);
     setForm(item);
+    setTemporaryPassword('');
   };
 
   const onDelete = async (id: string) => {
@@ -99,7 +120,9 @@ export function EmployeesPage() {
               <tbody>
                 {items.map((item) => (
                   <tr key={item._id} className="border-t border-slate-100">
-                    <td className="py-2">{item.firstName} {item.lastName}</td>
+                    <td className="py-2">
+                      {item.firstName} {item.lastName}
+                    </td>
                     <td className="py-2">{item.workEmail}</td>
                     <td className="py-2">{item.department || '-'}</td>
                     <td className="py-2">{item.title || '-'}</td>
@@ -107,8 +130,12 @@ export function EmployeesPage() {
                     {isAdmin ? (
                       <td className="py-2">
                         <div className="flex gap-2">
-                          <button className="btn-secondary" onClick={() => onEdit(item)}>Edit</button>
-                          <button className="btn-secondary" onClick={() => onDelete(item._id)}>Delete</button>
+                          <button className="btn-secondary" onClick={() => onEdit(item)}>
+                            Edit
+                          </button>
+                          <button className="btn-secondary" onClick={() => onDelete(item._id)}>
+                            Delete
+                          </button>
                         </div>
                       </td>
                     ) : null}
@@ -124,20 +151,102 @@ export function EmployeesPage() {
         <form onSubmit={onSave} className="page-card space-y-3">
           <h2 className="text-base font-semibold">{selected ? 'Update Employee' : 'Add Employee'}</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <input className="input" placeholder="First name" value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
-            <input className="input" placeholder="Last name" value={form.lastName || ''} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
-            <input className="input" placeholder="Work email" value={form.workEmail || ''} onChange={(e) => setForm({ ...form, workEmail: e.target.value })} required />
-            <input className="input" placeholder="Department" value={form.department || ''} onChange={(e) => setForm({ ...form, department: e.target.value })} />
-            <input className="input" placeholder="Title" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-            <input className="input" type="date" value={(form.startDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, startDate: new Date(e.target.value).toISOString() })} required />
+            <input
+              className="input"
+              placeholder="First name"
+              value={form.firstName || ''}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+              required
+            />
+            <input
+              className="input"
+              placeholder="Last name"
+              value={form.lastName || ''}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              required
+            />
+            <input
+              className="input"
+              placeholder="Email"
+              value={form.workEmail || ''}
+              onChange={(e) => setForm({ ...form, workEmail: e.target.value })}
+              required
+            />
+            <input
+              className="input"
+              type="password"
+              placeholder="Password"
+              value={temporaryPassword}
+              onChange={(e) => setTemporaryPassword(e.target.value)}
+              required={!selected}
+            />
+            <div className="md:col-span-2">
+              <PhoneInput
+                country="tr"
+                value={(form.phone || '').replace(/\D/g, '')}
+                onChange={(value: string) => setForm({ ...form, phone: value ? `+${value}` : '' })}
+                inputStyle={{ width: '100%', height: '42px', borderRadius: '0.5rem', borderColor: '#cbd5e1' }}
+                buttonStyle={{
+                  borderColor: '#cbd5e1',
+                  borderTopLeftRadius: '0.5rem',
+                  borderBottomLeftRadius: '0.5rem'
+                }}
+                containerStyle={{ width: '100%' }}
+                enableSearch
+                countryCodeEditable={false}
+                placeholder="Phone"
+              />
+            </div>
+            <select
+              className="input"
+              value={form.department || ''}
+              onChange={(e) => setForm({ ...form, department: e.target.value })}
+              required={departments.length > 0}
+            >
+              <option value="">{departments.length > 0 ? 'Select department' : 'No department configured'}</option>
+              {departments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
+                </option>
+              ))}
+              {form.department && !departments.includes(form.department) ? (
+                <option value={form.department}>{form.department}</option>
+              ) : null}
+            </select>
+            <input
+              className="input"
+              placeholder="Title"
+              value={form.title || ''}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+            />
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Employment start date</label>
+              <input
+                className="input"
+                type="date"
+                value={(form.startDate || '').slice(0, 10)}
+                onChange={(e) => setForm({ ...form, startDate: new Date(e.target.value).toISOString() })}
+                required
+              />
+            </div>
           </div>
+
+          <p className="text-xs text-slate-500">Password is required on create. On update, fill only if you want to reset password.</p>
+
           <div className="flex gap-2">
-            <button className="btn-primary" type="submit">{selected ? 'Update' : 'Create'}</button>
+            <button className="btn-primary" type="submit">
+              {selected ? 'Update' : 'Create'}
+            </button>
             {selected ? (
-              <button type="button" className="btn-secondary" onClick={() => {
-                setSelected(null);
-                setForm(initialForm);
-              }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => {
+                  setSelected(null);
+                  setForm(initialForm);
+                  setTemporaryPassword('');
+                }}
+              >
                 Cancel
               </button>
             ) : null}

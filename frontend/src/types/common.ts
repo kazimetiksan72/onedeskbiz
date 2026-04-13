@@ -11,6 +11,6 @@ export interface CurrentUser {
   _id: string;
   email: string;
   role: Role;
-  employeeId?: string;
   isActive: boolean;
+  mustChangePassword?: boolean;
 }

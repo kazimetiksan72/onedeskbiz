@@ -6,9 +6,14 @@ const getCompanySettings = asyncHandler(async (req, res) => {
   res.json(settings);
 });
 
+const getPublicBillingInfo = asyncHandler(async (req, res) => {
+  const settings = await service.getPublicBillingInfo();
+  res.json(settings);
+});
+
 const upsertCompanySettings = asyncHandler(async (req, res) => {
   const settings = await service.upsertCompanySettings(req.body);
   res.json(settings);
 });
 
-module.exports = { getCompanySettings, upsertCompanySettings };
+module.exports = { getCompanySettings, getPublicBillingInfo, upsertCompanySettings };

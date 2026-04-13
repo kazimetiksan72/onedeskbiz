@@ -1,8 +1,9 @@
 export interface CompanySettings {
   _id: string;
   companyName: string;
-  domain?: string;
+  website?: string;
   timezone?: string;
+  departments?: string[];
   billingInfo: {
     legalCompanyName: string;
     taxNumber: string;
@@ -13,11 +14,11 @@ export interface CompanySettings {
     city?: string;
     country?: string;
     postalCode?: string;
-    bankDetails?: {
+    bankAccounts?: {
       bankName?: string;
-      accountName?: string;
+      branchName?: string;
       iban?: string;
       swiftCode?: string;
-    };
+    }[];
   };
 }

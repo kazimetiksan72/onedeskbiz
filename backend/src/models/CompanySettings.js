@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
-const bankDetailsSchema = new mongoose.Schema(
+const bankAccountSchema = new mongoose.Schema(
   {
     bankName: { type: String, trim: true },
-    accountName: { type: String, trim: true },
+    branchName: { type: String, trim: true },
     iban: { type: String, trim: true },
     swiftCode: { type: String, trim: true }
   },
@@ -12,26 +12,27 @@ const bankDetailsSchema = new mongoose.Schema(
 
 const billingInfoSchema = new mongoose.Schema(
   {
-    legalCompanyName: { type: String, required: true, trim: true },
-    taxNumber: { type: String, required: true, trim: true },
+    legalCompanyName: { type: String, trim: true },
+    taxNumber: { type: String, trim: true },
     taxOffice: { type: String, trim: true },
     billingEmail: { type: String, trim: true, lowercase: true },
     phone: { type: String, trim: true },
-    address: { type: String, required: true, trim: true },
+    address: { type: String, trim: true },
     city: { type: String, trim: true },
     country: { type: String, trim: true },
     postalCode: { type: String, trim: true },
-    bankDetails: bankDetailsSchema
+    bankAccounts: { type: [bankAccountSchema], default: [] }
   },
   { _id: false }
 );
 
 const companySettingsSchema = new mongoose.Schema(
   {
-    companyName: { type: String, required: true, trim: true },
-    domain: { type: String, trim: true, lowercase: true },
+    companyName: { type: String, trim: true },
+    website: { type: String, trim: true, lowercase: true },
     timezone: { type: String, default: 'UTC' },
-    billingInfo: { type: billingInfoSchema, required: true }
+    departments: [{ type: String, trim: true }],
+    billingInfo: { type: billingInfoSchema, default: {} }
   },
   {
     timestamps: true,

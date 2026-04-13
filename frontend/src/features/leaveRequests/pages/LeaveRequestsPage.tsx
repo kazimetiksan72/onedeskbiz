@@ -1,14 +1,11 @@
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { createLeaveRequest, getLeaveRequests, reviewLeaveRequest } from '../api/leaveRequests.api';
+import { createLeaveRequest, getLeaveRequests } from '../api/leaveRequests.api';
 import type { LeaveRequest } from '../types/leaveRequest.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
-import { useAuthStore } from '../../auth/auth.store';
 
 export function LeaveRequestsPage() {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === 'ADMIN';
   const [items, setItems] = useState<LeaveRequest[]>([]);
   const [leaveType, setLeaveType] = useState<'ANNUAL' | 'SICK' | 'UNPAID' | 'OTHER'>('ANNUAL');
   const [startDate, setStartDate] = useState('');
@@ -26,7 +23,7 @@ export function LeaveRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Leave Requests" subtitle="Submit and review time-off requests" />
+      <PageHeader title="Leave Requests" subtitle="Submit your time-off requests" />
 
       <form
         className="page-card space-y-3"
@@ -70,39 +67,16 @@ export function LeaveRequestsPage() {
                   <th className="pb-2">Dates</th>
                   <th className="pb-2">Days</th>
                   <th className="pb-2">Status</th>
-                  {isAdmin ? <th className="pb-2">Review</th> : null}
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item._id} className="border-t border-slate-100">
-                    <td className="py-2">{item.employeeId?.firstName} {item.employeeId?.lastName}</td>
+                    <td className="py-2">{item.userId?.firstName} {item.userId?.lastName}</td>
                     <td className="py-2">{item.leaveType}</td>
                     <td className="py-2">{format(new Date(item.startDate), 'dd MMM yyyy')} - {format(new Date(item.endDate), 'dd MMM yyyy')}</td>
                     <td className="py-2">{item.days}</td>
                     <td className="py-2">{item.status}</td>
-                    {isAdmin ? (
-                      <td className="py-2">
-                        {item.status === 'PENDING' ? (
-                          <div className="flex gap-2">
-                            <button className="btn-secondary" onClick={async () => {
-                              await reviewLeaveRequest(item._id, { status: 'APPROVED' });
-                              await load();
-                            }}>
-                              Approve
-                            </button>
-                            <button className="btn-secondary" onClick={async () => {
-                              await reviewLeaveRequest(item._id, { status: 'REJECTED' });
-                              await load();
-                            }}>
-                              Reject
-                            </button>
-                          </div>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                    ) : null}
                   </tr>
                 ))}
               </tbody>

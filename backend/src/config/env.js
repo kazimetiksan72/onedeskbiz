@@ -21,7 +21,8 @@ const defaults = {
   JWT_REFRESH_SECRET: 'dev_refresh_secret_change_me',
   JWT_ACCESS_EXPIRES_IN: '15m',
   JWT_REFRESH_EXPIRES_IN: '7d',
-  CORS_ORIGIN: 'http://localhost:5173'
+  CORS_ORIGIN: 'http://localhost:5173',
+  DEFAULT_EMPLOYEE_PASSWORD: 'Employee1234!'
 };
 
 if (nodeEnv !== 'production') {
@@ -60,5 +61,6 @@ module.exports = {
   },
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
-  maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 2)
+  maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 2),
+  defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'Employee1234!'
 };

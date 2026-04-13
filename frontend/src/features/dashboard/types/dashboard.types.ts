@@ -5,7 +5,6 @@ export interface DashboardSummary {
     employeeCount: number;
     activeCustomerCount: number;
     pendingLeaveCount: number;
-    todayAttendanceCount: number;
   };
   recentLeaveRequests: LeaveRequest[];
 }

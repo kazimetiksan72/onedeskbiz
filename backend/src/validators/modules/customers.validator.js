@@ -7,7 +7,7 @@ const customerBody = z.object({
   contactPhone: z.string().optional(),
   address: z.string().optional(),
   notes: z.string().optional(),
-  ownerEmployeeId: objectId.optional().or(z.literal('')),
+  ownerUserId: objectId.optional().or(z.literal('')),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional()
 });
 

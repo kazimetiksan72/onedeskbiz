@@ -2,19 +2,19 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/auth.store';
 import { logout } from '../features/auth/api/auth.api';
 
-const navItems = [
-  { to: '/dashboard', label: 'Dashboard' },
-  { to: '/employees', label: 'Employees' },
-  { to: '/customers', label: 'Customers' },
-  { to: '/business-card', label: 'Business Card' },
-  { to: '/attendance', label: 'Attendance' },
-  { to: '/leave-requests', label: 'Leave Requests' },
-  { to: '/company-settings', label: 'Company Settings', adminOnly: true }
+const adminNavItems = [
+  { to: '/admin/dashboard', label: 'Dashboard' },
+  { to: '/admin/employees', label: 'Employees' },
+  { to: '/admin/customers', label: 'Customers' },
+  { to: '/admin/company-settings', label: 'Company Settings' }
 ];
+
+const employeeNavItems = [{ to: '/leave-requests', label: 'Leave Requests' }];
 
 export function AppLayout() {
   const navigate = useNavigate();
   const { user, refreshToken, clearAuth } = useAuthStore();
+  const navItems = user?.role === 'ADMIN' ? adminNavItems : employeeNavItems;
 
   const onLogout = async () => {
     try {
@@ -23,7 +23,7 @@ export function AppLayout() {
       }
     } finally {
       clearAuth();
-      navigate('/login');
+      navigate(user?.role === 'ADMIN' ? '/admin' : '/');
     }
   };
 
@@ -31,7 +31,10 @@ export function AppLayout() {
     <div className="min-h-screen bg-slate-50">
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <Link to="/dashboard" className="text-lg font-semibold text-brand-700">
+          <Link
+            to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests'}
+            className="text-lg font-semibold text-brand-700"
+          >
             SmallBiz Platform
           </Link>
           <div className="flex items-center gap-3 text-sm text-slate-600">
@@ -46,21 +49,19 @@ export function AppLayout() {
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-6 md:grid-cols-[220px_1fr]">
         <aside className="page-card h-fit p-3">
           <nav className="space-y-1">
-            {navItems
-              .filter((item) => !item.adminOnly || user?.role === 'ADMIN')
-              .map((item) => (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  className={({ isActive }) =>
-                    `block rounded-md px-3 py-2 text-sm ${
-                      isActive ? 'bg-brand-100 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
-                    }`
-                  }
-                >
-                  {item.label}
-                </NavLink>
-              ))}
+            {navItems.map((item) => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) =>
+                  `block rounded-md px-3 py-2 text-sm ${
+                    isActive ? 'bg-brand-100 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
+                  }`
+                }
+              >
+                {item.label}
+              </NavLink>
+            ))}
           </nav>
         </aside>
 

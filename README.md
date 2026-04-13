@@ -5,13 +5,14 @@ Küçük işletmeler (10-15 çalışan) için üretim kalitesinde MVP:
 - Customer List
 - Company Billing Info
 - Digital Business Cards
-- Attendance & Leave Tracking
+- Leave Tracking
 - JWT + RBAC (`ADMIN`, `EMPLOYEE`)
 
 ## Mimari Özet
 - Frontend: React + Vite + TypeScript + Tailwind
 - Backend: Node.js + Express + Mongoose + Zod
 - Veritabanı: MongoDB
+- Personel modeli: Ayrı `employees` koleksiyonu yoktur; tüm personel ve admin hesapları `users` koleksiyonundadır (`role` ile ayrılır).
 - Tek Azure App Service hedefi: Production'da backend, `frontend/dist` statik çıktısını servis eder.
 
 ## Monorepo ve Tek Komut Çalışma
@@ -33,6 +34,30 @@ Bu komut aynı anda:
 - backend: `http://localhost:4000`
 - frontend: `http://localhost:5173`
 çalıştırır.
+
+### Mobil Uygulama (React Native / Expo)
+`mobile/` workspace eklendi.
+
+Kurulum:
+```bash
+npm install
+cp mobile/.env.example mobile/.env
+```
+
+`mobile/.env` için production API:
+```env
+EXPO_PUBLIC_API_BASE_URL=https://onedesk.azurewebsites.net/api
+```
+
+Çalıştırma:
+```bash
+npm run dev:mobile
+```
+
+Mobil uygulama akışı:
+- Employee signin
+- Ana ekranda `Dijital Kartviziti Aç` butonu
+- Butona basınca vCard verisinden QR kod gösterimi
 
 ### Seed
 ```bash
@@ -72,8 +97,9 @@ Bu komut:
 ## Önemli Endpointler
 - API base: `/api`
 - Health: `/health`
-- Public digital card: `/card/:slug`
+- Public digital card: `/card/:userId`
 
 ## Seed Hesapları
 - Admin: `admin@smallbiz.local` / `Admin1234!`
-- Employee: `employee@smallbiz.local` / `Employee1234!`
+- Employee 1: `mert@smallbiz.local` / `Employee1234!`
+- Employee 2: `selin@smallbiz.local` / `Employee1234!`

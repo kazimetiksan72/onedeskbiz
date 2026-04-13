@@ -10,20 +10,11 @@ export async function getLeaveRequests(status = '') {
 }
 
 export async function createLeaveRequest(payload: {
-  employeeId?: string;
   leaveType: 'ANNUAL' | 'SICK' | 'UNPAID' | 'OTHER';
   startDate: string;
   endDate: string;
   reason?: string;
 }) {
   const { data } = await api.post<LeaveRequest>('/leave-requests', payload);
-  return data;
-}
-
-export async function reviewLeaveRequest(
-  id: string,
-  payload: { status: 'APPROVED' | 'REJECTED'; reviewNote?: string }
-) {
-  const { data } = await api.patch<LeaveRequest>(`/leave-requests/${id}/review`, payload);
   return data;
 }

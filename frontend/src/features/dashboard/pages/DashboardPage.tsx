@@ -24,11 +24,10 @@ export function DashboardPage() {
 
       {!loading && data ? (
         <>
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard label="Active Employees" value={data.metrics.employeeCount} />
             <MetricCard label="Active Customers" value={data.metrics.activeCustomerCount} />
             <MetricCard label="Pending Leave Requests" value={data.metrics.pendingLeaveCount} />
-            <MetricCard label="Attendance Logs Today" value={data.metrics.todayAttendanceCount} />
           </div>
 
           <div className="page-card">
@@ -50,7 +49,7 @@ export function DashboardPage() {
                     {data.recentLeaveRequests.map((item) => (
                       <tr key={item._id} className="border-t border-slate-100">
                         <td className="py-2">
-                          {item.employeeId?.firstName} {item.employeeId?.lastName}
+                          {item.userId?.firstName} {item.userId?.lastName}
                         </td>
                         <td className="py-2">{item.leaveType}</td>
                         <td className="py-2">

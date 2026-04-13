@@ -2,17 +2,16 @@ const mongoose = require('mongoose');
 
 const attendanceLogSchema = new mongoose.Schema(
   {
-    employeeId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      ref: 'User',
       required: true,
       index: true
     },
-    type: {
+    eventType: {
       type: String,
-      enum: ['CLOCK_IN', 'CLOCK_OUT'],
-      required: true,
-      index: true
+      enum: ['CHECK_IN', 'CHECK_OUT'],
+      required: true
     },
     timestamp: {
       type: Date,
@@ -21,10 +20,14 @@ const attendanceLogSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['WEB', 'MANUAL'],
+      enum: ['WEB', 'MOBILE', 'KIOSK', 'SYSTEM'],
       default: 'WEB'
     },
-    note: { type: String, trim: true }
+    metadata: {
+      ip: String,
+      userAgent: String,
+      note: String
+    }
   },
   {
     timestamps: true,
@@ -32,7 +35,7 @@ const attendanceLogSchema = new mongoose.Schema(
   }
 );
 
-attendanceLogSchema.index({ employeeId: 1, timestamp: -1 });
+attendanceLogSchema.index({ userId: 1, timestamp: -1 });
 attendanceLogSchema.index({ timestamp: -1 });
 
 const AttendanceLog = mongoose.model('AttendanceLog', attendanceLogSchema);

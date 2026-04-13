@@ -11,6 +11,7 @@ const employeeBody = z.object({
   employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACTOR']).optional(),
   startDate: z.string().datetime(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  temporaryPassword: z.string().min(8).max(64),
   emergencyContact: z
     .object({
       name: z.string().optional(),
@@ -27,12 +28,14 @@ const createEmployeeSchema = z.object({
 });
 
 const updateEmployeeSchema = z.object({
-  body: employeeBody.partial(),
+  body: employeeBody
+    .partial()
+    .extend({ temporaryPassword: z.string().min(8).max(64).optional() }),
   params: z.object({ id: objectId }),
   query: z.object({})
 });
 
-const employeeIdParamsSchema = z.object({
+const employeeParamsSchema = z.object({
   body: z.object({}),
   params: z.object({ id: objectId }),
   query: z.object({})
@@ -41,5 +44,5 @@ const employeeIdParamsSchema = z.object({
 module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
-  employeeIdParamsSchema
+  employeeParamsSchema
 };

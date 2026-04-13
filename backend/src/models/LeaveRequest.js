@@ -2,9 +2,9 @@ const mongoose = require('mongoose');
 
 const leaveRequestSchema = new mongoose.Schema(
   {
-    employeeId: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Employee',
+      ref: 'User',
       required: true,
       index: true
     },
@@ -44,7 +44,7 @@ const leaveRequestSchema = new mongoose.Schema(
   }
 );
 
-leaveRequestSchema.index({ employeeId: 1, startDate: -1 });
+leaveRequestSchema.index({ userId: 1, startDate: -1 });
 leaveRequestSchema.index({ status: 1, startDate: -1 });
 
 const LeaveRequest = mongoose.model('LeaveRequest', leaveRequestSchema);

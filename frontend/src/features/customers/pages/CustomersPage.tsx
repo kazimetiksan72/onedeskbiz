@@ -14,7 +14,7 @@ interface CustomerForm {
   contactPhone?: string;
   address?: string;
   notes?: string;
-  ownerEmployeeId?: string;
+  ownerUserId?: string;
   status?: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -88,9 +88,7 @@ export function CustomersPage() {
                     <td className="py-2">{item.contactName}</td>
                     <td className="py-2">{item.contactEmail || '-'}</td>
                     <td className="py-2">
-                      {item.ownerEmployeeId
-                        ? `${item.ownerEmployeeId.firstName} ${item.ownerEmployeeId.lastName}`
-                        : '-'}
+                      {item.ownerUserId ? `${item.ownerUserId.firstName} ${item.ownerUserId.lastName}` : '-'}
                     </td>
                     <td className="py-2">{item.status}</td>
                     {isAdmin ? (
@@ -108,7 +106,7 @@ export function CustomersPage() {
                                 address: item.address,
                                 notes: item.notes,
                                 status: item.status,
-                                ownerEmployeeId: item.ownerEmployeeId?._id
+                                ownerUserId: item.ownerUserId?._id
                               });
                             }}
                           >
@@ -172,8 +170,8 @@ export function CustomersPage() {
             />
             <select
               className="input"
-              value={form.ownerEmployeeId || ''}
-              onChange={(e) => setForm({ ...form, ownerEmployeeId: e.target.value || undefined })}
+              value={form.ownerUserId || ''}
+              onChange={(e) => setForm({ ...form, ownerUserId: e.target.value || undefined })}
             >
               <option value="">No owner</option>
               {employees.map((emp) => (

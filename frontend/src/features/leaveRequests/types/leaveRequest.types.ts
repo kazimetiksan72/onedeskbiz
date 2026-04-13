@@ -2,7 +2,7 @@ import type { Employee } from '../../employees/types/employee.types';
 
 export interface LeaveRequest {
   _id: string;
-  employeeId: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'department'>;
+  userId: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'department'>;
   leaveType: 'ANNUAL' | 'SICK' | 'UNPAID' | 'OTHER';
   startDate: string;
   endDate: string;

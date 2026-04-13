@@ -5,19 +5,12 @@ const { requireRole } = require('../../middleware/requireRole');
 const { ROLES } = require('../../constants/roles');
 const {
   createLeaveRequestSchema,
-  reviewLeaveRequestSchema,
   leaveRequestQuerySchema
 } = require('../../validators/modules/leaveRequests.validator');
 
 const router = express.Router();
 
-router.get('/', validate(leaveRequestQuerySchema), controller.listLeaveRequests);
-router.post('/', validate(createLeaveRequestSchema), controller.createLeaveRequest);
-router.patch(
-  '/:id/review',
-  requireRole(ROLES.ADMIN),
-  validate(reviewLeaveRequestSchema),
-  controller.reviewLeaveRequest
-);
+router.get('/', requireRole(ROLES.EMPLOYEE), validate(leaveRequestQuerySchema), controller.listLeaveRequests);
+router.post('/', requireRole(ROLES.EMPLOYEE), validate(createLeaveRequestSchema), controller.createLeaveRequest);
 
 module.exports = router;

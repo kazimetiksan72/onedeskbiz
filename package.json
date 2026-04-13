@@ -4,14 +4,23 @@
   "version": "1.0.0",
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "mobile"
   ],
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
+    "dev:mobile": "npm run start --workspace=mobile",
+    "dev:all": "concurrently -n backend,frontend,mobile -c blue,green,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run start --workspace=mobile\"",
     "build": "npm run build --workspace=frontend",
     "start": "npm run start --workspace=backend",
     "start:azure": "npm run build && npm run start",
     "seed": "npm run seed --workspace=backend"
+  },
+  "overrides": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "@types/react": "19.1.10",
+    "@types/react-dom": "19.1.9"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -1,15 +1,32 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login } from '../api/auth.api';
 import { useAuthStore } from '../auth.store';
 
-export function LoginPage() {
+type LoginMode = 'admin' | 'employee';
+
+export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
-  const [email, setEmail] = useState('admin@smallbiz.local');
-  const [password, setPassword] = useState('Admin1234!');
+  const { setAuth, accessToken, user } = useAuthStore();
+
+  const defaultEmail = mode === 'admin' ? 'admin@smallbiz.local' : 'mert@smallbiz.local';
+  const defaultPassword = mode === 'admin' ? 'Admin1234!' : 'Employee1234!';
+
+  const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState(defaultPassword);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!accessToken || !user) return;
+
+    if (user.mustChangePassword) {
+      navigate('/change-password', { replace: true });
+      return;
+    }
+
+    navigate(user.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests', { replace: true });
+  }, [accessToken, user, navigate]);
 
   const onSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -19,7 +36,11 @@ export function LoginPage() {
     try {
       const result = await login({ email, password });
       setAuth(result);
-      navigate('/dashboard');
+      if (result.user.mustChangePassword) {
+        navigate('/change-password');
+      } else {
+        navigate(result.user.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests');
+      }
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Login failed');
     } finally {
@@ -29,9 +50,14 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-brand-50 px-4">
-      <form onSubmit={onSubmit} className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="mb-1 text-2xl font-semibold text-slate-900">SmallBiz Login</h1>
-        <p className="mb-6 text-sm text-slate-500">Access your internal business platform</p>
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <h1 className="mb-1 text-2xl font-semibold text-slate-900">
+          {mode === 'admin' ? 'Admin Panel Sign In' : 'Sign In'}
+        </h1>
+        <p className="mb-6 text-sm text-slate-500">SmallBiz access portal</p>
 
         <div className="space-y-4">
           <div>
@@ -56,7 +82,9 @@ export function LoginPage() {
         </button>
 
         <p className="mt-4 text-xs text-slate-500">
-          Seed admin: `admin@smallbiz.local` / `Admin1234!`
+          Admin: admin@smallbiz.local / Admin1234!
+          <br />
+          Employee: mert@smallbiz.local / Employee1234!
         </p>
       </form>
     </div>

@@ -4,8 +4,7 @@ const registerSchema = z.object({
   body: z.object({
     email: z.string().email(),
     password: z.string().min(8).max(64),
-    role: z.enum(['ADMIN', 'EMPLOYEE']).optional(),
-    employeeId: z.string().regex(/^[a-f\d]{24}$/i).optional()
+    role: z.enum(['ADMIN', 'EMPLOYEE']).optional()
   }),
   params: z.object({}),
   query: z.object({})
@@ -28,4 +27,17 @@ const refreshSchema = z.object({
   query: z.object({})
 });
 
-module.exports = { registerSchema, loginSchema, refreshSchema };
+const changePasswordSchema = z.object({
+  body: z.object({
+    newPassword: z.string().min(8).max(64)
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
+module.exports = {
+  registerSchema,
+  loginSchema,
+  refreshSchema,
+  changePasswordSchema
+};

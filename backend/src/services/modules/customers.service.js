@@ -2,8 +2,22 @@ const { Customer } = require('../../models/Customer');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
 
+function normalizeCustomerPayload(payload) {
+  const normalized = { ...payload };
+
+  if (!normalized.ownerUserId) {
+    delete normalized.ownerUserId;
+  }
+
+  if (normalized.contactEmail === '') {
+    delete normalized.contactEmail;
+  }
+
+  return normalized;
+}
+
 async function createCustomer(payload) {
-  return Customer.create(payload);
+  return Customer.create(normalizeCustomerPayload(payload));
 }
 
 async function listCustomers({ page, limit, search }) {
@@ -20,7 +34,7 @@ async function listCustomers({ page, limit, search }) {
 
   const [items, total] = await Promise.all([
     Customer.find(query)
-      .populate('ownerEmployeeId', 'firstName lastName workEmail department')
+      .populate('ownerUserId', 'firstName lastName workEmail department')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -33,7 +47,7 @@ async function listCustomers({ page, limit, search }) {
 
 async function getCustomerById(id) {
   const customer = await Customer.findById(id)
-    .populate('ownerEmployeeId', 'firstName lastName workEmail department')
+    .populate('ownerUserId', 'firstName lastName workEmail department')
     .lean();
 
   if (!customer) {
@@ -44,11 +58,11 @@ async function getCustomerById(id) {
 }
 
 async function updateCustomer(id, payload) {
-  const customer = await Customer.findByIdAndUpdate(id, payload, {
+  const customer = await Customer.findByIdAndUpdate(id, normalizeCustomerPayload(payload), {
     new: true,
     runValidators: true
   })
-    .populate('ownerEmployeeId', 'firstName lastName workEmail department')
+    .populate('ownerUserId', 'firstName lastName workEmail department')
     .lean();
 
   if (!customer) {

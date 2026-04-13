@@ -10,9 +10,13 @@ export async function register(payload: {
   email: string;
   password: string;
   role: 'ADMIN' | 'EMPLOYEE';
-  employeeId?: string;
 }) {
   const { data } = await api.post<AuthResponse>('/auth/register', payload);
+  return data;
+}
+
+export async function changePassword(payload: { newPassword: string }) {
+  const { data } = await api.post<AuthResponse>('/auth/change-password', payload);
   return data;
 }
 

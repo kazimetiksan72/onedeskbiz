@@ -3,6 +3,7 @@ const ms = require('ms');
 const env = require('../../config/env');
 const { User } = require('../../models/User');
 const { RefreshToken } = require('../../models/RefreshToken');
+const { ROLES } = require('../../constants/roles');
 const { ApiError } = require('../../utils/apiError');
 const {
   signAccessToken,
@@ -26,18 +27,28 @@ async function issueTokenPair(user) {
   return { accessToken, refreshToken };
 }
 
-async function register({ email, password, role, employeeId }) {
+async function register({ email, password, role }) {
   const existing = await User.findOne({ email });
   if (existing) {
     throw new ApiError(409, 'Email already in use');
   }
 
+  const normalizedEmail = email.toLowerCase();
+  const localPart = normalizedEmail.split('@')[0] || 'user';
+
   const passwordHash = await bcrypt.hash(password, env.bcryptSaltRounds);
   const user = await User.create({
-    email,
+    email: normalizedEmail,
+    workEmail: normalizedEmail,
     passwordHash,
     role,
-    employeeId: employeeId || null
+    firstName: localPart,
+    lastName: 'User',
+    startDate: new Date(),
+    status: 'ACTIVE',
+    isActive: true,
+    mustChangePassword: false,
+    passwordUpdatedAt: new Date()
   });
 
   const tokens = await issueTokenPair(user);
@@ -47,9 +58,16 @@ async function register({ email, password, role, employeeId }) {
 }
 
 async function login({ email, password }) {
-  const user = await User.findOne({ email });
-  if (!user || !user.isActive) {
+  const normalizedEmail = email.toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail });
+
+  if (!user || !user.isActive || user.status === 'INACTIVE') {
     throw new ApiError(401, 'Invalid credentials');
+  }
+
+  if (user.role === ROLES.EMPLOYEE && !user.passwordUpdatedAt && !user.mustChangePassword) {
+    user.mustChangePassword = true;
+    await user.save();
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
@@ -58,6 +76,31 @@ async function login({ email, password }) {
   }
 
   await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } });
+
+  const tokens = await issueTokenPair(user);
+  const safeUser = await User.findById(user._id).select('-passwordHash').lean();
+
+  return { user: safeUser, ...tokens };
+}
+
+async function changePassword(userId, newPassword) {
+  const user = await User.findById(userId);
+
+  if (!user || !user.isActive) {
+    throw new ApiError(401, 'Unauthorized');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, env.bcryptSaltRounds);
+
+  user.passwordHash = passwordHash;
+  user.mustChangePassword = false;
+  user.passwordUpdatedAt = new Date();
+  await user.save();
+
+  await RefreshToken.updateMany(
+    { userId: user._id, revokedAt: null },
+    { $set: { revokedAt: new Date() } }
+  );
 
   const tokens = await issueTokenPair(user);
   const safeUser = await User.findById(user._id).select('-passwordHash').lean();
@@ -104,4 +147,4 @@ async function logout(refreshToken) {
   );
 }
 
-module.exports = { register, login, refresh, logout };
+module.exports = { register, login, changePassword, refresh, logout };

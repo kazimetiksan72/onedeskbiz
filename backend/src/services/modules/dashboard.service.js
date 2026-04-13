@@ -1,24 +1,17 @@
-const { Employee } = require('../../models/Employee');
+const { User } = require('../../models/User');
 const { Customer } = require('../../models/Customer');
-const { AttendanceLog } = require('../../models/AttendanceLog');
 const { LeaveRequest } = require('../../models/LeaveRequest');
+const { ROLES } = require('../../constants/roles');
 
 async function getDashboardSummary() {
-  const [employeeCount, activeCustomerCount, pendingLeaveCount, todayAttendanceCount] =
-    await Promise.all([
-      Employee.countDocuments({ status: 'ACTIVE' }),
-      Customer.countDocuments({ status: 'ACTIVE' }),
-      LeaveRequest.countDocuments({ status: 'PENDING' }),
-      AttendanceLog.countDocuments({
-        timestamp: {
-          $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-          $lte: new Date(new Date().setHours(23, 59, 59, 999))
-        }
-      })
-    ]);
+  const [employeeCount, activeCustomerCount, pendingLeaveCount] = await Promise.all([
+    User.countDocuments({ role: ROLES.EMPLOYEE, status: 'ACTIVE', isActive: true }),
+    Customer.countDocuments({ status: 'ACTIVE' }),
+    LeaveRequest.countDocuments({ status: 'PENDING' })
+  ]);
 
   const recentLeaveRequests = await LeaveRequest.find()
-    .populate('employeeId', 'firstName lastName department')
+    .populate('userId', 'firstName lastName department')
     .sort({ createdAt: -1 })
     .limit(5)
     .lean();
@@ -27,8 +20,7 @@ async function getDashboardSummary() {
     metrics: {
       employeeCount,
       activeCustomerCount,
-      pendingLeaveCount,
-      todayAttendanceCount
+      pendingLeaveCount
     },
     recentLeaveRequests
   };

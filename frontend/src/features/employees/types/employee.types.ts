@@ -19,7 +19,6 @@ export interface Employee {
     address?: string;
     bio?: string;
     avatarUrl?: string;
-    publicSlug?: string;
     isPublic?: boolean;
   };
 }

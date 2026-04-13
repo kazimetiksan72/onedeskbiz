@@ -1,40 +1,35 @@
-const { Employee } = require('../../models/Employee');
+const { User } = require('../../models/User');
+const { ROLES } = require('../../constants/roles');
 const { ApiError } = require('../../utils/apiError');
 
-async function updateBusinessCard(employeeId, payload) {
-  const employee = await Employee.findById(employeeId);
-
-  if (!employee) {
-    throw new ApiError(404, 'Employee not found');
-  }
-
-  employee.businessCard = {
-    ...(employee.businessCard?.toObject ? employee.businessCard.toObject() : employee.businessCard || {}),
-    ...payload
-  };
-
-  await employee.save();
-
-  return Employee.findById(employeeId).lean();
-}
-
-async function getPublicCard(slug) {
-  const employee = await Employee.findOne({
-    'businessCard.publicSlug': slug,
-    'businessCard.isPublic': true,
-    status: 'ACTIVE'
+async function getPublicCard(userId) {
+  const user = await User.findOne({
+    _id: userId,
+    role: ROLES.EMPLOYEE
   }).lean();
 
-  if (!employee || !employee.businessCard) {
+  if (!user || user.status === 'INACTIVE' || user.isActive === false) {
     throw new ApiError(404, 'Business card not found');
   }
 
+  const cardFromUser = {
+    displayName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+    title: user.title || '',
+    phone: user.phone || '',
+    email: user.workEmail || '',
+    website: user.businessCard?.website || '',
+    address: user.businessCard?.address || '',
+    bio: user.businessCard?.bio || '',
+    avatarUrl: user.businessCard?.avatarUrl || '',
+    isPublic: true
+  };
+
   return {
-    employeeId: employee._id,
-    firstName: employee.firstName,
-    lastName: employee.lastName,
-    businessCard: employee.businessCard
+    userId: user._id,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    businessCard: cardFromUser
   };
 }
 
-module.exports = { updateBusinessCard, getPublicCard };
+module.exports = { getPublicCard };
