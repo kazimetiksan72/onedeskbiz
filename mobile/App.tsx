@@ -136,6 +136,31 @@ function buildVCard(data: PublicCardResponse) {
   return lines.join('\n');
 }
 
+function buildBillingQrText(data: CompanyBillingResponse | null) {
+  if (!data) return '';
+
+  const info = data.billingInfo || {};
+  const lines = [
+    `Company: ${data.companyName || ''}`,
+    `Legal Name: ${info.legalCompanyName || ''}`,
+    `Tax Number: ${info.taxNumber || ''}`,
+    `Tax Office: ${info.taxOffice || ''}`,
+    `Address: ${info.address || ''}`,
+    `City: ${info.city || ''}`,
+    `Country: ${info.country || ''}`,
+    `Postal Code: ${info.postalCode || ''}`
+  ];
+
+  (info.bankAccounts || []).forEach((account, index) => {
+    lines.push(`Bank ${index + 1}: ${account.bankName || ''}`);
+    lines.push(`Branch ${index + 1}: ${account.branchName || ''}`);
+    lines.push(`IBAN ${index + 1}: ${account.iban || ''}`);
+    lines.push(`SWIFT ${index + 1}: ${account.swiftCode || ''}`);
+  });
+
+  return lines.join('\n').trim();
+}
+
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -149,6 +174,7 @@ export default function App() {
   const [billingLoading, setBillingLoading] = useState(false);
 
   const vCardText = useMemo(() => (cardData ? buildVCard(cardData) : ''), [cardData]);
+  const billingQrText = useMemo(() => buildBillingQrText(billingData), [billingData]);
 
   const login = async () => {
     setError('');
@@ -167,8 +193,8 @@ export default function App() {
       }
 
       setSession(data);
-    } catch (requestError) {
-      setError('Giriş başarısız. Bilgileri kontrol edin.');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Giriş başarısız. Bilgileri kontrol edin.');
     } finally {
       setIsLoading(false);
     }
@@ -300,23 +326,14 @@ export default function App() {
       <Modal visible={billingVisible} transparent animationType="slide" onRequestClose={() => setBillingVisible(false)}>
         <View style={styles.modalBackdrop}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>{billingData?.companyName || 'Company'}</Text>
-            {billingData?.website ? <Text style={styles.modalSubtitle}>{billingData.website}</Text> : null}
-
             <View style={styles.billingBlock}>
-              <Text style={styles.billingLine}>
-                Legal Name: {billingData?.billingInfo?.legalCompanyName || '-'}
-              </Text>
-              <Text style={styles.billingLine}>Tax Number: {billingData?.billingInfo?.taxNumber || '-'}</Text>
-              <Text style={styles.billingLine}>Tax Office: {billingData?.billingInfo?.taxOffice || '-'}</Text>
-              <Text style={styles.billingLine}>Billing Email: {billingData?.billingInfo?.billingEmail || '-'}</Text>
-              <Text style={styles.billingLine}>Phone: {billingData?.billingInfo?.phone || '-'}</Text>
-              <Text style={styles.billingLine}>Address: {billingData?.billingInfo?.address || '-'}</Text>
-              <Text style={styles.billingLine}>City: {billingData?.billingInfo?.city || '-'}</Text>
-              <Text style={styles.billingLine}>Country: {billingData?.billingInfo?.country || '-'}</Text>
-              <Text style={styles.billingLine}>Postal Code: {billingData?.billingInfo?.postalCode || '-'}</Text>
+              <Text style={styles.billingLegalName}>{billingData?.billingInfo?.legalCompanyName || '-'}</Text>
+              <Text style={styles.billingLine}>{billingData?.billingInfo?.taxNumber || '-'}</Text>
+              <Text style={styles.billingLine}>{billingData?.billingInfo?.taxOffice || '-'}</Text>
+              <Text style={styles.billingLine}>{billingData?.billingInfo?.address || '-'}</Text>
             </View>
 
+            <Text style={styles.billingSectionTitle}>Banka Bilgileri</Text>
             {(billingData?.billingInfo?.bankAccounts || []).map((account, index) => (
               <View key={`${account.iban || 'bank'}-${index}`} style={styles.billingBlock}>
                 <Text style={styles.billingLine}>Bank: {account.bankName || '-'}</Text>
@@ -325,6 +342,8 @@ export default function App() {
                 <Text style={styles.billingLine}>SWIFT: {account.swiftCode || '-'}</Text>
               </View>
             ))}
+
+            {billingQrText ? <QRCode value={billingQrText} size={220} /> : null}
 
             <Pressable style={styles.secondaryButton} onPress={() => setBillingVisible(false)}>
               <Text style={styles.secondaryButtonText}>Kapat</Text>
@@ -429,6 +448,17 @@ const styles = StyleSheet.create({
   },
   billingLine: {
     fontSize: 12,
+    color: '#0f172a'
+  },
+  billingLegalName: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a'
+  },
+  billingSectionTitle: {
+    width: '100%',
+    fontSize: 13,
+    fontWeight: '700',
     color: '#0f172a'
   }
 });
