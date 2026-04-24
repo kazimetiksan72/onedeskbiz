@@ -62,5 +62,9 @@ module.exports = {
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 2),
-  defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'Employee1234!'
+  defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'Employee1234!',
+  azureStorage: {
+    connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
+    containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'profile-photos'
+  }
 };

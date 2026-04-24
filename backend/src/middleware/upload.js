@@ -35,4 +35,18 @@ const upload = multer({
   }
 });
 
-module.exports = { upload, uploadPath };
+const memoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: env.maxFileSizeMb * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      return cb(new ApiError(400, 'Only JPG, PNG, and WEBP files are allowed'));
+    }
+
+    return cb(null, true);
+  }
+});
+
+module.exports = { upload, memoryUpload, uploadPath };
