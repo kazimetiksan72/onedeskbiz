@@ -3,6 +3,7 @@ const { BlobServiceClient } = require('@azure/storage-blob');
 const env = require('../../config/env');
 const { User } = require('../../models/User');
 const { ApiError } = require('../../utils/apiError');
+const { logger } = require('../../utils/logger');
 
 function getBlobExtension(file) {
   const ext = path.extname(file.originalname || '').toLowerCase();
@@ -30,6 +31,14 @@ async function uploadProfilePhoto(userId, file) {
   const blobName = `users/${userId}/${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
   const blockBlobClient = containerClient.getBlockBlobClient(blobName);
 
+  logger.info('Uploading profile photo to Azure Blob Storage', {
+    userId: userId.toString(),
+    containerName: env.azureStorage.containerName,
+    blobName,
+    mimeType: file.mimetype,
+    size: file.size
+  });
+
   await blockBlobClient.uploadData(file.buffer, {
     blobHTTPHeaders: {
       blobContentType: file.mimetype,
@@ -38,6 +47,12 @@ async function uploadProfilePhoto(userId, file) {
   });
 
   const avatarUrl = blockBlobClient.url;
+  logger.info('Profile photo uploaded', {
+    userId: userId.toString(),
+    blobName,
+    avatarUrl
+  });
+
   const user = await User.findByIdAndUpdate(
     userId,
     {

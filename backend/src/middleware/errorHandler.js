@@ -1,9 +1,21 @@
 const { ZodError } = require('zod');
+const { logger } = require('../utils/logger');
 
 function errorHandler(err, req, res, next) {
   if (res.headersSent) {
     return next(err);
   }
+
+  const statusCode = err.statusCode || 500;
+
+  logger.error('Request failed', {
+    statusCode,
+    method: req.method,
+    path: req.originalUrl,
+    userId: req.user?._id?.toString(),
+    ip: req.ip,
+    error: logger.serializeError(err)
+  });
 
   if (err instanceof ZodError) {
     return res.status(400).json({
@@ -29,7 +41,6 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ message: 'Invalid identifier' });
   }
 
-  const statusCode = err.statusCode || 500;
   const payload = {
     message: statusCode >= 500 ? 'Internal server error' : err.message
   };
