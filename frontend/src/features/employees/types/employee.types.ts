@@ -19,6 +19,7 @@ export interface Employee {
     address?: string;
     bio?: string;
     avatarUrl?: string;
+    avatarPublicUrl?: string;
     isPublic?: boolean;
   };
 }

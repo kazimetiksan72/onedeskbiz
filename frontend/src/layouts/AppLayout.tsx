@@ -3,13 +3,15 @@ import { useAuthStore } from '../features/auth/auth.store';
 import { logout } from '../features/auth/api/auth.api';
 
 const adminNavItems = [
-  { to: '/admin/dashboard', label: 'Dashboard' },
-  { to: '/admin/employees', label: 'Employees' },
-  { to: '/admin/customers', label: 'Customers' },
-  { to: '/admin/company-settings', label: 'Company Settings' }
+  { to: '/admin/dashboard', label: 'Panel' },
+  { to: '/admin/employees', label: 'Personeller' },
+  { to: '/admin/customers', label: 'Müşteriler' },
+  { to: '/admin/contacts', label: 'Kişiler' },
+  { to: '/admin/vehicles', label: 'Araçlarım' },
+  { to: '/admin/company-settings', label: 'Şirket Ayarları' }
 ];
 
-const employeeNavItems = [{ to: '/leave-requests', label: 'Leave Requests' }];
+const employeeNavItems = [{ to: '/leave-requests', label: 'İzin Talepleri' }];
 
 export function AppLayout() {
   const navigate = useNavigate();
@@ -40,7 +42,7 @@ export function AppLayout() {
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span>{user?.email}</span>
             <button onClick={onLogout} className="btn-secondary">
-              Logout
+              Çıkış
             </button>
           </div>
         </div>

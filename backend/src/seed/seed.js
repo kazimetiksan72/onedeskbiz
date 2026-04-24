@@ -4,6 +4,8 @@ const { connectDb } = require('../config/db');
 const env = require('../config/env');
 const { User } = require('../models/User');
 const { Customer } = require('../models/Customer');
+const { Contact } = require('../models/Contact');
+const { Vehicle } = require('../models/Vehicle');
 const { CompanySettings } = require('../models/CompanySettings');
 const { LeaveRequest } = require('../models/LeaveRequest');
 const { RefreshToken } = require('../models/RefreshToken');
@@ -23,6 +25,8 @@ async function run() {
   await Promise.all([
     User.deleteMany({}),
     Customer.deleteMany({}),
+    Contact.deleteMany({}),
+    Vehicle.deleteMany({}),
     CompanySettings.deleteMany({}),
     LeaveRequest.deleteMany({}),
     RefreshToken.deleteMany({})
@@ -96,20 +100,56 @@ async function run() {
     }
   ]);
 
-  await Customer.insertMany([
+  const customers = await Customer.insertMany([
     {
       companyName: 'Northwind Cafe',
-      contactName: 'Elif Yildiz',
-      contactEmail: 'elif@northwindcafe.com',
-      contactPhone: '+90 555 100 0001',
-      ownerUserId: users[1]._id
+      website: 'https://northwindcafe.example',
+      address: 'Bagdat Caddesi No:10 Kadikoy Istanbul',
+      phone: '+90 216 100 0001',
+      taxNumber: '1111111111',
+      taxOffice: 'Kadikoy'
     },
     {
       companyName: 'Blue Harbor Logistics',
-      contactName: 'Kerem Aslan',
-      contactEmail: 'kerem@blueharbor.com',
-      contactPhone: '+90 555 100 0002',
-      ownerUserId: users[2]._id
+      website: 'https://blueharbor.example',
+      address: 'Liman Yolu No:4 Tuzla Istanbul',
+      phone: '+90 216 100 0002',
+      taxNumber: '2222222222',
+      taxOffice: 'Tuzla'
+    }
+  ]);
+
+  await Contact.insertMany([
+    {
+      customerId: customers[0]._id,
+      firstName: 'Elif',
+      lastName: 'Yildiz',
+      email: 'elif@northwindcafe.com',
+      phone: '+90 555 100 0001'
+    },
+    {
+      customerId: customers[1]._id,
+      firstName: 'Kerem',
+      lastName: 'Aslan',
+      email: 'kerem@blueharbor.com',
+      phone: '+90 555 100 0002'
+    }
+  ]);
+
+  await Vehicle.insertMany([
+    {
+      plate: '24 EYL 88',
+      brand: 'BMW',
+      model: 'X3 si',
+      modelYear: 2015,
+      kilometer: 240000
+    },
+    {
+      plate: '34 RZS 77',
+      brand: 'Fiat',
+      model: 'Punto',
+      modelYear: 2002,
+      kilometer: 180000
     }
   ]);
 

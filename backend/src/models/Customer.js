@@ -3,17 +3,11 @@ const mongoose = require('mongoose');
 const customerSchema = new mongoose.Schema(
   {
     companyName: { type: String, required: true, trim: true, index: true },
-    contactName: { type: String, required: true, trim: true },
-    contactEmail: { type: String, trim: true, lowercase: true, index: true },
-    contactPhone: { type: String, trim: true },
+    website: { type: String, trim: true, lowercase: true },
     address: { type: String, trim: true },
-    notes: { type: String, trim: true },
-    ownerUserId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
-      default: null,
-      index: true
-    },
+    phone: { type: String, trim: true },
+    taxNumber: { type: String, trim: true, index: true },
+    taxOffice: { type: String, trim: true },
     status: {
       type: String,
       enum: ['ACTIVE', 'INACTIVE'],

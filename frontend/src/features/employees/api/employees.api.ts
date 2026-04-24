@@ -13,6 +13,11 @@ export async function getEmployees(search = '') {
   return data.items;
 }
 
+export async function getEmployee(id: string) {
+  const { data } = await api.get<Employee>(`/employees/${id}`);
+  return data;
+}
+
 export async function createEmployee(payload: EmployeePayload) {
   const { data } = await api.post<Employee>('/employees', payload);
   return data;

@@ -16,12 +16,12 @@ export function ChangePasswordPage() {
     setError('');
 
     if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters.');
+      setError('Şifre en az 8 karakter olmalıdır.');
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setError('Passwords do not match.');
+      setError('Şifreler eşleşmiyor.');
       return;
     }
 
@@ -31,7 +31,7 @@ export function ChangePasswordPage() {
       setAuth(result);
       navigate(user?.role === 'ADMIN' ? '/dashboard' : '/leave-requests');
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Password could not be changed.');
+      setError(err?.response?.data?.message || 'Şifre değiştirilemedi.');
     } finally {
       setLoading(false);
     }
@@ -40,21 +40,21 @@ export function ChangePasswordPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <form onSubmit={onSubmit} className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Change Your Password</h1>
-        <p className="mt-1 text-sm text-slate-500">You must set a new password before continuing.</p>
+        <h1 className="text-xl font-semibold text-slate-900">Şifrenizi Değiştirin</h1>
+        <p className="mt-1 text-sm text-slate-500">Devam etmeden önce yeni bir şifre belirlemelisiniz.</p>
 
         <div className="mt-5 space-y-3">
           <input
             type="password"
             className="input"
-            placeholder="New password"
+            placeholder="Yeni şifre"
             value={newPassword}
             onChange={(e) => setNewPassword(e.target.value)}
           />
           <input
             type="password"
             className="input"
-            placeholder="Confirm new password"
+            placeholder="Yeni şifre tekrar"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
           />
@@ -63,7 +63,7 @@ export function ChangePasswordPage() {
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
         <button disabled={loading} className="btn-primary mt-5 w-full">
-          {loading ? 'Saving...' : 'Update Password'}
+          {loading ? 'Kaydediliyor...' : 'Şifreyi Güncelle'}
         </button>
       </form>
     </div>

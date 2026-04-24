@@ -1,43 +1,43 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createCustomer, deleteCustomer, getCustomers, updateCustomer } from '../api/customers.api';
-import type { Customer } from '../types/customer.types';
+import { createContact, deleteContact, getContacts, updateContact } from '../api/contacts.api';
+import type { Contact } from '../types/contact.types';
+import { getCustomers } from '../../customers/api/customers.api';
+import type { Customer } from '../../customers/types/customer.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
 import { useAuthStore } from '../../auth/auth.store';
 
-interface CustomerForm {
-  companyName: string;
-  website?: string;
-  address?: string;
+interface ContactForm {
+  customerId?: string;
+  firstName: string;
+  lastName: string;
   phone?: string;
-  taxNumber?: string;
-  taxOffice?: string;
-  status?: 'ACTIVE' | 'INACTIVE';
+  email?: string;
 }
 
-const initialForm: CustomerForm = {
-  companyName: '',
-  website: '',
-  address: '',
+const initialForm: ContactForm = {
+  customerId: '',
+  firstName: '',
+  lastName: '',
   phone: '',
-  taxNumber: '',
-  taxOffice: '',
-  status: 'ACTIVE'
+  email: ''
 };
 
-export function CustomersPage() {
+export function ContactsPage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
-  const [items, setItems] = useState<Customer[]>([]);
-  const [selected, setSelected] = useState<Customer | null>(null);
-  const [form, setForm] = useState<CustomerForm>(initialForm);
+  const [items, setItems] = useState<Contact[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selected, setSelected] = useState<Contact | null>(null);
+  const [form, setForm] = useState<ContactForm>(initialForm);
   const [search, setSearch] = useState('');
 
   const load = async () => {
-    const customers = await getCustomers(search);
-    setItems(customers);
+    const [contacts, customerList] = await Promise.all([getContacts(search), getCustomers()]);
+    setItems(contacts);
+    setCustomers(customerList);
   };
 
   useEffect(() => {
@@ -49,9 +49,9 @@ export function CustomersPage() {
     if (!isAdmin) return;
 
     if (selected) {
-      await updateCustomer(selected._id, form as Partial<Customer>);
+      await updateContact(selected._id, form);
     } else {
-      await createCustomer(form as Partial<Customer>);
+      await createContact(form);
     }
 
     setSelected(null);
@@ -61,13 +61,13 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Müşteriler" subtitle="Firma bilgilerini yönetin" />
+      <PageHeader title="Kişiler" subtitle="Müşteri firmalardaki kişi kayıtlarını yönetin" />
 
       <div className="page-card">
         <div className="mb-3 flex gap-2">
           <input
             className="input"
-            placeholder="Firma ara..."
+            placeholder="Kişi ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -77,31 +77,29 @@ export function CustomersPage() {
         </div>
 
         {items.length === 0 ? (
-          <EmptyState message="Müşteri bulunamadı." />
+          <EmptyState message="Kişi bulunamadı." />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500">
+                  <th className="pb-2">Ad Soyad</th>
                   <th className="pb-2">Firma</th>
-                  <th className="pb-2">Web Sitesi</th>
+                  <th className="pb-2">E-posta</th>
                   <th className="pb-2">Telefon</th>
-                  <th className="pb-2">Vergi No</th>
-                  <th className="pb-2">Durum</th>
                   <th className="pb-2 text-right">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item._id} className="border-t border-slate-100">
-                    <td className="py-2">{item.companyName}</td>
-                    <td className="py-2">{item.website || '-'}</td>
+                    <td className="py-2">{item.firstName} {item.lastName}</td>
+                    <td className="py-2">{item.customerId?.companyName || '-'}</td>
+                    <td className="py-2">{item.email || '-'}</td>
                     <td className="py-2">{item.phone || '-'}</td>
-                    <td className="py-2">{item.taxNumber || '-'}</td>
-                    <td className="py-2">{item.status === 'ACTIVE' ? 'Aktif' : 'Pasif'}</td>
                     <td className="py-2">
                       <div className="flex justify-end gap-2">
-                        <button className="btn-secondary" onClick={() => navigate(`/admin/customers/${item._id}`)}>
+                        <button className="btn-secondary" onClick={() => navigate(`/admin/contacts/${item._id}`)}>
                           Detay
                         </button>
                         {isAdmin ? (
@@ -111,13 +109,11 @@ export function CustomersPage() {
                               onClick={() => {
                                 setSelected(item);
                                 setForm({
-                                  companyName: item.companyName,
-                                  website: item.website || '',
-                                  address: item.address || '',
+                                  customerId: item.customerId?._id || '',
+                                  firstName: item.firstName,
+                                  lastName: item.lastName,
                                   phone: item.phone || '',
-                                  taxNumber: item.taxNumber || '',
-                                  taxOffice: item.taxOffice || '',
-                                  status: item.status
+                                  email: item.email || ''
                                 });
                               }}
                             >
@@ -126,7 +122,7 @@ export function CustomersPage() {
                             <button
                               className="btn-secondary"
                               onClick={async () => {
-                                await deleteCustomer(item._id);
+                                await deleteContact(item._id);
                                 await load();
                               }}
                             >
@@ -146,20 +142,27 @@ export function CustomersPage() {
 
       {isAdmin ? (
         <form onSubmit={onSave} className="page-card space-y-3">
-          <h2 className="text-base font-semibold">{selected ? 'Müşteriyi Güncelle' : 'Müşteri Ekle'}</h2>
+          <h2 className="text-base font-semibold">{selected ? 'Kişiyi Güncelle' : 'Kişi Ekle'}</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               className="input"
-              placeholder="Firma adı"
-              value={form.companyName}
-              onChange={(e) => setForm({ ...form, companyName: e.target.value })}
+              placeholder="Ad"
+              value={form.firstName}
+              onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               required
             />
             <input
               className="input"
-              placeholder="Web sitesi"
-              value={form.website || ''}
-              onChange={(e) => setForm({ ...form, website: e.target.value })}
+              placeholder="Soyad"
+              value={form.lastName}
+              onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+              required
+            />
+            <input
+              className="input"
+              placeholder="E-posta"
+              value={form.email || ''}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
             />
             <input
               className="input"
@@ -167,33 +170,19 @@ export function CustomersPage() {
               value={form.phone || ''}
               onChange={(e) => setForm({ ...form, phone: e.target.value })}
             />
-            <input
-              className="input"
-              placeholder="Vergi numarası"
-              value={form.taxNumber || ''}
-              onChange={(e) => setForm({ ...form, taxNumber: e.target.value })}
-            />
-            <input
-              className="input"
-              placeholder="Vergi dairesi"
-              value={form.taxOffice || ''}
-              onChange={(e) => setForm({ ...form, taxOffice: e.target.value })}
-            />
             <select
-              className="input"
-              value={form.status || 'ACTIVE'}
-              onChange={(e) => setForm({ ...form, status: e.target.value as CustomerForm['status'] })}
+              className="input md:col-span-2"
+              value={form.customerId || ''}
+              onChange={(e) => setForm({ ...form, customerId: e.target.value })}
             >
-              <option value="ACTIVE">Aktif</option>
-              <option value="INACTIVE">Pasif</option>
+              <option value="">Firma seçilmedi</option>
+              {customers.map((customer) => (
+                <option key={customer._id} value={customer._id}>
+                  {customer.companyName}
+                </option>
+              ))}
             </select>
           </div>
-          <textarea
-            className="input"
-            placeholder="Adres"
-            value={form.address || ''}
-            onChange={(e) => setForm({ ...form, address: e.target.value })}
-          />
           <div className="flex gap-2">
             <button className="btn-primary" type="submit">
               {selected ? 'Güncelle' : 'Oluştur'}

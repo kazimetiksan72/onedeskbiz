@@ -99,15 +99,12 @@ type ApiListResponse<T> = {
 type CustomerItem = {
   _id: string;
   companyName: string;
-  contactName: string;
-  contactEmail?: string;
-  contactPhone?: string;
+  website?: string;
+  address?: string;
+  phone?: string;
+  taxNumber?: string;
+  taxOffice?: string;
   status?: 'ACTIVE' | 'INACTIVE';
-  ownerUserId?: {
-    _id: string;
-    firstName?: string;
-    lastName?: string;
-  };
 };
 
 type UploadPhotoResponse = {
@@ -763,9 +760,10 @@ function CustomersView({
       {customers.map((item) => (
         <View key={item._id} style={styles.customerItem}>
           <Text style={styles.customerName}>{item.companyName}</Text>
-          <Text style={styles.infoLine}>{item.contactName}</Text>
-          <Text style={styles.infoLine}>{item.contactEmail || '-'}</Text>
-          <Text style={styles.infoLine}>{item.contactPhone || '-'}</Text>
+          <Text style={styles.infoLine}>{item.website || '-'}</Text>
+          <Text style={styles.infoLine}>{item.phone || '-'}</Text>
+          <Text style={styles.infoLine}>{item.taxNumber || '-'}</Text>
+          <Text style={styles.infoLine}>{item.taxOffice || '-'}</Text>
           <Text style={styles.infoLine}>{item.status || '-'}</Text>
         </View>
       ))}

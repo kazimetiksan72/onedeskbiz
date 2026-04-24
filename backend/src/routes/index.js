@@ -2,6 +2,8 @@ const express = require('express');
 const authRoutes = require('./modules/auth.routes');
 const employeeRoutes = require('./modules/employees.routes');
 const customerRoutes = require('./modules/customers.routes');
+const contactRoutes = require('./modules/contacts.routes');
+const vehicleRoutes = require('./modules/vehicles.routes');
 const companySettingsRoutes = require('./modules/companySettings.routes');
 const digitalCardRoutes = require('./modules/digitalCards.routes');
 const leaveRequestRoutes = require('./modules/leaveRequests.routes');
@@ -22,6 +24,8 @@ router.get('/company-settings/public-billing', companySettingsController.getPubl
 router.use('/employees', auth, enforcePasswordChange, employeeRoutes);
 router.use('/profile', auth, enforcePasswordChange, profileRoutes);
 router.use('/customers', auth, enforcePasswordChange, customerRoutes);
+router.use('/contacts', auth, enforcePasswordChange, contactRoutes);
+router.use('/vehicles', auth, enforcePasswordChange, vehicleRoutes);
 router.use(
   '/company-settings',
   auth,

@@ -5,14 +5,6 @@ const { getPagination } = require('../../utils/pagination');
 function normalizeCustomerPayload(payload) {
   const normalized = { ...payload };
 
-  if (!normalized.ownerUserId) {
-    delete normalized.ownerUserId;
-  }
-
-  if (normalized.contactEmail === '') {
-    delete normalized.contactEmail;
-  }
-
   return normalized;
 }
 
@@ -27,14 +19,14 @@ async function listCustomers({ page, limit, search }) {
   if (search) {
     query.$or = [
       { companyName: { $regex: search, $options: 'i' } },
-      { contactName: { $regex: search, $options: 'i' } },
-      { contactEmail: { $regex: search, $options: 'i' } }
+      { website: { $regex: search, $options: 'i' } },
+      { taxNumber: { $regex: search, $options: 'i' } },
+      { taxOffice: { $regex: search, $options: 'i' } }
     ];
   }
 
   const [items, total] = await Promise.all([
     Customer.find(query)
-      .populate('ownerUserId', 'firstName lastName workEmail department')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -46,9 +38,7 @@ async function listCustomers({ page, limit, search }) {
 }
 
 async function getCustomerById(id) {
-  const customer = await Customer.findById(id)
-    .populate('ownerUserId', 'firstName lastName workEmail department')
-    .lean();
+  const customer = await Customer.findById(id).lean();
 
   if (!customer) {
     throw new ApiError(404, 'Customer not found');
@@ -62,7 +52,6 @@ async function updateCustomer(id, payload) {
     new: true,
     runValidators: true
   })
-    .populate('ownerUserId', 'firstName lastName workEmail department')
     .lean();
 
   if (!customer) {

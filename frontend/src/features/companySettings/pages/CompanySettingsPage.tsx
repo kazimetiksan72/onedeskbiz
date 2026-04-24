@@ -47,7 +47,7 @@ export function CompanySettingsPage() {
   }, []);
 
   if (!isAdmin) {
-    return <div className="page-card">Only admin can manage company settings.</div>;
+    return <div className="page-card">Şirket ayarlarını yalnızca admin kullanıcılar yönetebilir.</div>;
   }
 
   const saveSection = async (payload: CompanySettingsPayload, successMessage: string) => {
@@ -98,20 +98,20 @@ export function CompanySettingsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Company Settings" subtitle="Manage company details and financial configuration" />
+      <PageHeader title="Şirket Ayarları" subtitle="Şirket, vergi, banka ve departman bilgilerini yönetin" />
 
       <div className="page-card space-y-3">
-        <h2 className="text-base font-semibold">General</h2>
+        <h2 className="text-base font-semibold">Genel</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <input
             className="input"
-            placeholder="Company name"
+            placeholder="Şirket adı"
             value={form.companyName || ''}
             onChange={(e) => setForm({ ...form, companyName: e.target.value })}
           />
           <input
             className="input"
-            placeholder="Web Site"
+            placeholder="Web sitesi"
             value={form.website || ''}
             onChange={(e) => setForm({ ...form, website: e.target.value })}
           />
@@ -119,18 +119,18 @@ export function CompanySettingsPage() {
         <button
           className="btn-primary"
           type="button"
-          onClick={() => saveSection({ companyName: form.companyName, website: form.website }, 'General settings saved.')}
+          onClick={() => saveSection({ companyName: form.companyName, website: form.website }, 'Genel bilgiler kaydedildi.')}
         >
-          Save
+          Kaydet
         </button>
       </div>
 
       <div className="page-card space-y-3">
-        <h2 className="text-base font-semibold">Tax Information</h2>
+        <h2 className="text-base font-semibold">Vergi Bilgileri</h2>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <input
             className="input"
-            placeholder="Legal name"
+            placeholder="Yasal unvan"
             value={form.billingInfo.legalCompanyName || ''}
             onChange={(e) =>
               setForm({ ...form, billingInfo: { ...form.billingInfo, legalCompanyName: e.target.value } })
@@ -138,19 +138,19 @@ export function CompanySettingsPage() {
           />
           <input
             className="input"
-            placeholder="Tax number"
+            placeholder="Vergi numarası"
             value={form.billingInfo.taxNumber || ''}
             onChange={(e) => setForm({ ...form, billingInfo: { ...form.billingInfo, taxNumber: e.target.value } })}
           />
           <input
             className="input"
-            placeholder="Tax office"
+            placeholder="Vergi dairesi"
             value={form.billingInfo.taxOffice || ''}
             onChange={(e) => setForm({ ...form, billingInfo: { ...form.billingInfo, taxOffice: e.target.value } })}
           />
           <input
             className="input"
-            placeholder="Address"
+            placeholder="Adres"
             value={form.billingInfo.address || ''}
             onChange={(e) => setForm({ ...form, billingInfo: { ...form.billingInfo, address: e.target.value } })}
           />
@@ -168,29 +168,29 @@ export function CompanySettingsPage() {
                   address: form.billingInfo.address
                 }
               },
-              'Tax information saved.'
+              'Vergi bilgileri kaydedildi.'
             )
           }
         >
-          Save
+          Kaydet
         </button>
       </div>
 
       <div className="page-card space-y-3">
-        <h2 className="text-base font-semibold">Bank Accounts</h2>
+        <h2 className="text-base font-semibold">Banka Hesapları</h2>
         <div className="space-y-3">
           {(form.billingInfo.bankAccounts || []).map((account, index) => (
             <div key={index} className="rounded-xl border border-slate-200 p-3">
               <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <input
                   className="input"
-                  placeholder="Bank name"
+                  placeholder="Banka adı"
                   value={account.bankName || ''}
                   onChange={(e) => updateBankAccount(index, 'bankName', e.target.value)}
                 />
                 <input
                   className="input"
-                  placeholder="Branch name"
+                  placeholder="Şube adı"
                   value={account.branchName || ''}
                   onChange={(e) => updateBankAccount(index, 'branchName', e.target.value)}
                 />
@@ -209,13 +209,13 @@ export function CompanySettingsPage() {
               </div>
               <div className="mt-2">
                 <button type="button" className="btn-secondary" onClick={() => removeBankAccount(index)}>
-                  Remove bank
+                  Bankayı kaldır
                 </button>
               </div>
             </div>
           ))}
           <button type="button" className="btn-secondary" onClick={addBankAccount}>
-            Add bank account
+            Banka hesabı ekle
           </button>
         </div>
         <button
@@ -224,25 +224,25 @@ export function CompanySettingsPage() {
           onClick={() =>
             saveSection(
               { billingInfo: { bankAccounts: form.billingInfo.bankAccounts || [] } },
-              'Bank accounts saved.'
+              'Banka hesapları kaydedildi.'
             )
           }
         >
-          Save
+          Kaydet
         </button>
       </div>
 
       <div className="page-card space-y-3">
-        <h2 className="text-base font-semibold">Departments</h2>
+        <h2 className="text-base font-semibold">Departmanlar</h2>
         <div className="mb-1 flex gap-2">
           <input
             className="input"
-            placeholder="Add department"
+            placeholder="Departman ekle"
             value={newDepartment}
             onChange={(e) => setNewDepartment(e.target.value)}
           />
           <button type="button" className="btn-secondary" onClick={addDepartment}>
-            Add
+            Ekle
           </button>
         </div>
         <div className="space-y-2">
@@ -250,18 +250,18 @@ export function CompanySettingsPage() {
             <div key={`${department}-${index}`} className="flex gap-2">
               <input className="input" value={department} onChange={(e) => updateDepartment(index, e.target.value)} />
               <button type="button" className="btn-secondary" onClick={() => removeDepartment(index)}>
-                Delete
+                Sil
               </button>
             </div>
           ))}
-          {(form.departments || []).length === 0 ? <p className="text-xs text-slate-500">No departments added yet.</p> : null}
+          {(form.departments || []).length === 0 ? <p className="text-xs text-slate-500">Henüz departman eklenmedi.</p> : null}
         </div>
         <button
           className="btn-primary"
           type="button"
-          onClick={() => saveSection({ departments: form.departments || [] }, 'Departments saved.')}
+          onClick={() => saveSection({ departments: form.departments || [] }, 'Departmanlar kaydedildi.')}
         >
-          Save
+          Kaydet
         </button>
       </div>
 

@@ -1,4 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PhoneInputImport from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import {
@@ -30,6 +31,7 @@ const initialForm: Partial<Employee> = {
 };
 
 export function EmployeesPage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
   const [items, setItems] = useState<Employee[]>([]);
@@ -87,34 +89,34 @@ export function EmployeesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Employee Directory" subtitle="Manage employees and organization structure" />
+      <PageHeader title="Personel Listesi" subtitle="Personel ve organizasyon bilgilerini yönetin" />
 
       <div className="page-card">
         <div className="mb-3 flex gap-2">
           <input
             className="input"
-            placeholder="Search employee..."
+            placeholder="Personel ara..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
           <button className="btn-secondary" onClick={load}>
-            Search
+            Ara
           </button>
         </div>
 
         {items.length === 0 ? (
-          <EmptyState message="No employees found." />
+          <EmptyState message="Personel bulunamadı." />
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left text-slate-500">
-                  <th className="pb-2">Name</th>
-                  <th className="pb-2">Email</th>
-                  <th className="pb-2">Department</th>
-                  <th className="pb-2">Title</th>
-                  <th className="pb-2">Status</th>
-                  {isAdmin ? <th className="pb-2">Actions</th> : null}
+                  <th className="pb-2">Ad Soyad</th>
+                  <th className="pb-2">E-posta</th>
+                  <th className="pb-2">Departman</th>
+                  <th className="pb-2">Ünvan</th>
+                  <th className="pb-2">Durum</th>
+                  <th className="pb-2 text-right">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
@@ -126,19 +128,24 @@ export function EmployeesPage() {
                     <td className="py-2">{item.workEmail}</td>
                     <td className="py-2">{item.department || '-'}</td>
                     <td className="py-2">{item.title || '-'}</td>
-                    <td className="py-2">{item.status}</td>
-                    {isAdmin ? (
-                      <td className="py-2">
-                        <div className="flex gap-2">
+                    <td className="py-2">{item.status === 'ACTIVE' ? 'Aktif' : 'Pasif'}</td>
+                    <td className="py-2">
+                      <div className="flex justify-end gap-2">
+                        <button className="btn-secondary" onClick={() => navigate(`/admin/employees/${item._id}`)}>
+                          Detay
+                        </button>
+                        {isAdmin ? (
+                          <>
                           <button className="btn-secondary" onClick={() => onEdit(item)}>
-                            Edit
+                            Düzenle
                           </button>
                           <button className="btn-secondary" onClick={() => onDelete(item._id)}>
-                            Delete
+                            Sil
                           </button>
-                        </div>
-                      </td>
-                    ) : null}
+                          </>
+                        ) : null}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -149,25 +156,25 @@ export function EmployeesPage() {
 
       {isAdmin ? (
         <form onSubmit={onSave} className="page-card space-y-3">
-          <h2 className="text-base font-semibold">{selected ? 'Update Employee' : 'Add Employee'}</h2>
+          <h2 className="text-base font-semibold">{selected ? 'Personeli Güncelle' : 'Personel Ekle'}</h2>
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               className="input"
-              placeholder="First name"
+              placeholder="Ad"
               value={form.firstName || ''}
               onChange={(e) => setForm({ ...form, firstName: e.target.value })}
               required
             />
             <input
               className="input"
-              placeholder="Last name"
+              placeholder="Soyad"
               value={form.lastName || ''}
               onChange={(e) => setForm({ ...form, lastName: e.target.value })}
               required
             />
             <input
               className="input"
-              placeholder="Email"
+              placeholder="E-posta"
               value={form.workEmail || ''}
               onChange={(e) => setForm({ ...form, workEmail: e.target.value })}
               required
@@ -175,7 +182,7 @@ export function EmployeesPage() {
             <input
               className="input"
               type="password"
-              placeholder="Password"
+              placeholder="Şifre"
               value={temporaryPassword}
               onChange={(e) => setTemporaryPassword(e.target.value)}
               required={!selected}
@@ -194,7 +201,7 @@ export function EmployeesPage() {
                 containerStyle={{ width: '100%' }}
                 enableSearch
                 countryCodeEditable={false}
-                placeholder="Phone"
+                placeholder="Telefon"
               />
             </div>
             <select
@@ -203,7 +210,7 @@ export function EmployeesPage() {
               onChange={(e) => setForm({ ...form, department: e.target.value })}
               required={departments.length > 0}
             >
-              <option value="">{departments.length > 0 ? 'Select department' : 'No department configured'}</option>
+              <option value="">{departments.length > 0 ? 'Departman seçin' : 'Departman tanımlı değil'}</option>
               {departments.map((department) => (
                 <option key={department} value={department}>
                   {department}
@@ -215,12 +222,12 @@ export function EmployeesPage() {
             </select>
             <input
               className="input"
-              placeholder="Title"
+              placeholder="Ünvan"
               value={form.title || ''}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Employment start date</label>
+              <label className="mb-1 block text-xs font-medium text-slate-500">İşe başlangıç tarihi</label>
               <input
                 className="input"
                 type="date"
@@ -231,11 +238,11 @@ export function EmployeesPage() {
             </div>
           </div>
 
-          <p className="text-xs text-slate-500">Password is required on create. On update, fill only if you want to reset password.</p>
+          <p className="text-xs text-slate-500">Yeni personel için şifre zorunludur. Güncellemede yalnızca şifreyi değiştirmek istiyorsanız doldurun.</p>
 
           <div className="flex gap-2">
             <button className="btn-primary" type="submit">
-              {selected ? 'Update' : 'Create'}
+              {selected ? 'Güncelle' : 'Oluştur'}
             </button>
             {selected ? (
               <button
@@ -247,7 +254,7 @@ export function EmployeesPage() {
                   setTemporaryPassword('');
                 }}
               >
-                Cancel
+                Vazgeç
               </button>
             ) : null}
           </div>

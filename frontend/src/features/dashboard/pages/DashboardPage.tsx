@@ -18,31 +18,31 @@ export function DashboardPage() {
 
   return (
     <div>
-      <PageHeader title="Dashboard" subtitle="Business snapshot and recent activity" />
+      <PageHeader title="Panel" subtitle="İşletmenin güncel özeti ve son hareketler" />
 
       {loading ? <Loading /> : null}
 
       {!loading && data ? (
         <>
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            <MetricCard label="Active Employees" value={data.metrics.employeeCount} />
-            <MetricCard label="Active Customers" value={data.metrics.activeCustomerCount} />
-            <MetricCard label="Pending Leave Requests" value={data.metrics.pendingLeaveCount} />
+            <MetricCard label="Aktif Personel" value={data.metrics.employeeCount} />
+            <MetricCard label="Aktif Müşteri" value={data.metrics.activeCustomerCount} />
+            <MetricCard label="Bekleyen İzin Talebi" value={data.metrics.pendingLeaveCount} />
           </div>
 
           <div className="page-card">
-            <h2 className="mb-3 text-base font-semibold">Recent Leave Requests</h2>
+            <h2 className="mb-3 text-base font-semibold">Son İzin Talepleri</h2>
             {data.recentLeaveRequests.length === 0 ? (
-              <EmptyState message="No leave requests yet." />
+              <EmptyState message="Henüz izin talebi yok." />
             ) : (
               <div className="overflow-x-auto">
                 <table className="min-w-full text-sm">
                   <thead>
                     <tr className="text-left text-slate-500">
-                      <th className="pb-2">Employee</th>
-                      <th className="pb-2">Type</th>
-                      <th className="pb-2">Dates</th>
-                      <th className="pb-2">Status</th>
+                      <th className="pb-2">Personel</th>
+                      <th className="pb-2">Tür</th>
+                      <th className="pb-2">Tarih</th>
+                      <th className="pb-2">Durum</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -51,12 +51,12 @@ export function DashboardPage() {
                         <td className="py-2">
                           {item.userId?.firstName} {item.userId?.lastName}
                         </td>
-                        <td className="py-2">{item.leaveType}</td>
+                        <td className="py-2">{translateLeaveType(item.leaveType)}</td>
                         <td className="py-2">
                           {format(new Date(item.startDate), 'dd MMM yyyy')} -{' '}
                           {format(new Date(item.endDate), 'dd MMM yyyy')}
                         </td>
-                        <td className="py-2">{item.status}</td>
+                        <td className="py-2">{translateLeaveStatus(item.status)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -68,6 +68,19 @@ export function DashboardPage() {
       ) : null}
     </div>
   );
+}
+
+function translateLeaveType(value: DashboardSummary['recentLeaveRequests'][number]['leaveType']) {
+  if (value === 'SICK') return 'Hastalık';
+  if (value === 'UNPAID') return 'Ücretsiz izin';
+  if (value === 'OTHER') return 'Diğer';
+  return 'Yıllık izin';
+}
+
+function translateLeaveStatus(value: DashboardSummary['recentLeaveRequests'][number]['status']) {
+  if (value === 'APPROVED') return 'Onaylandı';
+  if (value === 'REJECTED') return 'Reddedildi';
+  return 'Bekliyor';
 }
 
 function MetricCard({ label, value }: { label: string; value: number }) {

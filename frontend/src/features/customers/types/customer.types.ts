@@ -1,13 +1,12 @@
-import type { Employee } from '../../employees/types/employee.types';
-
 export interface Customer {
   _id: string;
   companyName: string;
-  contactName: string;
-  contactEmail?: string;
-  contactPhone?: string;
+  website?: string;
   address?: string;
-  notes?: string;
-  ownerUserId?: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'department'>;
+  phone?: string;
+  taxNumber?: string;
+  taxOffice?: string;
   status: 'ACTIVE' | 'INACTIVE';
+  createdAt?: string;
+  updatedAt?: string;
 }

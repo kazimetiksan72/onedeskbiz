@@ -2,12 +2,11 @@ const { z, objectId } = require('../common');
 
 const customerBody = z.object({
   companyName: z.string().min(1),
-  contactName: z.string().min(1),
-  contactEmail: z.string().email().optional().or(z.literal('')),
-  contactPhone: z.string().optional(),
+  website: z.string().optional(),
   address: z.string().optional(),
-  notes: z.string().optional(),
-  ownerUserId: objectId.optional().or(z.literal('')),
+  phone: z.string().optional(),
+  taxNumber: z.string().optional(),
+  taxOffice: z.string().optional(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional()
 });
 

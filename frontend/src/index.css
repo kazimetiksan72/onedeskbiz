@@ -29,3 +29,19 @@ body {
 .btn-secondary {
   @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-100;
 }
+
+@keyframes slide-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 260ms ease-out both;
+}

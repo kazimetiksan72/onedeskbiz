@@ -47,7 +47,7 @@ export function PublicBusinessCardPage() {
 
     getPublicBusinessCard(userId)
       .then(setData)
-      .catch(() => setError('Business card not found'));
+      .catch(() => setError('Kartvizit bulunamadı'));
   }, [userId]);
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function PublicBusinessCardPage() {
   }
 
   if (!data) {
-    return <div className="flex min-h-screen items-center justify-center px-4 text-center text-slate-500">Loading...</div>;
+    return <div className="flex min-h-screen items-center justify-center px-4 text-center text-slate-500">Yükleniyor...</div>;
   }
 
   const card = data.businessCard;
@@ -101,10 +101,10 @@ export function PublicBusinessCardPage() {
         </div>
 
         <div className="mt-4 space-y-2 text-sm break-words sm:mt-5">
-          {card.email ? <p>Email: {card.email}</p> : null}
-          {card.phone ? <p>Phone: {card.phone}</p> : null}
-          {card.website ? <p>Website: {card.website}</p> : null}
-          {card.address ? <p>Address: {card.address}</p> : null}
+          {card.email ? <p>E-posta: {card.email}</p> : null}
+          {card.phone ? <p>Telefon: {card.phone}</p> : null}
+          {card.website ? <p>Web sitesi: {card.website}</p> : null}
+          {card.address ? <p>Adres: {card.address}</p> : null}
           {card.bio ? <p className="whitespace-pre-wrap">{card.bio}</p> : null}
         </div>
 

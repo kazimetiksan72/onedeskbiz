@@ -10,7 +10,7 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
   const { setAuth, accessToken, user } = useAuthStore();
 
   const defaultEmail = mode === 'admin' ? 'admin@smallbiz.local' : 'mert@smallbiz.local';
-  const defaultPassword = mode === 'admin' ? 'Admin1234!' : 'Employee1234!';
+  const defaultPassword = mode === 'admin' ? 'App12345' : 'App12345';
 
   const [email, setEmail] = useState(defaultEmail);
   const [password, setPassword] = useState(defaultPassword);
@@ -42,7 +42,7 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
         navigate(result.user.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests');
       }
     } catch (err: any) {
-      setError(err?.response?.data?.message || 'Login failed');
+      setError(err?.response?.data?.message || 'Giriş başarısız.');
     } finally {
       setLoading(false);
     }
@@ -55,17 +55,17 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
         className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
       >
         <h1 className="mb-1 text-2xl font-semibold text-slate-900">
-          {mode === 'admin' ? 'Admin Panel Sign In' : 'Sign In'}
+          {mode === 'admin' ? 'Admin Panel Girişi' : 'Giriş'}
         </h1>
-        <p className="mb-6 text-sm text-slate-500">SmallBiz access portal</p>
+        <p className="mb-6 text-sm text-slate-500">OneDesk erişim ekranı</p>
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">E-posta</label>
             <input className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">Şifre</label>
             <input
               type="password"
               className="input"
@@ -78,13 +78,13 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
         {error ? <p className="mt-3 text-sm text-red-600">{error}</p> : null}
 
         <button disabled={loading} className="btn-primary mt-6 w-full">
-          {loading ? 'Signing in...' : 'Sign in'}
+          {loading ? 'Giriş yapılıyor...' : 'Giriş yap'}
         </button>
 
         <p className="mt-4 text-xs text-slate-500">
-          Admin: admin@smallbiz.local / Admin1234!
+          Admin: admin@smallbiz.local / App12345
           <br />
-          Employee: mert@smallbiz.local / Employee1234!
+          Personel: mert@smallbiz.local / App12345
         </p>
       </form>
     </div>

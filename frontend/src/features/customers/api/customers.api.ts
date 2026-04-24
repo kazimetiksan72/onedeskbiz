@@ -9,6 +9,11 @@ export async function getCustomers(search = '') {
   return data.items;
 }
 
+export async function getCustomer(id: string) {
+  const { data } = await api.get<Customer>(`/customers/${id}`);
+  return data;
+}
+
 export async function createCustomer(payload: Partial<Customer>) {
   const { data } = await api.post<Customer>('/customers', payload);
   return data;
