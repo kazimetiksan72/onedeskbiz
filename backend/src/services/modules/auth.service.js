@@ -65,11 +65,6 @@ async function login({ email, password }) {
     throw new ApiError(401, 'Invalid credentials');
   }
 
-  if (user.role === ROLES.EMPLOYEE && !user.passwordUpdatedAt && !user.mustChangePassword) {
-    user.mustChangePassword = true;
-    await user.save();
-  }
-
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     throw new ApiError(401, 'Invalid credentials');

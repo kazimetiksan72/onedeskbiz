@@ -22,7 +22,7 @@ const defaults = {
   JWT_ACCESS_EXPIRES_IN: '15m',
   JWT_REFRESH_EXPIRES_IN: '7d',
   CORS_ORIGIN: 'http://localhost:5173',
-  DEFAULT_EMPLOYEE_PASSWORD: 'Employee1234!'
+  DEFAULT_EMPLOYEE_PASSWORD: 'App12345'
 };
 
 if (nodeEnv !== 'production') {
@@ -62,7 +62,7 @@ module.exports = {
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
   maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 2),
-  defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'Employee1234!',
+  defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'App12345',
   azureStorage: {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'profile-photos'

@@ -5,6 +5,7 @@ import QRCode from 'react-native-qrcode-svg';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   Modal,
   Pressable,
   SafeAreaView,
@@ -17,7 +18,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS';
+type MenuKey = 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS';
 
 type AuthUser = {
   _id: string;
@@ -105,6 +106,21 @@ type CustomerItem = {
   taxNumber?: string;
   taxOffice?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+};
+
+type ContactItem = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  phone?: string;
+  email?: string;
+  customerId?: {
+    _id: string;
+    companyName?: string;
+    website?: string;
+    phone?: string;
+    address?: string;
+  } | null;
 };
 
 type UploadPhotoResponse = {
@@ -240,6 +256,9 @@ export default function App() {
 
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
+  const [contacts, setContacts] = useState<ContactItem[]>([]);
+  const [contactsLoading, setContactsLoading] = useState(false);
+  const [selectedContact, setSelectedContact] = useState<ContactItem | null>(null);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const billingQrText = useMemo(() => buildBillingQrText(billingData), [billingData]);
@@ -341,6 +360,45 @@ export default function App() {
     }
   };
 
+  const loadContacts = async () => {
+    if (!session?.accessToken) return;
+
+    setError('');
+    setContactsLoading(true);
+
+    try {
+      const { data } = await api.get<ApiListResponse<ContactItem>>('/contacts', {
+        params: { page: 1, limit: 500 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setContacts(data.items || []);
+    } catch (requestError: any) {
+      if (requestError?.response?.status === 403 && requestError?.response?.data?.message === 'Password change required') {
+        try {
+          const changePasswordResponse = await api.post<LoginResponse>(
+            '/auth/change-password',
+            { newPassword: password },
+            { headers: { Authorization: `Bearer ${session.accessToken}` } }
+          );
+          setSession(changePasswordResponse.data);
+
+          const contactsResponse = await api.get<ApiListResponse<ContactItem>>('/contacts', {
+            params: { page: 1, limit: 500 },
+            headers: { Authorization: `Bearer ${changePasswordResponse.data.accessToken}` }
+          });
+          setContacts(contactsResponse.data.items || []);
+          setError('');
+        } catch (changePasswordError: any) {
+          setError(changePasswordError?.response?.data?.message || 'Şifre güncellemesi gerektiği için kişi listesi yüklenemedi.');
+        }
+      } else {
+        setError(requestError?.response?.data?.message || 'Kişi listesi yüklenemedi.');
+      }
+    } finally {
+      setContactsLoading(false);
+    }
+  };
+
   const takeProfilePhoto = async () => {
     if (!session?.accessToken) return;
 
@@ -403,6 +461,8 @@ export default function App() {
     setCardData(null);
     setBillingData(null);
     setCustomers([]);
+    setContacts([]);
+    setSelectedContact(null);
     setError('');
     setEmail('');
     setPassword('');
@@ -410,6 +470,7 @@ export default function App() {
 
   const onSelectMenu = (menu: MenuKey) => {
     setSelectedMenu(menu);
+    setSelectedContact(null);
     setMenuVisible(false);
   };
 
@@ -430,6 +491,10 @@ export default function App() {
 
     if (selectedMenu === 'CUSTOMERS' && customers.length === 0 && !customersLoading) {
       loadCustomers();
+    }
+
+    if (selectedMenu === 'CONTACTS' && contacts.length === 0 && !contactsLoading) {
+      loadContacts();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMenu, session]);
@@ -513,6 +578,19 @@ export default function App() {
           <CustomersView loading={customersLoading} customers={customers} onReload={loadCustomers} />
         ) : null}
 
+        {selectedMenu === 'CONTACTS' && !selectedContact ? (
+          <ContactsView
+            loading={contactsLoading}
+            contacts={contacts}
+            onReload={loadContacts}
+            onSelectContact={setSelectedContact}
+          />
+        ) : null}
+
+        {selectedMenu === 'CONTACTS' && selectedContact ? (
+          <ContactDetailView contact={selectedContact} onBack={() => setSelectedContact(null)} />
+        ) : null}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
@@ -533,6 +611,9 @@ export default function App() {
             <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CUSTOMERS')}>
               <Text style={styles.drawerItemText}>Müşteriler</Text>
             </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CONTACTS')}>
+              <Text style={styles.drawerItemText}>Kişiler</Text>
+            </Pressable>
 
             <View style={styles.drawerSpacer} />
 
@@ -551,6 +632,7 @@ function titleForMenu(menu: MenuKey) {
   if (menu === 'PROFILE') return 'Profilim';
   if (menu === 'CARD') return 'Kartvizitim';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
+  if (menu === 'CONTACTS') return 'Kişiler';
   return 'Müşteriler';
 }
 
@@ -767,6 +849,148 @@ function CustomersView({
           <Text style={styles.infoLine}>{item.status || '-'}</Text>
         </View>
       ))}
+    </View>
+  );
+}
+
+function ContactsView({
+  loading,
+  contacts,
+  onReload,
+  onSelectContact
+}: {
+  loading: boolean;
+  contacts: ContactItem[];
+  onReload: () => void;
+  onSelectContact: (contact: ContactItem) => void;
+}) {
+  const groupedContacts = useMemo(() => {
+    const sorted = [...contacts].sort((a, b) => {
+      const nameA = `${a.firstName} ${a.lastName}`.trim().localeCompare(`${b.firstName} ${b.lastName}`.trim(), 'tr');
+      return nameA;
+    });
+
+    return sorted.reduce<Array<{ letter: string; items: ContactItem[] }>>((groups, contact) => {
+      const letter = (contact.firstName || contact.lastName || '#').charAt(0).toLocaleUpperCase('tr-TR');
+      const current = groups[groups.length - 1];
+      if (!current || current.letter !== letter) {
+        groups.push({ letter, items: [contact] });
+      } else {
+        current.items.push(contact);
+      }
+      return groups;
+    }, []);
+  }, [contacts]);
+
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.contactsCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Kişiler</Text>
+        <Pressable onPress={onReload}>
+          <Text style={styles.refreshText}>Yenile</Text>
+        </Pressable>
+      </View>
+
+      {contacts.length === 0 ? <Text style={styles.infoLine}>Kişi yok.</Text> : null}
+
+      {groupedContacts.map((group) => (
+        <View key={group.letter} style={styles.contactGroup}>
+          <Text style={styles.contactLetter}>{group.letter}</Text>
+          <View style={styles.contactGroupList}>
+            {group.items.map((item) => {
+              const fullName = `${item.firstName} ${item.lastName}`.trim();
+              const initials = `${item.firstName?.[0] || ''}${item.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || '?';
+
+              return (
+                <Pressable key={item._id} style={styles.contactRow} onPress={() => onSelectContact(item)}>
+                  <View style={styles.contactAvatar}>
+                    <Text style={styles.contactAvatarText}>{initials}</Text>
+                  </View>
+                  <View style={styles.contactTextBlock}>
+                    <Text style={styles.contactName}>{fullName}</Text>
+                    <Text style={styles.contactCompany}>{item.customerId?.companyName || 'Firma seçilmedi'}</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function ContactDetailView({ contact, onBack }: { contact: ContactItem; onBack: () => void }) {
+  const fullName = `${contact.firstName} ${contact.lastName}`.trim();
+  const initials = `${contact.firstName?.[0] || ''}${contact.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || '?';
+  const normalizedPhone = (contact.phone || '').replace(/[^\d+]/g, '');
+
+  const openPhone = () => {
+    if (!normalizedPhone) return;
+    Linking.openURL(`tel:${normalizedPhone}`);
+  };
+
+  const openWhatsApp = () => {
+    if (!normalizedPhone) return;
+    const phoneForWhatsApp = normalizedPhone.replace(/[^\d]/g, '');
+    Linking.openURL(`https://wa.me/${phoneForWhatsApp}`);
+  };
+
+  const openEmail = () => {
+    if (!contact.email) return;
+    Linking.openURL(`mailto:${contact.email}`);
+  };
+
+  return (
+    <View style={styles.contactDetailCard}>
+      <Pressable style={styles.backButton} onPress={onBack}>
+        <Text style={styles.backButtonText}>‹ Kişiler</Text>
+      </Pressable>
+
+      <View style={styles.contactDetailHeader}>
+        <View style={styles.contactDetailAvatar}>
+          <Text style={styles.contactDetailAvatarText}>{initials}</Text>
+        </View>
+        <Text style={styles.contactDetailName}>{fullName}</Text>
+        <Text style={styles.contactDetailCompany}>{contact.customerId?.companyName || 'Firma seçilmedi'}</Text>
+      </View>
+
+      <View style={styles.contactActions}>
+        <Pressable
+          style={[styles.contactActionButton, !normalizedPhone ? styles.disabledActionButton : null]}
+          onPress={openPhone}
+          disabled={!normalizedPhone}
+        >
+          <Text style={styles.contactActionText}>Ara</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.contactActionButton, !normalizedPhone ? styles.disabledActionButton : null]}
+          onPress={openWhatsApp}
+          disabled={!normalizedPhone}
+        >
+          <Text style={styles.contactActionText}>WhatsApp</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.contactActionButton, !contact.email ? styles.disabledActionButton : null]}
+          onPress={openEmail}
+          disabled={!contact.email}
+        >
+          <Text style={styles.contactActionText}>E-posta</Text>
+        </Pressable>
+      </View>
+
+      <View style={styles.contactInfoList}>
+        <Text style={styles.contactInfoLabel}>Telefon</Text>
+        <Text style={styles.contactInfoValue}>{contact.phone || '-'}</Text>
+        <Text style={styles.contactInfoLabel}>E-posta</Text>
+        <Text style={styles.contactInfoValue}>{contact.email || '-'}</Text>
+        <Text style={styles.contactInfoLabel}>Firma</Text>
+        <Text style={styles.contactInfoValue}>{contact.customerId?.companyName || '-'}</Text>
+      </View>
     </View>
   );
 }
@@ -993,6 +1217,145 @@ const styles = StyleSheet.create({
   customerName: {
     fontSize: 15,
     fontWeight: '700',
+    color: '#0f172a'
+  },
+  contactsCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  contactGroup: {
+    gap: 4
+  },
+  contactLetter: {
+    paddingHorizontal: 6,
+    paddingTop: 8,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2563eb'
+  },
+  contactGroupList: {
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9'
+  },
+  contactRow: {
+    minHeight: 62,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9'
+  },
+  contactAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#e0ecff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  contactAvatarText: {
+    color: '#1d4ed8',
+    fontWeight: '800',
+    fontSize: 14
+  },
+  contactTextBlock: {
+    flex: 1
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0f172a'
+  },
+  contactCompany: {
+    marginTop: 2,
+    fontSize: 13,
+    color: '#64748b'
+  },
+  contactDetailCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 16,
+    gap: 16,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  backButton: {
+    alignSelf: 'flex-start',
+    paddingVertical: 6
+  },
+  backButtonText: {
+    fontSize: 16,
+    color: '#2563eb',
+    fontWeight: '600'
+  },
+  contactDetailHeader: {
+    alignItems: 'center',
+    gap: 8
+  },
+  contactDetailAvatar: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    backgroundColor: '#e0ecff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  contactDetailAvatarText: {
+    color: '#1d4ed8',
+    fontWeight: '800',
+    fontSize: 30
+  },
+  contactDetailName: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#0f172a',
+    textAlign: 'center'
+  },
+  contactDetailCompany: {
+    fontSize: 15,
+    color: '#64748b',
+    textAlign: 'center'
+  },
+  contactActions: {
+    flexDirection: 'row',
+    gap: 8
+  },
+  contactActionButton: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: '#2563eb',
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  disabledActionButton: {
+    backgroundColor: '#cbd5e1'
+  },
+  contactActionText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 13
+  },
+  contactInfoList: {
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingTop: 12,
+    gap: 4
+  },
+  contactInfoLabel: {
+    marginTop: 8,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748b',
+    textTransform: 'uppercase'
+  },
+  contactInfoValue: {
+    fontSize: 15,
     color: '#0f172a'
   },
   sectionHeaderRow: {

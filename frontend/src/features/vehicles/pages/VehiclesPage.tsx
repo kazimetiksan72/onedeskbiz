@@ -1,5 +1,6 @@
-import { useEffect, useState, type FormEvent } from 'react';
-import { createVehicle, deleteVehicle, getVehicles, updateVehicle } from '../api/vehicles.api';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { createVehicle, getVehicles, updateVehicle } from '../api/vehicles.api';
 import type { Vehicle } from '../types/vehicle.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
@@ -24,11 +25,13 @@ const initialForm: VehicleForm = {
 };
 
 export function VehiclesPage() {
+  const navigate = useNavigate();
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'ADMIN';
   const [items, setItems] = useState<Vehicle[]>([]);
   const [selected, setSelected] = useState<Vehicle | null>(null);
   const [form, setForm] = useState<VehicleForm>(initialForm);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const load = async () => {
@@ -61,24 +64,35 @@ export function VehiclesPage() {
 
     setSelected(null);
     setForm(initialForm);
+    setIsFormOpen(false);
     await load();
   };
 
-  const fillForm = (item: Vehicle) => {
-    setSelected(item);
-    setForm({
-      plate: item.plate,
-      brand: item.brand,
-      model: item.model,
-      modelYear: String(item.modelYear),
-      kilometer: String(item.kilometer),
-      status: item.status
-    });
+  const onCreate = () => {
+    setSelected(null);
+    setForm(initialForm);
+    setIsFormOpen(true);
+  };
+
+  const closeForm = () => {
+    setSelected(null);
+    setForm(initialForm);
+    setIsFormOpen(false);
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Araçlarım" subtitle="Şirkete kayıtlı araçları yönetin" />
+      <PageHeader
+        title="Araçlarım"
+        subtitle="Şirkete kayıtlı araçları yönetin"
+        action={
+          isAdmin ? (
+            <button className="btn-primary" type="button" onClick={onCreate}>
+              Yeni Ekle
+            </button>
+          ) : null
+        }
+      />
 
       <div className="page-card">
         <div className="mb-3 flex gap-2">
@@ -106,7 +120,7 @@ export function VehiclesPage() {
                   <th className="pb-2">Model Yılı</th>
                   <th className="pb-2">Kilometre</th>
                   <th className="pb-2">Durum</th>
-                  {isAdmin ? <th className="pb-2 text-right">İşlemler</th> : null}
+                  <th className="pb-2 text-right">İşlemler</th>
                 </tr>
               </thead>
               <tbody>
@@ -118,24 +132,13 @@ export function VehiclesPage() {
                     <td className="py-2">{item.modelYear}</td>
                     <td className="py-2">{item.kilometer.toLocaleString('tr-TR')} km</td>
                     <td className="py-2">{item.status === 'ACTIVE' ? 'Aktif' : 'Pasif'}</td>
-                    {isAdmin ? (
-                      <td className="py-2">
-                        <div className="flex justify-end gap-2">
-                          <button className="btn-secondary" onClick={() => fillForm(item)}>
-                            Düzenle
-                          </button>
-                          <button
-                            className="btn-secondary"
-                            onClick={async () => {
-                              await deleteVehicle(item._id);
-                              await load();
-                            }}
-                          >
-                            Sil
-                          </button>
-                        </div>
-                      </td>
-                    ) : null}
+                    <td className="py-2">
+                      <div className="flex justify-end gap-2">
+                        <button className="btn-primary" onClick={() => navigate(`/admin/vehicles/${item._id}`)}>
+                          Detay
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -144,9 +147,9 @@ export function VehiclesPage() {
         )}
       </div>
 
-      {isAdmin ? (
-        <form onSubmit={onSave} className="page-card space-y-3">
-          <h2 className="text-base font-semibold">{selected ? 'Aracı Güncelle' : 'Araç Ekle'}</h2>
+      {isAdmin && isFormOpen ? (
+        <FormModal title={selected ? 'Aracı Güncelle' : 'Araç Ekle'} onClose={closeForm}>
+          <form onSubmit={onSave} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               className="input"
@@ -205,17 +208,31 @@ export function VehiclesPage() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => {
-                  setSelected(null);
-                  setForm(initialForm);
-                }}
+                onClick={closeForm}
               >
                 Vazgeç
               </button>
             ) : null}
           </div>
         </form>
+        </FormModal>
       ) : null}
+    </div>
+  );
+}
+
+function FormModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }

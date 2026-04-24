@@ -32,14 +32,13 @@ async function run() {
     RefreshToken.deleteMany({})
   ]);
 
-  const adminPasswordHash = await bcrypt.hash('Admin1234!', env.bcryptSaltRounds);
-  const employeePasswordHash = await bcrypt.hash('Employee1234!', env.bcryptSaltRounds);
+  const defaultPasswordHash = await bcrypt.hash('App12345', env.bcryptSaltRounds);
 
   const users = await User.insertMany([
     {
       email: 'admin@smallbiz.local',
       workEmail: 'admin@smallbiz.local',
-      passwordHash: adminPasswordHash,
+      passwordHash: defaultPasswordHash,
       role: ROLES.ADMIN,
       firstName: 'Aylin',
       lastName: 'Kaya',
@@ -55,7 +54,7 @@ async function run() {
     {
       email: 'mert@smallbiz.local',
       workEmail: 'mert@smallbiz.local',
-      passwordHash: employeePasswordHash,
+      passwordHash: defaultPasswordHash,
       role: ROLES.EMPLOYEE,
       firstName: 'Mert',
       lastName: 'Demir',
@@ -65,8 +64,8 @@ async function run() {
       startDate: new Date('2024-03-20'),
       status: 'ACTIVE',
       isActive: true,
-      mustChangePassword: true,
-      passwordUpdatedAt: null,
+      mustChangePassword: false,
+      passwordUpdatedAt: new Date(),
       businessCard: {
         displayName: 'Mert Demir',
         title: 'Sales Specialist',
@@ -78,7 +77,7 @@ async function run() {
     {
       email: 'selin@smallbiz.local',
       workEmail: 'selin@smallbiz.local',
-      passwordHash: employeePasswordHash,
+      passwordHash: defaultPasswordHash,
       role: ROLES.EMPLOYEE,
       firstName: 'Selin',
       lastName: 'Yilmaz',
@@ -88,8 +87,8 @@ async function run() {
       startDate: new Date('2024-06-05'),
       status: 'ACTIVE',
       isActive: true,
-      mustChangePassword: true,
-      passwordUpdatedAt: null,
+      mustChangePassword: false,
+      passwordUpdatedAt: new Date(),
       businessCard: {
         displayName: 'Selin Yilmaz',
         title: 'Operations Specialist',
@@ -100,41 +99,196 @@ async function run() {
     }
   ]);
 
-  const customers = await Customer.insertMany([
+  const demoCompanies = [
     {
-      companyName: 'Northwind Cafe',
-      website: 'https://northwindcafe.example',
-      address: 'Bagdat Caddesi No:10 Kadikoy Istanbul',
-      phone: '+90 216 100 0001',
-      taxNumber: '1111111111',
-      taxOffice: 'Kadikoy'
+      companyName: 'Anadolu Kahve Gıda',
+      website: 'https://anadolukahve.example',
+      address: 'Bağdat Caddesi No:10 Kadıköy İstanbul',
+      phone: '+90 216 100 1001',
+      taxNumber: '1000000001',
+      taxOffice: 'Kadıköy',
+      domain: 'anadolukahve.example',
+      contacts: [
+        ['Ayşe', 'Yılmaz'],
+        ['Mehmet', 'Kaya'],
+        ['Zeynep', 'Demir'],
+        ['Burak', 'Şahin'],
+        ['Elif', 'Arslan']
+      ]
     },
     {
-      companyName: 'Blue Harbor Logistics',
-      website: 'https://blueharbor.example',
-      address: 'Liman Yolu No:4 Tuzla Istanbul',
-      phone: '+90 216 100 0002',
-      taxNumber: '2222222222',
-      taxOffice: 'Tuzla'
+      companyName: 'Ege Lojistik Hizmetleri',
+      website: 'https://egelojistik.example',
+      address: 'Liman Caddesi No:22 Konak İzmir',
+      phone: '+90 232 100 1002',
+      taxNumber: '1000000002',
+      taxOffice: 'Konak',
+      domain: 'egelojistik.example',
+      contacts: [
+        ['Kerem', 'Aydın'],
+        ['Derya', 'Koç'],
+        ['Murat', 'Öztürk'],
+        ['Seda', 'Çelik'],
+        ['Can', 'Korkmaz']
+      ]
+    },
+    {
+      companyName: 'Marmara Tekstil',
+      website: 'https://marmaratekstil.example',
+      address: 'Sanayi Mahallesi No:8 Nilüfer Bursa',
+      phone: '+90 224 100 1003',
+      taxNumber: '1000000003',
+      taxOffice: 'Nilüfer',
+      domain: 'marmaratekstil.example',
+      contacts: [
+        ['Selin', 'Yıldırım'],
+        ['Emre', 'Aksoy'],
+        ['Buse', 'Güneş'],
+        ['Okan', 'Polat'],
+        ['İrem', 'Doğan']
+      ]
+    },
+    {
+      companyName: 'Boğaziçi Yazılım',
+      website: 'https://bogaziciyazilim.example',
+      address: 'Teknopark Bulvarı No:5 Sarıyer İstanbul',
+      phone: '+90 212 100 1004',
+      taxNumber: '1000000004',
+      taxOffice: 'Sarıyer',
+      domain: 'bogaziciyazilim.example',
+      contacts: [
+        ['Deniz', 'Kılıç'],
+        ['Ece', 'Taş'],
+        ['Onur', 'Çetin'],
+        ['Melis', 'Uçar'],
+        ['Tolga', 'Ergin']
+      ]
+    },
+    {
+      companyName: 'Kapadokya Turizm',
+      website: 'https://kapadokyaturizm.example',
+      address: 'Atatürk Bulvarı No:14 Merkez Nevşehir',
+      phone: '+90 384 100 1005',
+      taxNumber: '1000000005',
+      taxOffice: 'Nevşehir',
+      domain: 'kapadokyaturizm.example',
+      contacts: [
+        ['Gizem', 'Ateş'],
+        ['Serkan', 'Bulut'],
+        ['Nehir', 'Eren'],
+        ['Alp', 'Turan'],
+        ['Pelin', 'Keskin']
+      ]
+    },
+    {
+      companyName: 'Karadeniz İnşaat',
+      website: 'https://karadenizinsaat.example',
+      address: 'Sahil Yolu No:30 Ortahisar Trabzon',
+      phone: '+90 462 100 1006',
+      taxNumber: '1000000006',
+      taxOffice: 'Trabzon',
+      domain: 'karadenizinsaat.example',
+      contacts: [
+        ['Hakan', 'Yavuz'],
+        ['Ceren', 'Kurt'],
+        ['Barış', 'Özkan'],
+        ['Dilan', 'Sarı'],
+        ['Umut', 'Kaplan']
+      ]
+    },
+    {
+      companyName: 'Akdeniz Medikal',
+      website: 'https://akdenizmedikal.example',
+      address: 'Sağlık Sokak No:18 Muratpaşa Antalya',
+      phone: '+90 242 100 1007',
+      taxNumber: '1000000007',
+      taxOffice: 'Muratpaşa',
+      domain: 'akdenizmedikal.example',
+      contacts: [
+        ['Aslı', 'Güler'],
+        ['Kaan', 'Bozkurt'],
+        ['Merve', 'Işık'],
+        ['Cem', 'Acar'],
+        ['Sibel', 'Yalçın']
+      ]
+    },
+    {
+      companyName: 'Toros Tarım Ürünleri',
+      website: 'https://torostarim.example',
+      address: 'Organize Sanayi No:44 Tarsus Mersin',
+      phone: '+90 324 100 1008',
+      taxNumber: '1000000008',
+      taxOffice: 'Tarsus',
+      domain: 'torostarim.example',
+      contacts: [
+        ['Fatma', 'Çoban'],
+        ['Ali', 'Erdoğan'],
+        ['Yasemin', 'Kara'],
+        ['Levent', 'Sezer'],
+        ['Esra', 'Önder']
+      ]
+    },
+    {
+      companyName: 'Başkent Danışmanlık',
+      website: 'https://baskentdanismanlik.example',
+      address: 'Tunus Caddesi No:7 Çankaya Ankara',
+      phone: '+90 312 100 1009',
+      taxNumber: '1000000009',
+      taxOffice: 'Çankaya',
+      domain: 'baskentdanismanlik.example',
+      contacts: [
+        ['Tuna', 'Altun'],
+        ['Ebru', 'Yüce'],
+        ['Koray', 'Gür'],
+        ['Nazlı', 'Sönmez'],
+        ['Arda', 'Balcı']
+      ]
+    },
+    {
+      companyName: 'Güneydoğu Enerji',
+      website: 'https://guneydoguenerji.example',
+      address: 'Enerji Bulvarı No:3 Şehitkamil Gaziantep',
+      phone: '+90 342 100 1010',
+      taxNumber: '1000000010',
+      taxOffice: 'Şehitkamil',
+      domain: 'guneydoguenerji.example',
+      contacts: [
+        ['Rana', 'Önel'],
+        ['Efe', 'Durmaz'],
+        ['Sinem', 'Avcı'],
+        ['Volkan', 'Yener'],
+        ['İlker', 'Uzun']
+      ]
     }
-  ]);
+  ];
 
-  await Contact.insertMany([
-    {
-      customerId: customers[0]._id,
-      firstName: 'Elif',
-      lastName: 'Yildiz',
-      email: 'elif@northwindcafe.com',
-      phone: '+90 555 100 0001'
-    },
-    {
-      customerId: customers[1]._id,
-      firstName: 'Kerem',
-      lastName: 'Aslan',
-      email: 'kerem@blueharbor.com',
-      phone: '+90 555 100 0002'
-    }
-  ]);
+  const customers = await Customer.insertMany(
+    demoCompanies.map(({ domain, contacts, ...company }) => company)
+  );
+
+  const toEmailLocal = (value) =>
+    value
+      .toLocaleLowerCase('tr-TR')
+      .replace(/ı/g, 'i')
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  await Contact.insertMany(
+    demoCompanies.flatMap((company, companyIndex) =>
+      company.contacts.map(([firstName, lastName], contactIndex) => ({
+        customerId: customers[companyIndex]._id,
+        firstName,
+        lastName,
+        email: `${toEmailLocal(firstName)}${contactIndex + 1}@${company.domain}`,
+        phone: `+90 555 ${String(companyIndex + 1).padStart(3, '0')} ${String(contactIndex + 1).padStart(4, '0')}`
+      }))
+    )
+  );
 
   await Vehicle.insertMany([
     {

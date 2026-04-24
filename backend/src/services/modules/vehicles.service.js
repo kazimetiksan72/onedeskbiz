@@ -33,6 +33,16 @@ async function listVehicles({ page, limit, search }) {
   return { items, total, page, limit };
 }
 
+async function getVehicleById(id) {
+  const vehicle = await Vehicle.findById(id).lean();
+
+  if (!vehicle) {
+    throw new ApiError(404, 'Vehicle not found');
+  }
+
+  return vehicle;
+}
+
 async function updateVehicle(id, payload) {
   const vehicle = await Vehicle.findByIdAndUpdate(id, normalizeVehiclePayload(payload), {
     new: true,
@@ -57,6 +67,7 @@ async function deleteVehicle(id) {
 module.exports = {
   createVehicle,
   listVehicles,
+  getVehicleById,
   updateVehicle,
   deleteVehicle
 };

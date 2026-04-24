@@ -13,6 +13,7 @@ const router = express.Router();
 
 router.get('/', controller.listVehicles);
 router.post('/', requireRole(ROLES.ADMIN), validate(createVehicleSchema), controller.createVehicle);
+router.get('/:id', validate(vehicleIdParamsSchema), controller.getVehicle);
 router.patch('/:id', requireRole(ROLES.ADMIN), validate(updateVehicleSchema), controller.updateVehicle);
 router.delete('/:id', requireRole(ROLES.ADMIN), validate(vehicleIdParamsSchema), controller.deleteVehicle);
 

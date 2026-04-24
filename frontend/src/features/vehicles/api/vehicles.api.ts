@@ -9,6 +9,11 @@ export async function getVehicles(search = '') {
   return data.items;
 }
 
+export async function getVehicle(id: string) {
+  const { data } = await api.get<Vehicle>(`/vehicles/${id}`);
+  return data;
+}
+
 export async function createVehicle(payload: Partial<Vehicle>) {
   const { data } = await api.post<Vehicle>('/vehicles', payload);
   return data;

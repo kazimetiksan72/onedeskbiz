@@ -76,8 +76,8 @@ async function createEmployee(payload) {
     ...pickUserProfileFields(profile),
     passwordHash,
     role: ROLES.EMPLOYEE,
-    mustChangePassword: true,
-    passwordUpdatedAt: null
+    mustChangePassword: false,
+    passwordUpdatedAt: new Date()
   });
 
   return User.findById(created._id).select('-passwordHash').lean();
@@ -149,8 +149,8 @@ async function updateEmployee(id, payload) {
 
   if (temporaryPassword) {
     updates.passwordHash = await bcrypt.hash(temporaryPassword, env.bcryptSaltRounds);
-    updates.mustChangePassword = true;
-    updates.passwordUpdatedAt = null;
+    updates.mustChangePassword = false;
+    updates.passwordUpdatedAt = new Date();
   }
 
   const employee = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })

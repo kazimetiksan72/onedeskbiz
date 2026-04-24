@@ -12,6 +12,7 @@ import { CustomerDetailPage } from '../features/customers/pages/CustomerDetailPa
 import { ContactsPage } from '../features/contacts/pages/ContactsPage';
 import { ContactDetailPage } from '../features/contacts/pages/ContactDetailPage';
 import { VehiclesPage } from '../features/vehicles/pages/VehiclesPage';
+import { VehicleDetailPage } from '../features/vehicles/pages/VehicleDetailPage';
 import { CompanySettingsPage } from '../features/companySettings/pages/CompanySettingsPage';
 import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequestsPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
@@ -43,6 +44,7 @@ export const router = createBrowserRouter([
               { path: '/admin/contacts', element: <ContactsPage /> },
               { path: '/admin/contacts/:id', element: <ContactDetailPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
+              { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
               { path: '/dashboard', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/employees', element: <Navigate to="/admin/employees" replace /> },

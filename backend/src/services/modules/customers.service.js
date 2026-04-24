@@ -1,4 +1,5 @@
 const { Customer } = require('../../models/Customer');
+const { Contact } = require('../../models/Contact');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
 
@@ -62,6 +63,12 @@ async function updateCustomer(id, payload) {
 }
 
 async function deleteCustomer(id) {
+  const contactCount = await Contact.countDocuments({ customerId: id });
+
+  if (contactCount > 0) {
+    throw new ApiError(409, 'Bu müşteriye bağlı kişi kayıtları olduğu için müşteri silinemez.');
+  }
+
   const customer = await Customer.findByIdAndDelete(id).lean();
 
   if (!customer) {

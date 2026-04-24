@@ -15,6 +15,11 @@ const listVehicles = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
+const getVehicle = asyncHandler(async (req, res) => {
+  const item = await vehiclesService.getVehicleById(req.params.id);
+  res.json(item);
+});
+
 const updateVehicle = asyncHandler(async (req, res) => {
   const item = await vehiclesService.updateVehicle(req.params.id, req.body);
   res.json(item);
@@ -28,6 +33,7 @@ const deleteVehicle = asyncHandler(async (req, res) => {
 module.exports = {
   createVehicle,
   listVehicles,
+  getVehicle,
   updateVehicle,
   deleteVehicle
 };

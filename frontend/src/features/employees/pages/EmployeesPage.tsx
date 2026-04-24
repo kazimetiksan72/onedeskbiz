@@ -1,10 +1,9 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PhoneInputImport from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import {
   createEmployee,
-  deleteEmployee,
   getEmployees,
   updateEmployee,
   type EmployeePayload
@@ -37,6 +36,7 @@ export function EmployeesPage() {
   const [items, setItems] = useState<Employee[]>([]);
   const [selected, setSelected] = useState<Employee | null>(null);
   const [form, setForm] = useState<Partial<Employee>>(initialForm);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [search, setSearch] = useState('');
   const [departments, setDepartments] = useState<string[]>([]);
@@ -72,24 +72,37 @@ export function EmployeesPage() {
     setSelected(null);
     setForm(initialForm);
     setTemporaryPassword('');
+    setIsFormOpen(false);
     await load();
   };
 
-  const onEdit = (item: Employee) => {
-    setSelected(item);
-    setForm(item);
+  const onCreate = () => {
+    setSelected(null);
+    setForm(initialForm);
     setTemporaryPassword('');
+    setIsFormOpen(true);
   };
 
-  const onDelete = async (id: string) => {
-    if (!isAdmin) return;
-    await deleteEmployee(id);
-    await load();
+  const closeForm = () => {
+    setSelected(null);
+    setForm(initialForm);
+    setTemporaryPassword('');
+    setIsFormOpen(false);
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Personel Listesi" subtitle="Personel ve organizasyon bilgilerini yönetin" />
+      <PageHeader
+        title="Personel Listesi"
+        subtitle="Personel ve organizasyon bilgilerini yönetin"
+        action={
+          isAdmin ? (
+            <button className="btn-primary" type="button" onClick={onCreate}>
+              Yeni Ekle
+            </button>
+          ) : null
+        }
+      />
 
       <div className="page-card">
         <div className="mb-3 flex gap-2">
@@ -131,19 +144,9 @@ export function EmployeesPage() {
                     <td className="py-2">{item.status === 'ACTIVE' ? 'Aktif' : 'Pasif'}</td>
                     <td className="py-2">
                       <div className="flex justify-end gap-2">
-                        <button className="btn-secondary" onClick={() => navigate(`/admin/employees/${item._id}`)}>
+                        <button className="btn-primary" onClick={() => navigate(`/admin/employees/${item._id}`)}>
                           Detay
                         </button>
-                        {isAdmin ? (
-                          <>
-                          <button className="btn-secondary" onClick={() => onEdit(item)}>
-                            Düzenle
-                          </button>
-                          <button className="btn-secondary" onClick={() => onDelete(item._id)}>
-                            Sil
-                          </button>
-                          </>
-                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -154,9 +157,9 @@ export function EmployeesPage() {
         )}
       </div>
 
-      {isAdmin ? (
-        <form onSubmit={onSave} className="page-card space-y-3">
-          <h2 className="text-base font-semibold">{selected ? 'Personeli Güncelle' : 'Personel Ekle'}</h2>
+      {isAdmin && isFormOpen ? (
+        <FormModal title={selected ? 'Personeli Güncelle' : 'Personel Ekle'} onClose={closeForm}>
+          <form onSubmit={onSave} className="space-y-3">
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <input
               className="input"
@@ -248,18 +251,31 @@ export function EmployeesPage() {
               <button
                 type="button"
                 className="btn-secondary"
-                onClick={() => {
-                  setSelected(null);
-                  setForm(initialForm);
-                  setTemporaryPassword('');
-                }}
+                onClick={closeForm}
               >
                 Vazgeç
               </button>
             ) : null}
           </div>
         </form>
+        </FormModal>
       ) : null}
+    </div>
+  );
+}
+
+function FormModal({ title, children, onClose }: { title: string; children: ReactNode; onClose: () => void }) {
+  return (
+    <div className="modal-backdrop">
+      <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white p-5 shadow-xl">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-slate-950">{title}</h2>
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Kapat
+          </button>
+        </div>
+        {children}
+      </div>
     </div>
   );
 }
