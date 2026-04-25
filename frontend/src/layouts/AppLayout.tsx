@@ -9,6 +9,7 @@ const adminNavItems = [
   { to: '/admin/contacts', label: 'Kişiler' },
   { to: '/admin/contact-actions', label: 'Kişi Aksiyonları' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
+  { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
 ];
 

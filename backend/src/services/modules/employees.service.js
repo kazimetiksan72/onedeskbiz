@@ -99,6 +99,7 @@ async function listEmployees({ page, limit, search }) {
   const [items, total] = await Promise.all([
     User.find(query)
       .select('-passwordHash')
+      .populate('departmentRoleId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -110,7 +111,10 @@ async function listEmployees({ page, limit, search }) {
 }
 
 async function getEmployeeById(id) {
-  const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE }).select('-passwordHash').lean();
+  const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
+    .select('-passwordHash')
+    .populate('departmentRoleId')
+    .lean();
   if (!employee) {
     throw new ApiError(404, 'Employee not found');
   }
@@ -155,6 +159,7 @@ async function updateEmployee(id, payload) {
 
   const employee = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
     .select('-passwordHash')
+    .populate('departmentRoleId')
     .lean();
 
   return employee;

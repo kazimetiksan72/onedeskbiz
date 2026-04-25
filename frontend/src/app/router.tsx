@@ -15,6 +15,7 @@ import { ContactActionLogsPage } from '../features/contactActionLogs/pages/Conta
 import { VehiclesPage } from '../features/vehicles/pages/VehiclesPage';
 import { VehicleDetailPage } from '../features/vehicles/pages/VehicleDetailPage';
 import { CompanySettingsPage } from '../features/companySettings/pages/CompanySettingsPage';
+import { DepartmentRolesPage } from '../features/departmentRoles/pages/DepartmentRolesPage';
 import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequestsPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
 
@@ -50,6 +51,7 @@ export const router = createBrowserRouter([
               { path: '/admin/contact-actions', element: <ContactActionLogsPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
+              { path: '/admin/department-roles', element: <DepartmentRolesPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
               { path: '/dashboard', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/employees', element: <Navigate to="/admin/employees" replace /> },

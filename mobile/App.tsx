@@ -6,7 +6,10 @@ import {
   ActivityIndicator,
   Animated,
   Image,
+  KeyboardAvoidingView,
   Linking,
+  Modal,
+  Platform,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -18,7 +21,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'HOME' | 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
+type MenuKey = 'HOME' | 'CARD' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
 
 type AuthUser = {
   _id: string;
@@ -155,6 +158,38 @@ type UploadPhotoResponse = {
   user: AuthUser;
 };
 
+type VehicleItem = {
+  _id: string;
+  plate: string;
+  brand: string;
+  model: string;
+  modelYear: number;
+  kilometer: number;
+  status?: 'ACTIVE' | 'INACTIVE';
+};
+
+type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL';
+type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+type RequestItem = {
+  _id: string;
+  type: RequestType;
+  status: RequestStatus;
+  startAt?: string | null;
+  endAt?: string | null;
+  materialText?: string;
+  createdAt: string;
+  requesterUserId?: { firstName?: string; lastName?: string; workEmail?: string; department?: string } | string;
+  vehicleId?: VehicleItem | null;
+  approvalAction?: {
+    action?: 'APPROVE' | 'REJECT';
+    note?: string;
+    actedAt?: string;
+    actorUserId?: { firstName?: string; lastName?: string; workEmail?: string } | string;
+  } | null;
+};
+
+
 function cardFromSessionUser(user: AuthUser): PublicCardResponse {
   return {
     userId: user._id,
@@ -246,6 +281,7 @@ export default function App() {
   const [error, setError] = useState('');
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [profileVisible, setProfileVisible] = useState(false);
 
   const [selectedMenu, setSelectedMenu] = useState<MenuKey>('HOME');
 
@@ -263,10 +299,16 @@ export default function App() {
   const [actionLogs, setActionLogs] = useState<ContactActionLogItem[]>([]);
   const [actionLogsLoading, setActionLogsLoading] = useState(false);
   const [selectedActionLog, setSelectedActionLog] = useState<ContactActionLogItem | null>(null);
+  const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(false);
+  const [approvals, setApprovals] = useState<RequestItem[]>([]);
+  const [approvalsLoading, setApprovalsLoading] = useState(false);
+  const [vehicles, setVehicles] = useState<VehicleItem[]>([]);
+  const [requestFormVisible, setRequestFormVisible] = useState(false);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const isTabRoot =
-    (selectedMenu === 'HOME' || selectedMenu === 'PROFILE' || selectedMenu === 'CARD' || selectedMenu === 'CONTACTS') &&
+    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
     !selectedContact &&
     !selectedActionLog;
 
@@ -438,6 +480,62 @@ export default function App() {
     setSelectedActionLog(data);
   };
 
+  const loadRequests = async () => {
+    if (!session?.accessToken) return;
+    setError('');
+    setRequestsLoading(true);
+    try {
+      const { data } = await api.get<ApiListResponse<RequestItem>>('/requests/mine', {
+        params: { page: 1, limit: 100 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setRequests(data.items || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Talepler yüklenemedi.');
+    } finally {
+      setRequestsLoading(false);
+    }
+  };
+
+  const loadApprovals = async () => {
+    if (!session?.accessToken) return;
+    setError('');
+    setApprovalsLoading(true);
+    try {
+      const { data } = await api.get<ApiListResponse<RequestItem>>('/requests/approvals', {
+        params: { page: 1, limit: 100 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setApprovals(data.items || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Onaylar yüklenemedi.');
+    } finally {
+      setApprovalsLoading(false);
+    }
+  };
+
+  const loadVehiclesForRequests = async () => {
+    if (!session?.accessToken || vehicles.length > 0) return;
+    const { data } = await api.get<ApiListResponse<VehicleItem>>('/vehicles', {
+      params: { page: 1, limit: 100 },
+      headers: { Authorization: `Bearer ${session.accessToken}` }
+    });
+    setVehicles((data.items || []).filter((item) => item.status !== 'INACTIVE'));
+  };
+
+  const createRequest = async (payload: any) => {
+    if (!session?.accessToken) return;
+    await api.post('/requests', payload, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+    setRequestFormVisible(false);
+    await loadRequests();
+  };
+
+  const actOnApproval = async (id: string, action: 'approve' | 'reject') => {
+    if (!session?.accessToken) return;
+    await api.patch(`/requests/${id}/${action}`, {}, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+    await loadApprovals();
+  };
+
   const takeProfilePhoto = async () => {
     if (!session?.accessToken) return;
 
@@ -503,6 +601,11 @@ export default function App() {
     setSelectedContact(null);
     setActionLogs([]);
     setSelectedActionLog(null);
+    setRequests([]);
+    setApprovals([]);
+    setVehicles([]);
+    setRequestFormVisible(false);
+    setProfileVisible(false);
     setError('');
     setEmail('mert@smallbiz.local');
     setPassword('App12345');
@@ -517,7 +620,7 @@ export default function App() {
   useEffect(() => {
     if (!session) return;
 
-    if ((selectedMenu === 'HOME' || selectedMenu === 'PROFILE') && !billingData && !billingLoading) {
+    if ((selectedMenu === 'HOME' || profileVisible) && !billingData && !billingLoading) {
       loadBilling();
     }
 
@@ -548,38 +651,52 @@ export default function App() {
     if (selectedMenu === 'ACTIONS' && actionLogs.length === 0 && !actionLogsLoading) {
       loadActionLogs();
     }
+
+    if (selectedMenu === 'REQUESTS' && requests.length === 0 && !requestsLoading) {
+      loadRequests();
+    }
+
+    if (selectedMenu === 'APPROVALS' && approvals.length === 0 && !approvalsLoading) {
+      loadApprovals();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedMenu, session]);
+  }, [selectedMenu, session, profileVisible]);
 
   if (!session) {
     return (
       <SafeAreaView style={styles.container}>
         <StatusBar style="dark" />
-        <View style={styles.card}>
-          <Text style={styles.title}>Sign In</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="Email"
-            value={email}
-            autoCapitalize="none"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Password"
-            value={password}
-            secureTextEntry
-            onChangeText={setPassword}
-          />
-          <Pressable style={styles.primaryButton} onPress={login} disabled={isLoading}>
-            {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
-          </Pressable>
-          <Text style={styles.hint}>
-            API: {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api'}
-          </Text>
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-        </View>
+        <KeyboardAvoidingView
+          style={styles.loginKeyboardView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 28 : 0}
+        >
+          <View style={styles.card}>
+            <Text style={styles.title}>OneDesk</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              value={email}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              onChangeText={setEmail}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              secureTextEntry
+              onChangeText={setPassword}
+            />
+            <Pressable style={styles.primaryButton} onPress={login} disabled={isLoading}>
+              {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Giriş Yap</Text>}
+            </Pressable>
+            <Text style={styles.hint}>
+              API: {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api'}
+            </Text>
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+          </View>
+        </KeyboardAvoidingView>
       </SafeAreaView>
     );
   }
@@ -620,6 +737,7 @@ export default function App() {
               billingData={billingData}
               actionLogs={actionLogs}
               onNavigate={setSelectedMenu}
+              onOpenProfile={() => setProfileVisible(true)}
             />
           ) : null}
 
@@ -628,24 +746,6 @@ export default function App() {
               animationKey={`${selectedMenu}-${selectedContact?._id || selectedActionLog?._id || 'list'}`}
               disabled={isTabRoot}
             >
-              {selectedMenu === 'PROFILE' ? (
-            <ProfileView user={session.user} />
-          ) : null}
-          {selectedMenu === 'PROFILE' ? (
-            <ProfilePhotoCard
-              user={session.user}
-              uploading={photoUploading}
-              onTakePhoto={takeProfilePhoto}
-            />
-          ) : null}
-          {selectedMenu === 'PROFILE' ? (
-            <CompanyInfoInProfile
-              billingData={billingData}
-              loading={billingLoading}
-              onReload={loadBilling}
-            />
-          ) : null}
-
           {selectedMenu === 'CARD' ? (
             <CardView loading={cardLoading} cardData={cardData} vCardText={vCardText} onReload={loadCard} />
           ) : null}
@@ -660,6 +760,28 @@ export default function App() {
 
           {selectedMenu === 'CUSTOMERS' ? (
             <CustomersView loading={customersLoading} customers={customers} onReload={loadCustomers} />
+          ) : null}
+
+          {selectedMenu === 'REQUESTS' ? (
+            <RequestsView
+              loading={requestsLoading}
+              items={requests}
+              onReload={loadRequests}
+              onNewRequest={async () => {
+                await loadVehiclesForRequests();
+                setRequestFormVisible(true);
+              }}
+            />
+          ) : null}
+
+          {selectedMenu === 'APPROVALS' ? (
+            <ApprovalsView
+              loading={approvalsLoading}
+              items={approvals}
+              onReload={loadApprovals}
+              onApprove={(id: string) => actOnApproval(id, 'approve')}
+              onReject={(id: string) => actOnApproval(id, 'reject')}
+            />
           ) : null}
 
           {selectedMenu === 'CONTACTS' && !selectedContact ? (
@@ -705,6 +827,50 @@ export default function App() {
         </ScrollView>
 
         <BottomTabs selectedMenu={selectedMenu} onSelect={onSelectMenu} />
+
+        <Modal
+          visible={requestFormVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setRequestFormVisible(false)}
+        >
+          <SafeAreaView style={styles.presentationContainer}>
+            <View style={styles.presentationHeader}>
+              <View>
+                <Text style={styles.headerKicker}>OneDesk</Text>
+                <Text style={styles.headerTitle}>Yeni Talep</Text>
+              </View>
+              <Pressable style={styles.headerSignOutButton} onPress={() => setRequestFormVisible(false)}>
+                <Text style={styles.headerSignOutText}>Kapat</Text>
+              </Pressable>
+            </View>
+            <RequestForm vehicles={vehicles} onSubmit={createRequest} />
+          </SafeAreaView>
+        </Modal>
+
+        <Modal
+          visible={profileVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setProfileVisible(false)}
+        >
+          <SafeAreaView style={styles.presentationContainer}>
+            <View style={styles.presentationHeader}>
+              <View>
+                <Text style={styles.headerKicker}>OneDesk</Text>
+                <Text style={styles.headerTitle}>Profilim</Text>
+              </View>
+              <Pressable style={styles.headerSignOutButton} onPress={() => setProfileVisible(false)}>
+                <Text style={styles.headerSignOutText}>Kapat</Text>
+              </Pressable>
+            </View>
+
+            <ScrollView contentContainerStyle={styles.presentationContent} showsVerticalScrollIndicator={false}>
+              <ProfileView user={session.user} />
+              <ProfilePhotoCard user={session.user} uploading={photoUploading} onTakePhoto={takeProfilePhoto} />
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -712,8 +878,9 @@ export default function App() {
 
 function titleForMenu(menu: MenuKey) {
   if (menu === 'HOME') return 'Ana Sayfa';
-  if (menu === 'PROFILE') return 'Profilim';
   if (menu === 'CARD') return 'Kartvizitim';
+  if (menu === 'REQUESTS') return 'Taleplerim';
+  if (menu === 'APPROVALS') return 'Onaylar';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
   if (menu === 'CONTACTS') return 'Kişiler';
   if (menu === 'ACTIONS') return 'Aksiyonlarım';
@@ -776,8 +943,9 @@ function BottomTabs({
 }) {
   const tabs: Array<{ key: MenuKey; label: string; short: string }> = [
     { key: 'HOME', label: 'Ana', short: 'A' },
-    { key: 'PROFILE', label: 'Profil', short: 'P' },
     { key: 'CARD', label: 'Kart', short: 'K' },
+    { key: 'REQUESTS', label: 'Talepler', short: 'T' },
+    { key: 'APPROVALS', label: 'Onaylar', short: 'O' },
     { key: 'CONTACTS', label: 'Kişiler', short: 'L' }
   ];
 
@@ -807,13 +975,15 @@ function HomeView({
   cardData,
   billingData,
   actionLogs,
-  onNavigate
+  onNavigate,
+  onOpenProfile
 }: {
   user: AuthUser;
   cardData: PublicCardResponse | null;
   billingData: CompanyBillingResponse | null;
   actionLogs: ContactActionLogItem[];
   onNavigate: (menu: MenuKey) => void;
+  onOpenProfile: () => void;
 }) {
   const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
   const avatarUrl = user.businessCard?.avatarPublicUrl || user.businessCard?.avatarUrl || '';
@@ -824,6 +994,9 @@ function HomeView({
     <>
       <View style={styles.heroCard}>
         <View style={styles.heroPattern} />
+        <Pressable style={styles.heroSettingsButton} onPress={onOpenProfile}>
+          <Text style={styles.heroSettingsText}>Profilim</Text>
+        </Pressable>
         <View style={styles.heroContent}>
           {avatarUrl ? (
             <Image source={{ uri: avatarUrl }} style={styles.heroAvatarImage} />
@@ -1108,6 +1281,186 @@ function BillingView({
         </View>
       ))}
     </View>
+  );
+}
+
+function RequestsView({
+  loading,
+  items,
+  onReload,
+  onNewRequest
+}: {
+  loading: boolean;
+  items: RequestItem[];
+  onReload: () => void;
+  onNewRequest: () => void;
+}) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Taleplerim</Text>
+        <View style={styles.headerActionsRow}>
+          <Pressable onPress={onNewRequest}>
+            <Text style={styles.refreshText}>Yeni Talep</Text>
+          </Pressable>
+          <Pressable onPress={onReload}>
+            <Text style={styles.refreshText}>Yenile</Text>
+          </Pressable>
+        </View>
+      </View>
+      {items.length === 0 ? <Text style={styles.emptyText}>Talep kaydı yok.</Text> : null}
+      {items.map((item) => (
+        <RequestRow key={item._id} item={item} />
+      ))}
+    </View>
+  );
+}
+
+function ApprovalsView({
+  loading,
+  items,
+  onReload,
+  onApprove,
+  onReject
+}: {
+  loading: boolean;
+  items: RequestItem[];
+  onReload: () => void;
+  onApprove: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Onaylar</Text>
+        <Pressable onPress={onReload}>
+          <Text style={styles.refreshText}>Yenile</Text>
+        </Pressable>
+      </View>
+      {items.length === 0 ? <Text style={styles.emptyText}>Onay bekleyen talep yok.</Text> : null}
+      {items.map((item) => (
+        <View key={item._id} style={styles.requestItem}>
+          <RequestRow item={item} />
+          <View style={styles.requestActions}>
+            <Pressable style={styles.approveButton} onPress={() => onApprove(item._id)}>
+              <Text style={styles.requestActionText}>Onayla</Text>
+            </Pressable>
+            <Pressable style={styles.rejectButton} onPress={() => onReject(item._id)}>
+              <Text style={styles.requestActionText}>Reddet</Text>
+            </Pressable>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function RequestRow({ item }: { item: RequestItem }) {
+  const requester =
+    typeof item.requesterUserId === 'object'
+      ? `${item.requesterUserId?.firstName || ''} ${item.requesterUserId?.lastName || ''}`.trim()
+      : '';
+
+  return (
+    <View style={styles.requestItem}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.customerName}>{requestTypeLabel(item.type)}</Text>
+        <Text style={[styles.requestStatus, requestStatusStyle(item.status)]}>{requestStatusLabel(item.status)}</Text>
+      </View>
+      {requester ? <Text style={styles.infoLine}>{requester}</Text> : null}
+      {item.vehicleId ? <Text style={styles.infoLine}>{item.vehicleId.plate} - {item.vehicleId.brand} {item.vehicleId.model}</Text> : null}
+      {item.materialText ? <Text style={styles.infoLine}>{item.materialText}</Text> : null}
+      {item.startAt ? <Text style={styles.infoLine}>{formatDateTime(item.startAt)} - {item.endAt ? formatDateTime(item.endAt) : '-'}</Text> : null}
+      <Text style={styles.actionLogSubtitle}>Oluşturma: {formatDateTime(item.createdAt)}</Text>
+      {item.approvalAction?.action ? (
+        <Text style={styles.actionLogSubtitle}>
+          {item.approvalAction.action === 'APPROVE' ? 'Onaylandı' : 'Reddedildi'} • {item.approvalAction.actedAt ? formatDateTime(item.approvalAction.actedAt) : ''}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function RequestForm({
+  vehicles,
+  onSubmit
+}: {
+  vehicles: VehicleItem[];
+  onSubmit: (payload: any) => Promise<void>;
+}) {
+  const [type, setType] = useState<RequestType>('VEHICLE');
+  const [vehicleId, setVehicleId] = useState('');
+  const [startAt, setStartAt] = useState('');
+  const [endAt, setEndAt] = useState('');
+  const [materialText, setMaterialText] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    setSaving(true);
+    try {
+      const payload =
+        type === 'MATERIAL'
+          ? { type, materialText }
+          : {
+              type,
+              startAt: new Date(startAt).toISOString(),
+              endAt: new Date(endAt).toISOString(),
+              ...(type === 'VEHICLE' ? { vehicleId } : {})
+            };
+      await onSubmit(payload);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.presentationContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.segmentedControl}>
+        {(['VEHICLE', 'LEAVE', 'MATERIAL'] as RequestType[]).map((item) => (
+          <Pressable key={item} style={[styles.segmentItem, type === item ? styles.segmentItemActive : null]} onPress={() => setType(item)}>
+            <Text style={[styles.segmentText, type === item ? styles.segmentTextActive : null]}>{requestTypeLabel(item)}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      {type === 'VEHICLE' ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Araç Seç</Text>
+          {vehicles.map((vehicle) => (
+            <Pressable key={vehicle._id} style={[styles.vehicleChoice, vehicleId === vehicle._id ? styles.vehicleChoiceActive : null]} onPress={() => setVehicleId(vehicle._id)}>
+              <Text style={styles.customerName}>{vehicle.plate}</Text>
+              <Text style={styles.infoLine}>{vehicle.brand} {vehicle.model} - {vehicle.modelYear}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      {type !== 'MATERIAL' ? (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Tarih Aralığı</Text>
+          <TextInput style={styles.input} placeholder="Başlangıç: 2026-04-25T09:00" value={startAt} onChangeText={setStartAt} />
+          <TextInput style={styles.input} placeholder="Bitiş: 2026-04-25T18:00" value={endAt} onChangeText={setEndAt} />
+          <Text style={styles.hint}>Tarih formatı: YYYY-MM-DDTHH:mm</Text>
+        </View>
+      ) : (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Malzeme Talebi</Text>
+          <TextInput style={[styles.input, styles.noteInput]} placeholder="Talep edilen malzemeyi yazın" value={materialText} onChangeText={setMaterialText} multiline />
+        </View>
+      )}
+
+      <Pressable style={styles.primaryButton} onPress={submit} disabled={saving}>
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Onaya Gönder</Text>}
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -1483,12 +1836,37 @@ function actionInitial(value: ContactActionType) {
   return 'E';
 }
 
+function requestTypeLabel(value: RequestType) {
+  if (value === 'VEHICLE') return 'Araç Talebi';
+  if (value === 'LEAVE') return 'İzin Talebi';
+  return 'Malzeme Talebi';
+}
+
+function requestStatusLabel(value: RequestStatus) {
+  if (value === 'APPROVED') return 'Onaylandı';
+  if (value === 'REJECTED') return 'Reddedildi';
+  return 'Bekliyor';
+}
+
+function requestStatusStyle(value: RequestStatus) {
+  if (value === 'APPROVED') return styles.requestStatusApproved;
+  if (value === 'REJECTED') return styles.requestStatusRejected;
+  return styles.requestStatusPending;
+}
+
+function formatDateTime(value: string) {
+  return new Date(value).toLocaleString('tr-TR');
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#eef2f7',
-    justifyContent: 'center',
     padding: 20
+  },
+  loginKeyboardView: {
+    flex: 1,
+    justifyContent: 'center'
   },
   appContainer: {
     flex: 1,
@@ -1497,6 +1875,24 @@ const styles = StyleSheet.create({
   appShell: {
     flex: 1,
     backgroundColor: '#eef2f7'
+  },
+  presentationContainer: {
+    flex: 1,
+    backgroundColor: '#eef2f7'
+  },
+  presentationHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 16
+  },
+  presentationContent: {
+    paddingHorizontal: 18,
+    paddingBottom: 28,
+    gap: 14
   },
   appHeader: {
     paddingHorizontal: 18,
@@ -1674,6 +2070,23 @@ const styles = StyleSheet.create({
     borderRadius: 110,
     backgroundColor: '#2f6fed',
     opacity: 0.52
+  },
+  heroSettingsButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 2,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.26)'
+  },
+  heroSettingsText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900'
   },
   heroContent: {
     flex: 1,
@@ -1913,6 +2326,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
     color: '#0f172a'
+  },
+  requestItem: {
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    padding: 14,
+    gap: 7
+  },
+  requestStatus: {
+    overflow: 'hidden',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 11,
+    fontWeight: '900'
+  },
+  requestStatusPending: {
+    backgroundColor: '#fef3c7',
+    color: '#92400e'
+  },
+  requestStatusApproved: {
+    backgroundColor: '#dcfce7',
+    color: '#166534'
+  },
+  requestStatusRejected: {
+    backgroundColor: '#fee2e2',
+    color: '#991b1b'
+  },
+  requestActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 6
+  },
+  approveButton: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: '#16a34a',
+    paddingVertical: 12,
+    alignItems: 'center'
+  },
+  rejectButton: {
+    flex: 1,
+    borderRadius: 14,
+    backgroundColor: '#dc2626',
+    paddingVertical: 12,
+    alignItems: 'center'
+  },
+  requestActionText: {
+    color: '#fff',
+    fontWeight: '900'
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    gap: 8,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 18,
+    padding: 5
+  },
+  segmentItem: {
+    flex: 1,
+    borderRadius: 14,
+    paddingVertical: 10,
+    alignItems: 'center'
+  },
+  segmentItemActive: {
+    backgroundColor: '#fff'
+  },
+  segmentText: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '900'
+  },
+  segmentTextActive: {
+    color: '#1d4ed8'
+  },
+  vehicleChoice: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    padding: 12,
+    gap: 4
+  },
+  vehicleChoiceActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff'
   },
   contactsCard: {
     backgroundColor: '#fff',

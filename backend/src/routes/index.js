@@ -5,6 +5,8 @@ const customerRoutes = require('./modules/customers.routes');
 const contactRoutes = require('./modules/contacts.routes');
 const contactActionLogRoutes = require('./modules/contactActionLogs.routes');
 const vehicleRoutes = require('./modules/vehicles.routes');
+const departmentRoleRoutes = require('./modules/departmentRoles.routes');
+const requestRoutes = require('./modules/requests.routes');
 const companySettingsRoutes = require('./modules/companySettings.routes');
 const digitalCardRoutes = require('./modules/digitalCards.routes');
 const leaveRequestRoutes = require('./modules/leaveRequests.routes');
@@ -28,6 +30,14 @@ router.use('/customers', auth, enforcePasswordChange, customerRoutes);
 router.use('/contacts', auth, enforcePasswordChange, contactRoutes);
 router.use('/contact-action-logs', auth, enforcePasswordChange, contactActionLogRoutes);
 router.use('/vehicles', auth, enforcePasswordChange, vehicleRoutes);
+router.use('/requests', auth, enforcePasswordChange, requestRoutes);
+router.use(
+  '/department-roles',
+  auth,
+  enforcePasswordChange,
+  requireRole(ROLES.ADMIN),
+  departmentRoleRoutes
+);
 router.use(
   '/company-settings',
   auth,

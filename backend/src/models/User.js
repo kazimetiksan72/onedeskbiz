@@ -58,6 +58,12 @@ const userSchema = new mongoose.Schema(
     personalEmail: { type: String, trim: true, lowercase: true },
     phone: { type: String, trim: true },
     department: { type: String, trim: true, index: true },
+    departmentRoleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'DepartmentRole',
+      default: null,
+      index: true
+    },
     title: { type: String, trim: true, index: true },
     employmentType: {
       type: String,

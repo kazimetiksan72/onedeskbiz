@@ -7,6 +7,8 @@ const { Customer } = require('../models/Customer');
 const { Contact } = require('../models/Contact');
 const { ContactActionLog } = require('../models/ContactActionLog');
 const { Vehicle } = require('../models/Vehicle');
+const { DepartmentRole, PERMISSIONS } = require('../models/DepartmentRole');
+const { Request } = require('../models/Request');
 const { CompanySettings } = require('../models/CompanySettings');
 const { LeaveRequest } = require('../models/LeaveRequest');
 const { RefreshToken } = require('../models/RefreshToken');
@@ -29,12 +31,37 @@ async function run() {
     Contact.deleteMany({}),
     ContactActionLog.deleteMany({}),
     Vehicle.deleteMany({}),
+    DepartmentRole.deleteMany({}),
+    Request.deleteMany({}),
     CompanySettings.deleteMany({}),
     LeaveRequest.deleteMany({}),
     RefreshToken.deleteMany({})
   ]);
 
   const defaultPasswordHash = await bcrypt.hash('App12345', env.bcryptSaltRounds);
+
+  const departments = ['Management', 'Sales', 'Operations'];
+  const departmentRoles = await DepartmentRole.insertMany(
+    departments.flatMap((department) => [
+      {
+        department,
+        name: 'Yönetici',
+        permissions: [
+          PERMISSIONS.VEHICLE_APPROVAL,
+          PERMISSIONS.LEAVE_APPROVAL,
+          PERMISSIONS.MATERIAL_APPROVAL
+        ]
+      },
+      {
+        department,
+        name: 'Çalışan',
+        permissions: []
+      }
+    ])
+  );
+
+  const findRole = (department, name) =>
+    departmentRoles.find((item) => item.department === department && item.name === name)?._id;
 
   const users = await User.insertMany([
     {
@@ -45,6 +72,7 @@ async function run() {
       firstName: 'Aylin',
       lastName: 'Kaya',
       department: 'Management',
+      departmentRoleId: findRole('Management', 'Yönetici'),
       title: 'General Manager',
       phone: '+905551000001',
       startDate: new Date('2023-01-10'),
@@ -61,6 +89,7 @@ async function run() {
       firstName: 'Mert',
       lastName: 'Demir',
       department: 'Sales',
+      departmentRoleId: findRole('Sales', 'Yönetici'),
       title: 'Sales Specialist',
       phone: '+905551000002',
       startDate: new Date('2024-03-20'),
@@ -84,6 +113,7 @@ async function run() {
       firstName: 'Selin',
       lastName: 'Yilmaz',
       department: 'Operations',
+      departmentRoleId: findRole('Operations', 'Çalışan'),
       title: 'Operations Specialist',
       phone: '+905551000003',
       startDate: new Date('2024-06-05'),
@@ -313,7 +343,7 @@ async function run() {
     companyName: 'SmallBiz Demo Co.',
     website: 'https://smallbiz.local',
     timezone: 'Europe/Istanbul',
-    departments: ['Management', 'Sales', 'Operations'],
+    departments,
     billingInfo: {
       legalCompanyName: 'SmallBiz Demo Co. Ltd.',
       taxNumber: '1234567890',
