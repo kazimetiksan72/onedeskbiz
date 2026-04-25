@@ -16,4 +16,13 @@ const listContactActionLogs = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-module.exports = { createContactActionLog, listContactActionLogs };
+const updateContactActionLogNote = asyncHandler(async (req, res) => {
+  const item = await service.updateContactActionLogNote({
+    user: req.user,
+    id: req.params.id,
+    note: req.body.note
+  });
+  res.json(item);
+});
+
+module.exports = { createContactActionLog, listContactActionLogs, updateContactActionLogNote };

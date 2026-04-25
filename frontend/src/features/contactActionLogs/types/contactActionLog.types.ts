@@ -22,6 +22,8 @@ export interface ContactActionLog {
   } | null;
   actionType: ContactActionType;
   occurredAt: string;
+  note?: string;
+  noteUpdatedAt?: string | null;
   contactSnapshot?: {
     fullName?: string;
     phone?: string;

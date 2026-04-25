@@ -37,6 +37,7 @@ export function ContactActionLogsPage() {
                   <th className="pb-2">Kişi</th>
                   <th className="pb-2">Firma</th>
                   <th className="pb-2">Aksiyon</th>
+                  <th className="pb-2">Not</th>
                 </tr>
               </thead>
               <tbody>
@@ -47,6 +48,7 @@ export function ContactActionLogsPage() {
                     <td className="py-2">{formatContact(item)}</td>
                     <td className="py-2">{item.customerId?.companyName || item.contactSnapshot?.companyName || '-'}</td>
                     <td className="py-2">{translateAction(item.actionType)}</td>
+                    <td className="max-w-xs py-2">{item.note || '-'}</td>
                   </tr>
                 ))}
               </tbody>

@@ -36,7 +36,9 @@ const contactActionLogSchema = new mongoose.Schema(
       phone: { type: String, trim: true },
       email: { type: String, trim: true, lowercase: true },
       companyName: { type: String, trim: true }
-    }
+    },
+    note: { type: String, trim: true, default: '' },
+    noteUpdatedAt: { type: Date, default: null }
   },
   {
     timestamps: true,

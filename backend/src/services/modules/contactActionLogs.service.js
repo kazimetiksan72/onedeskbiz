@@ -59,7 +59,32 @@ async function listContactActionLogs({ user, page, limit, actionType }) {
   return { items, total, page, limit };
 }
 
+async function updateContactActionLogNote({ user, id, note }) {
+  const query = { _id: id };
+
+  if (user.role !== ROLES.ADMIN) {
+    query.actorUserId = user._id;
+  }
+
+  const item = await ContactActionLog.findOneAndUpdate(
+    query,
+    { $set: { note: note || '', noteUpdatedAt: new Date() } },
+    { new: true, runValidators: true }
+  )
+    .populate('actorUserId', 'firstName lastName workEmail email')
+    .populate('contactId', 'firstName lastName phone email')
+    .populate('customerId', 'companyName')
+    .lean();
+
+  if (!item) {
+    throw new ApiError(404, 'Contact action log not found');
+  }
+
+  return item;
+}
+
 module.exports = {
   createContactActionLog,
-  listContactActionLogs
+  listContactActionLogs,
+  updateContactActionLogNote
 };

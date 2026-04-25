@@ -19,7 +19,16 @@ const listContactActionLogsSchema = z.object({
   })
 });
 
+const updateContactActionLogNoteSchema = z.object({
+  body: z.object({
+    note: z.string().max(2000).optional().or(z.literal(''))
+  }),
+  params: z.object({ id: objectId }),
+  query: z.object({})
+});
+
 module.exports = {
   createContactActionLogSchema,
-  listContactActionLogsSchema
+  listContactActionLogsSchema,
+  updateContactActionLogNoteSchema
 };

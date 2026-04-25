@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
 import QRCode from 'react-native-qrcode-svg';
 import {
   ActivityIndicator,
+  Animated,
   Image,
   Linking,
   Modal,
@@ -18,7 +19,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS';
+type MenuKey = 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
 
 type AuthUser = {
   _id: string;
@@ -124,6 +125,31 @@ type ContactItem = {
 };
 
 type ContactActionType = 'CALL' | 'WHATSAPP' | 'EMAIL';
+
+type ContactActionLogItem = {
+  _id: string;
+  actionType: ContactActionType;
+  occurredAt: string;
+  note?: string;
+  noteUpdatedAt?: string | null;
+  contactId?: {
+    _id: string;
+    firstName?: string;
+    lastName?: string;
+    phone?: string;
+    email?: string;
+  };
+  customerId?: {
+    _id: string;
+    companyName?: string;
+  } | null;
+  contactSnapshot?: {
+    fullName?: string;
+    phone?: string;
+    email?: string;
+    companyName?: string;
+  };
+};
 
 type UploadPhotoResponse = {
   avatarUrl: string;
@@ -261,6 +287,9 @@ export default function App() {
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [selectedContact, setSelectedContact] = useState<ContactItem | null>(null);
+  const [actionLogs, setActionLogs] = useState<ContactActionLogItem[]>([]);
+  const [actionLogsLoading, setActionLogsLoading] = useState(false);
+  const [selectedActionLog, setSelectedActionLog] = useState<ContactActionLogItem | null>(null);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const billingQrText = useMemo(() => buildBillingQrText(billingData), [billingData]);
@@ -401,6 +430,38 @@ export default function App() {
     }
   };
 
+  const loadActionLogs = async () => {
+    if (!session?.accessToken) return;
+
+    setError('');
+    setActionLogsLoading(true);
+
+    try {
+      const { data } = await api.get<ApiListResponse<ContactActionLogItem>>('/contact-action-logs', {
+        params: { page: 1, limit: 200 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setActionLogs(data.items || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Aksiyon kayıtları yüklenemedi.');
+    } finally {
+      setActionLogsLoading(false);
+    }
+  };
+
+  const saveActionLogNote = async (logId: string, note: string) => {
+    if (!session?.accessToken) return;
+
+    const { data } = await api.patch<ContactActionLogItem>(
+      `/contact-action-logs/${logId}/note`,
+      { note },
+      { headers: { Authorization: `Bearer ${session.accessToken}` } }
+    );
+
+    setActionLogs((current) => current.map((item) => (item._id === data._id ? data : item)));
+    setSelectedActionLog(data);
+  };
+
   const takeProfilePhoto = async () => {
     if (!session?.accessToken) return;
 
@@ -465,6 +526,8 @@ export default function App() {
     setCustomers([]);
     setContacts([]);
     setSelectedContact(null);
+    setActionLogs([]);
+    setSelectedActionLog(null);
     setError('');
     setEmail('');
     setPassword('');
@@ -473,6 +536,7 @@ export default function App() {
   const onSelectMenu = (menu: MenuKey) => {
     setSelectedMenu(menu);
     setSelectedContact(null);
+    setSelectedActionLog(null);
     setMenuVisible(false);
   };
 
@@ -497,6 +561,10 @@ export default function App() {
 
     if (selectedMenu === 'CONTACTS' && contacts.length === 0 && !contactsLoading) {
       loadContacts();
+    }
+
+    if (selectedMenu === 'ACTIONS' && actionLogs.length === 0 && !actionLogsLoading) {
+      loadActionLogs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMenu, session]);
@@ -590,11 +658,32 @@ export default function App() {
         ) : null}
 
         {selectedMenu === 'CONTACTS' && selectedContact ? (
-          <ContactDetailView
-            contact={selectedContact}
-            accessToken={session.accessToken}
-            onBack={() => setSelectedContact(null)}
+          <SlideInView animationKey={selectedContact._id}>
+            <ContactDetailView
+              contact={selectedContact}
+              accessToken={session.accessToken}
+              onBack={() => setSelectedContact(null)}
+            />
+          </SlideInView>
+        ) : null}
+
+        {selectedMenu === 'ACTIONS' && !selectedActionLog ? (
+          <ActionLogsView
+            loading={actionLogsLoading}
+            items={actionLogs}
+            onReload={loadActionLogs}
+            onSelectAction={setSelectedActionLog}
           />
+        ) : null}
+
+        {selectedMenu === 'ACTIONS' && selectedActionLog ? (
+          <SlideInView animationKey={selectedActionLog._id}>
+            <ActionLogDetailView
+              item={selectedActionLog}
+              onBack={() => setSelectedActionLog(null)}
+              onSaveNote={saveActionLogNote}
+            />
+          </SlideInView>
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -620,6 +709,9 @@ export default function App() {
             <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CONTACTS')}>
               <Text style={styles.drawerItemText}>Kişiler</Text>
             </Pressable>
+            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('ACTIONS')}>
+              <Text style={styles.drawerItemText}>Aksiyonlarım</Text>
+            </Pressable>
 
             <View style={styles.drawerSpacer} />
 
@@ -639,6 +731,7 @@ function titleForMenu(menu: MenuKey) {
   if (menu === 'CARD') return 'Kartvizitim';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
   if (menu === 'CONTACTS') return 'Kişiler';
+  if (menu === 'ACTIONS') return 'Aksiyonlarım';
   return 'Müşteriler';
 }
 
@@ -930,6 +1023,30 @@ function ContactsView({
   );
 }
 
+function SlideInView({ children, animationKey }: { children: ReactNode; animationKey: string }) {
+  const translateX = useRef(new Animated.Value(80)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    translateX.setValue(80);
+    opacity.setValue(0);
+    Animated.parallel([
+      Animated.timing(translateX, {
+        toValue: 0,
+        duration: 260,
+        useNativeDriver: true
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        useNativeDriver: true
+      })
+    ]).start();
+  }, [animationKey, opacity, translateX]);
+
+  return <Animated.View style={{ opacity, transform: [{ translateX }] }}>{children}</Animated.View>;
+}
+
 function ContactDetailView({
   contact,
   accessToken,
@@ -1022,6 +1139,130 @@ function ContactDetailView({
       </View>
     </View>
   );
+}
+
+function ActionLogsView({
+  loading,
+  items,
+  onReload,
+  onSelectAction
+}: {
+  loading: boolean;
+  items: ContactActionLogItem[];
+  onReload: () => void;
+  onSelectAction: (item: ContactActionLogItem) => void;
+}) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Aksiyonlarım</Text>
+        <Pressable onPress={onReload}>
+          <Text style={styles.refreshText}>Yenile</Text>
+        </Pressable>
+      </View>
+
+      {items.length === 0 ? <Text style={styles.infoLine}>Aksiyon kaydı yok.</Text> : null}
+
+      {items.map((item) => (
+        <Pressable key={item._id} style={styles.actionLogRow} onPress={() => onSelectAction(item)}>
+          <View style={styles.actionLogIcon}>
+            <Text style={styles.actionLogIconText}>{actionInitial(item.actionType)}</Text>
+          </View>
+          <View style={styles.actionLogTextBlock}>
+            <Text style={styles.actionLogTitle}>{formatActionContact(item)}</Text>
+            <Text style={styles.actionLogSubtitle}>
+              {translateContactAction(item.actionType)} • {new Date(item.occurredAt).toLocaleString('tr-TR')}
+            </Text>
+            {item.note ? <Text style={styles.actionLogNote} numberOfLines={1}>{item.note}</Text> : null}
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function ActionLogDetailView({
+  item,
+  onBack,
+  onSaveNote
+}: {
+  item: ContactActionLogItem;
+  onBack: () => void;
+  onSaveNote: (id: string, note: string) => Promise<void>;
+}) {
+  const [note, setNote] = useState(item.note || '');
+  const [saving, setSaving] = useState(false);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await onSaveNote(item._id, note);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <View style={styles.contactDetailCard}>
+      <Pressable style={styles.backButton} onPress={onBack}>
+        <Text style={styles.backButtonText}>‹ Aksiyonlarım</Text>
+      </Pressable>
+
+      <View style={styles.contactDetailHeader}>
+        <View style={styles.actionDetailIcon}>
+          <Text style={styles.actionDetailIconText}>{actionInitial(item.actionType)}</Text>
+        </View>
+        <Text style={styles.contactDetailName}>{translateContactAction(item.actionType)}</Text>
+        <Text style={styles.contactDetailCompany}>{new Date(item.occurredAt).toLocaleString('tr-TR')}</Text>
+      </View>
+
+      <View style={styles.contactInfoList}>
+        <Text style={styles.contactInfoLabel}>Kişi</Text>
+        <Text style={styles.contactInfoValue}>{formatActionContact(item)}</Text>
+        <Text style={styles.contactInfoLabel}>Firma</Text>
+        <Text style={styles.contactInfoValue}>{item.customerId?.companyName || item.contactSnapshot?.companyName || '-'}</Text>
+        <Text style={styles.contactInfoLabel}>Telefon</Text>
+        <Text style={styles.contactInfoValue}>{item.contactId?.phone || item.contactSnapshot?.phone || '-'}</Text>
+        <Text style={styles.contactInfoLabel}>E-posta</Text>
+        <Text style={styles.contactInfoValue}>{item.contactId?.email || item.contactSnapshot?.email || '-'}</Text>
+      </View>
+
+      <View style={styles.noteBlock}>
+        <Text style={styles.contactInfoLabel}>Not</Text>
+        <TextInput
+          style={[styles.input, styles.noteInput]}
+          value={note}
+          onChangeText={setNote}
+          placeholder="Bu aksiyon için not yazın"
+          multiline
+        />
+        <Pressable style={styles.primaryButton} onPress={save} disabled={saving}>
+          {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Notu Kaydet</Text>}
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+function formatActionContact(item: ContactActionLogItem) {
+  const fullName = `${item.contactId?.firstName || ''} ${item.contactId?.lastName || ''}`.trim();
+  return fullName || item.contactSnapshot?.fullName || '-';
+}
+
+function translateContactAction(value: ContactActionType) {
+  if (value === 'CALL') return 'Arama';
+  if (value === 'WHATSAPP') return 'WhatsApp';
+  return 'E-posta';
+}
+
+function actionInitial(value: ContactActionType) {
+  if (value === 'CALL') return 'A';
+  if (value === 'WHATSAPP') return 'W';
+  return 'E';
 }
 
 const styles = StyleSheet.create({
@@ -1386,6 +1627,66 @@ const styles = StyleSheet.create({
   contactInfoValue: {
     fontSize: 15,
     color: '#0f172a'
+  },
+  actionLogRow: {
+    minHeight: 68,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    paddingVertical: 10
+  },
+  actionLogIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#e0ecff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  actionLogIconText: {
+    color: '#1d4ed8',
+    fontSize: 15,
+    fontWeight: '800'
+  },
+  actionLogTextBlock: {
+    flex: 1
+  },
+  actionLogTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0f172a'
+  },
+  actionLogSubtitle: {
+    marginTop: 2,
+    fontSize: 12,
+    color: '#64748b'
+  },
+  actionLogNote: {
+    marginTop: 4,
+    fontSize: 13,
+    color: '#334155'
+  },
+  actionDetailIcon: {
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#e0ecff',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  actionDetailIconText: {
+    color: '#1d4ed8',
+    fontSize: 28,
+    fontWeight: '800'
+  },
+  noteBlock: {
+    gap: 8
+  },
+  noteInput: {
+    minHeight: 110,
+    textAlignVertical: 'top'
   },
   sectionHeaderRow: {
     flexDirection: 'row',
