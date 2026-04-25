@@ -7,7 +7,6 @@ import {
   Animated,
   Image,
   Linking,
-  Modal,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -19,7 +18,7 @@ import {
 import { StatusBar } from 'expo-status-bar';
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
+type MenuKey = 'HOME' | 'PROFILE' | 'CARD' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
 
 type AuthUser = {
   _id: string;
@@ -216,31 +215,6 @@ function buildVCard(data: PublicCardResponse | null) {
   return lines.join('\n');
 }
 
-function buildBillingQrText(data: CompanyBillingResponse | null) {
-  if (!data) return '';
-
-  const info = data.billingInfo || {};
-  const lines = [
-    `Company: ${data.companyName || ''}`,
-    `Legal Name: ${info.legalCompanyName || ''}`,
-    `Tax Number: ${info.taxNumber || ''}`,
-    `Tax Office: ${info.taxOffice || ''}`,
-    `Address: ${info.address || ''}`,
-    `City: ${info.city || ''}`,
-    `Country: ${info.country || ''}`,
-    `Postal Code: ${info.postalCode || ''}`
-  ];
-
-  (info.bankAccounts || []).forEach((account, index) => {
-    lines.push(`Bank ${index + 1}: ${account.bankName || ''}`);
-    lines.push(`Branch ${index + 1}: ${account.branchName || ''}`);
-    lines.push(`IBAN ${index + 1}: ${account.iban || ''}`);
-    lines.push(`SWIFT ${index + 1}: ${account.swiftCode || ''}`);
-  });
-
-  return lines.join('\n').trim();
-}
-
 function mergeCardWithCompanyInfo(card: PublicCardResponse, company: CompanyBillingResponse | null) {
   if (!company) {
     return {
@@ -273,8 +247,7 @@ export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
 
-  const [menuVisible, setMenuVisible] = useState(false);
-  const [selectedMenu, setSelectedMenu] = useState<MenuKey>('PROFILE');
+  const [selectedMenu, setSelectedMenu] = useState<MenuKey>('HOME');
 
   const [cardData, setCardData] = useState<PublicCardResponse | null>(null);
   const [cardLoading, setCardLoading] = useState(false);
@@ -292,7 +265,10 @@ export default function App() {
   const [selectedActionLog, setSelectedActionLog] = useState<ContactActionLogItem | null>(null);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
-  const billingQrText = useMemo(() => buildBillingQrText(billingData), [billingData]);
+  const isTabRoot =
+    (selectedMenu === 'HOME' || selectedMenu === 'PROFILE' || selectedMenu === 'CARD' || selectedMenu === 'CONTACTS') &&
+    !selectedContact &&
+    !selectedActionLog;
 
   const login = async () => {
     setError('');
@@ -311,7 +287,7 @@ export default function App() {
       }
 
       setSession(data);
-      setSelectedMenu('PROFILE');
+      setSelectedMenu('HOME');
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Giriş başarısız. Bilgileri kontrol edin.');
     } finally {
@@ -519,8 +495,7 @@ export default function App() {
 
   const signOut = () => {
     setSession(null);
-    setMenuVisible(false);
-    setSelectedMenu('PROFILE');
+    setSelectedMenu('HOME');
     setCardData(null);
     setBillingData(null);
     setCustomers([]);
@@ -529,22 +504,29 @@ export default function App() {
     setActionLogs([]);
     setSelectedActionLog(null);
     setError('');
-    setEmail('');
-    setPassword('');
+    setEmail('mert@smallbiz.local');
+    setPassword('App12345');
   };
 
   const onSelectMenu = (menu: MenuKey) => {
     setSelectedMenu(menu);
     setSelectedContact(null);
     setSelectedActionLog(null);
-    setMenuVisible(false);
   };
 
   useEffect(() => {
     if (!session) return;
 
-    if (selectedMenu === 'PROFILE' && !billingData && !billingLoading) {
+    if ((selectedMenu === 'HOME' || selectedMenu === 'PROFILE') && !billingData && !billingLoading) {
       loadBilling();
+    }
+
+    if (selectedMenu === 'HOME' && !cardData && !cardLoading) {
+      loadCard();
+    }
+
+    if (selectedMenu === 'HOME' && actionLogs.length === 0 && !actionLogsLoading) {
+      loadActionLogs();
     }
 
     if (selectedMenu === 'CARD' && !cardData && !cardLoading) {
@@ -606,127 +588,130 @@ export default function App() {
     <SafeAreaView style={styles.appContainer}>
       <StatusBar style="dark" />
 
-      <View style={styles.topBar}>
-        <Pressable style={styles.menuButton} onPress={() => setMenuVisible(true)}>
-          <Text style={styles.menuIcon}>☰</Text>
-        </Pressable>
-        <Text style={styles.topTitle}>{titleForMenu(selectedMenu)}</Text>
-        <View style={styles.menuButtonSpacer} />
+      <View style={styles.appShell}>
+        <AppHeader
+          title={titleForMenu(selectedMenu)}
+          user={session.user}
+          showBack={!isTabRoot}
+          showSignOut={selectedMenu === 'HOME'}
+          onBack={() => {
+            if (selectedContact) {
+              setSelectedContact(null);
+              return;
+            }
+            if (selectedActionLog) {
+              setSelectedActionLog(null);
+              return;
+            }
+            if (selectedMenu === 'ACTIONS') {
+              setSelectedMenu('CONTACTS');
+              return;
+            }
+            setSelectedMenu('HOME');
+          }}
+          onSignOut={signOut}
+        />
+
+        <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+          {selectedMenu === 'HOME' ? (
+            <HomeView
+              user={session.user}
+              cardData={cardData}
+              billingData={billingData}
+              actionLogs={actionLogs}
+              onNavigate={setSelectedMenu}
+            />
+          ) : null}
+
+          {selectedMenu !== 'HOME' ? (
+            <SlideInView
+              animationKey={`${selectedMenu}-${selectedContact?._id || selectedActionLog?._id || 'list'}`}
+              disabled={isTabRoot}
+            >
+              {selectedMenu === 'PROFILE' ? (
+            <ProfileView user={session.user} />
+          ) : null}
+          {selectedMenu === 'PROFILE' ? (
+            <ProfilePhotoCard
+              user={session.user}
+              uploading={photoUploading}
+              onTakePhoto={takeProfilePhoto}
+            />
+          ) : null}
+          {selectedMenu === 'PROFILE' ? (
+            <CompanyInfoInProfile
+              billingData={billingData}
+              loading={billingLoading}
+              onReload={loadBilling}
+            />
+          ) : null}
+
+          {selectedMenu === 'CARD' ? (
+            <CardView loading={cardLoading} cardData={cardData} vCardText={vCardText} onReload={loadCard} />
+          ) : null}
+
+          {selectedMenu === 'BILLING' ? (
+            <BillingView
+              loading={billingLoading}
+              billingData={billingData}
+              onReload={loadBilling}
+            />
+          ) : null}
+
+          {selectedMenu === 'CUSTOMERS' ? (
+            <CustomersView loading={customersLoading} customers={customers} onReload={loadCustomers} />
+          ) : null}
+
+          {selectedMenu === 'CONTACTS' && !selectedContact ? (
+            <ContactsView
+              loading={contactsLoading}
+              contacts={contacts}
+              onReload={loadContacts}
+              onSelectContact={setSelectedContact}
+              onOpenActions={() => setSelectedMenu('ACTIONS')}
+            />
+          ) : null}
+
+          {selectedMenu === 'CONTACTS' && selectedContact ? (
+            <SlideInView animationKey={selectedContact._id}>
+              <ContactDetailView
+                contact={selectedContact}
+                accessToken={session.accessToken}
+                onBack={() => setSelectedContact(null)}
+              />
+            </SlideInView>
+          ) : null}
+
+          {selectedMenu === 'ACTIONS' && !selectedActionLog ? (
+            <ActionLogsView
+              loading={actionLogsLoading}
+              items={actionLogs}
+              onReload={loadActionLogs}
+              onSelectAction={setSelectedActionLog}
+            />
+          ) : null}
+
+          {selectedMenu === 'ACTIONS' && selectedActionLog ? (
+                <ActionLogDetailView
+                  item={selectedActionLog}
+                  onBack={() => setSelectedActionLog(null)}
+                  onSaveNote={saveActionLogNote}
+                />
+          ) : null}
+            </SlideInView>
+          ) : null}
+
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+        </ScrollView>
+
+        <BottomTabs selectedMenu={selectedMenu} onSelect={onSelectMenu} />
       </View>
-
-      <ScrollView contentContainerStyle={styles.contentContainer}>
-        {selectedMenu === 'PROFILE' ? <ProfileView user={session.user} /> : null}
-        {selectedMenu === 'PROFILE' ? (
-          <ProfilePhotoCard
-            user={session.user}
-            uploading={photoUploading}
-            onTakePhoto={takeProfilePhoto}
-          />
-        ) : null}
-        {selectedMenu === 'PROFILE' ? (
-          <CompanyInfoInProfile
-            billingData={billingData}
-            loading={billingLoading}
-            onReload={loadBilling}
-          />
-        ) : null}
-
-        {selectedMenu === 'CARD' ? (
-          <CardView loading={cardLoading} cardData={cardData} vCardText={vCardText} onReload={loadCard} />
-        ) : null}
-
-        {selectedMenu === 'BILLING' ? (
-          <BillingView
-            loading={billingLoading}
-            billingData={billingData}
-            billingQrText={billingQrText}
-            onReload={loadBilling}
-          />
-        ) : null}
-
-        {selectedMenu === 'CUSTOMERS' ? (
-          <CustomersView loading={customersLoading} customers={customers} onReload={loadCustomers} />
-        ) : null}
-
-        {selectedMenu === 'CONTACTS' && !selectedContact ? (
-          <ContactsView
-            loading={contactsLoading}
-            contacts={contacts}
-            onReload={loadContacts}
-            onSelectContact={setSelectedContact}
-          />
-        ) : null}
-
-        {selectedMenu === 'CONTACTS' && selectedContact ? (
-          <SlideInView animationKey={selectedContact._id}>
-            <ContactDetailView
-              contact={selectedContact}
-              accessToken={session.accessToken}
-              onBack={() => setSelectedContact(null)}
-            />
-          </SlideInView>
-        ) : null}
-
-        {selectedMenu === 'ACTIONS' && !selectedActionLog ? (
-          <ActionLogsView
-            loading={actionLogsLoading}
-            items={actionLogs}
-            onReload={loadActionLogs}
-            onSelectAction={setSelectedActionLog}
-          />
-        ) : null}
-
-        {selectedMenu === 'ACTIONS' && selectedActionLog ? (
-          <SlideInView animationKey={selectedActionLog._id}>
-            <ActionLogDetailView
-              item={selectedActionLog}
-              onBack={() => setSelectedActionLog(null)}
-              onSaveNote={saveActionLogNote}
-            />
-          </SlideInView>
-        ) : null}
-
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-      </ScrollView>
-
-      <Modal transparent visible={menuVisible} animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <View style={styles.drawerOverlay}>
-          <View style={styles.drawerPanel}>
-            <Text style={styles.drawerEmail}>{session.user.email}</Text>
-
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('PROFILE')}>
-              <Text style={styles.drawerItemText}>Profilim</Text>
-            </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CARD')}>
-              <Text style={styles.drawerItemText}>Kartvizitim</Text>
-            </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('BILLING')}>
-              <Text style={styles.drawerItemText}>Fatura Bilgileri</Text>
-            </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CUSTOMERS')}>
-              <Text style={styles.drawerItemText}>Müşteriler</Text>
-            </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('CONTACTS')}>
-              <Text style={styles.drawerItemText}>Kişiler</Text>
-            </Pressable>
-            <Pressable style={styles.drawerItem} onPress={() => onSelectMenu('ACTIONS')}>
-              <Text style={styles.drawerItemText}>Aksiyonlarım</Text>
-            </Pressable>
-
-            <View style={styles.drawerSpacer} />
-
-            <Pressable style={styles.signOutButton} onPress={signOut}>
-              <Text style={styles.signOutText}>Sign Out</Text>
-            </Pressable>
-          </View>
-          <Pressable style={styles.drawerBackdrop} onPress={() => setMenuVisible(false)} />
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
 
 function titleForMenu(menu: MenuKey) {
+  if (menu === 'HOME') return 'Ana Sayfa';
   if (menu === 'PROFILE') return 'Profilim';
   if (menu === 'CARD') return 'Kartvizitim';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
@@ -735,16 +720,225 @@ function titleForMenu(menu: MenuKey) {
   return 'Müşteriler';
 }
 
+function AppHeader({
+  title,
+  user,
+  showBack,
+  showSignOut,
+  onBack,
+  onSignOut
+}: {
+  title: string;
+  user: AuthUser;
+  showBack: boolean;
+  showSignOut: boolean;
+  onBack: () => void;
+  onSignOut: () => void;
+}) {
+  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || 'U';
+
+  return (
+    <View style={styles.appHeader}>
+      <View style={styles.headerTopRow}>
+        {showBack ? (
+          <Pressable style={styles.headerIconButton} onPress={onBack}>
+            <Text style={styles.headerIconText}>‹</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.headerAvatar}>
+            <Text style={styles.headerAvatarText}>{initials}</Text>
+          </View>
+        )}
+
+        <View style={styles.headerTitleBlock}>
+          <Text style={styles.headerKicker}>OneDesk</Text>
+          <Text style={styles.headerTitle}>{title}</Text>
+        </View>
+
+        {showSignOut ? (
+          <Pressable style={styles.headerSignOutButton} onPress={onSignOut}>
+            <Text style={styles.headerSignOutText}>Çıkış</Text>
+          </Pressable>
+        ) : (
+          <View style={styles.headerRightSpacer} />
+        )}
+      </View>
+    </View>
+  );
+}
+
+function BottomTabs({
+  selectedMenu,
+  onSelect
+}: {
+  selectedMenu: MenuKey;
+  onSelect: (menu: MenuKey) => void;
+}) {
+  const tabs: Array<{ key: MenuKey; label: string; short: string }> = [
+    { key: 'HOME', label: 'Ana', short: 'A' },
+    { key: 'PROFILE', label: 'Profil', short: 'P' },
+    { key: 'CARD', label: 'Kart', short: 'K' },
+    { key: 'CONTACTS', label: 'Kişiler', short: 'L' }
+  ];
+
+  return (
+    <View style={styles.bottomTabs}>
+      {tabs.map((tab) => {
+        const active = selectedMenu === tab.key;
+        return (
+          <Pressable
+            key={tab.key}
+            style={[styles.bottomTabItem, active ? styles.bottomTabItemActive : null]}
+            onPress={() => onSelect(tab.key)}
+          >
+            <View style={[styles.bottomTabIcon, active ? styles.bottomTabIconActive : null]}>
+              <Text style={[styles.bottomTabIconText, active ? styles.bottomTabIconTextActive : null]}>{tab.short}</Text>
+            </View>
+            <Text style={[styles.bottomTabLabel, active ? styles.bottomTabLabelActive : null]}>{tab.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+function HomeView({
+  user,
+  cardData,
+  billingData,
+  actionLogs,
+  onNavigate
+}: {
+  user: AuthUser;
+  cardData: PublicCardResponse | null;
+  billingData: CompanyBillingResponse | null;
+  actionLogs: ContactActionLogItem[];
+  onNavigate: (menu: MenuKey) => void;
+}) {
+  const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
+  const avatarUrl = user.businessCard?.avatarPublicUrl || user.businessCard?.avatarUrl || '';
+  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || 'U';
+  const latestAction = actionLogs[0];
+
+  return (
+    <>
+      <View style={styles.heroCard}>
+        <View style={styles.heroPattern} />
+        <View style={styles.heroContent}>
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.heroAvatarImage} />
+          ) : (
+            <View style={styles.heroAvatar}>
+              <Text style={styles.heroAvatarText}>{initials}</Text>
+            </View>
+          )}
+          <View style={styles.heroTextBlock}>
+            <Text style={styles.heroEyebrow}>Hoş geldiniz</Text>
+            <Text style={styles.heroName}>{displayName}</Text>
+            <Text style={styles.heroSubtitle}>{user.title || user.department || billingData?.companyName || 'Ekip üyesi'}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.quickGrid}>
+        <QuickCard
+          label="Kartvizitim"
+          value={cardData?.businessCard?.displayName || displayName}
+          accent="blue"
+          onPress={() => onNavigate('CARD')}
+        />
+        <QuickCard
+          label="Fatura"
+          value={billingData?.billingInfo?.legalCompanyName || billingData?.companyName || 'Firma bilgileri'}
+          accent="green"
+          onPress={() => onNavigate('BILLING')}
+        />
+        <QuickCard
+          label="Kişiler"
+          value="Müşteri bağlantıları"
+          accent="orange"
+          onPress={() => onNavigate('CONTACTS')}
+        />
+        <QuickCard
+          label="Müşteriler"
+          value="Firma listesi"
+          accent="slate"
+          onPress={() => onNavigate('CUSTOMERS')}
+        />
+      </View>
+
+      <View style={styles.sectionCard}>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Son Aksiyon</Text>
+          <Pressable onPress={() => onNavigate('CONTACTS')}>
+            <Text style={styles.refreshText}>Kişilerden Gör</Text>
+          </Pressable>
+        </View>
+        {latestAction ? (
+          <View style={styles.homeActionBlock}>
+            <View style={styles.actionLogIcon}>
+              <Text style={styles.actionLogIconText}>{actionInitial(latestAction.actionType)}</Text>
+            </View>
+            <View style={styles.actionLogTextBlock}>
+              <Text style={styles.actionLogTitle}>{formatActionContact(latestAction)}</Text>
+              <Text style={styles.actionLogSubtitle}>
+                {translateContactAction(latestAction.actionType)} • {new Date(latestAction.occurredAt).toLocaleString('tr-TR')}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.emptyText}>Henüz aksiyon kaydı yok.</Text>
+        )}
+      </View>
+    </>
+  );
+}
+
+function QuickCard({
+  label,
+  value,
+  accent,
+  onPress
+}: {
+  label: string;
+  value: string;
+  accent: 'blue' | 'green' | 'orange' | 'slate';
+  onPress: () => void;
+}) {
+  const accentStyle = {
+    blue: styles.quickAccentBlue,
+    green: styles.quickAccentGreen,
+    orange: styles.quickAccentOrange,
+    slate: styles.quickAccentSlate
+  }[accent];
+
+  return (
+    <Pressable style={styles.quickCard} onPress={onPress}>
+      <View style={[styles.quickAccent, accentStyle]} />
+      <Text style={styles.quickLabel}>{label}</Text>
+      <Text style={styles.quickValue} numberOfLines={2}>{value}</Text>
+    </Pressable>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value?: string }) {
+  return (
+    <View style={styles.infoRow}>
+      <Text style={styles.infoLabel}>{label}</Text>
+      <Text style={styles.infoValue}>{value || '-'}</Text>
+    </View>
+  );
+}
+
 function ProfileView({ user }: { user: AuthUser }) {
   return (
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Öz Bilgiler</Text>
-      <Text style={styles.infoLine}>{`${user.firstName || ''} ${user.lastName || ''}`.trim() || '-'}</Text>
-      <Text style={styles.infoLine}>{user.workEmail || user.email || '-'}</Text>
-      <Text style={styles.infoLine}>{user.phone || '-'}</Text>
-      <Text style={styles.infoLine}>{user.department || '-'}</Text>
-      <Text style={styles.infoLine}>{user.title || '-'}</Text>
-      <Text style={styles.infoLine}>{user.status || '-'}</Text>
+      <InfoRow label="Ad Soyad" value={`${user.firstName || ''} ${user.lastName || ''}`.trim()} />
+      <InfoRow label="E-posta" value={user.workEmail || user.email} />
+      <InfoRow label="Telefon" value={user.phone} />
+      <InfoRow label="Departman" value={user.department} />
+      <InfoRow label="Unvan" value={user.title} />
     </View>
   );
 }
@@ -817,12 +1011,12 @@ function CompanyInfoInProfile({
   return (
     <View style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>Şirket Bilgileri</Text>
-      <Text style={styles.infoLine}>{billingData.companyName || '-'}</Text>
-      <Text style={styles.infoLine}>{billingData.website || '-'}</Text>
-      <Text style={styles.infoLine}>{billingData.billingInfo?.legalCompanyName || '-'}</Text>
-      <Text style={styles.infoLine}>{billingData.billingInfo?.taxNumber || '-'}</Text>
-      <Text style={styles.infoLine}>{billingData.billingInfo?.taxOffice || '-'}</Text>
-      <Text style={styles.infoLine}>{billingData.billingInfo?.address || '-'}</Text>
+      <InfoRow label="Şirket" value={billingData.companyName} />
+      <InfoRow label="Web sitesi" value={billingData.website} />
+      <InfoRow label="Yasal isim" value={billingData.billingInfo?.legalCompanyName} />
+      <InfoRow label="Vergi no" value={billingData.billingInfo?.taxNumber} />
+      <InfoRow label="Vergi dairesi" value={billingData.billingInfo?.taxOffice} />
+      <InfoRow label="Adres" value={billingData.billingInfo?.address} />
     </View>
   );
 }
@@ -855,11 +1049,18 @@ function CardView({
 
   return (
     <View style={styles.sectionCard}>
-      <Text style={styles.sectionTitle}>{cardData.businessCard.displayName || `${cardData.firstName} ${cardData.lastName}`}</Text>
-      <Text style={styles.infoLine}>{cardData.businessCard.title || '-'}</Text>
-      <Text style={styles.infoLine}>{cardData.businessCard.email || '-'}</Text>
-      <Text style={styles.infoLine}>{cardData.businessCard.phone || '-'}</Text>
-      {vCardText ? <QRCode value={vCardText} size={220} /> : null}
+      <View style={styles.cardIdentityBlock}>
+        <Text style={styles.cardName}>{cardData.businessCard.displayName || `${cardData.firstName} ${cardData.lastName}`}</Text>
+        <Text style={styles.cardTitle}>{cardData.businessCard.title || cardData.businessCard.companyName || '-'}</Text>
+      </View>
+      <InfoRow label="E-posta" value={cardData.businessCard.email} />
+      <InfoRow label="Telefon" value={cardData.businessCard.phone} />
+      <InfoRow label="Şirket" value={cardData.businessCard.companyName} />
+      {vCardText ? (
+        <View style={styles.qrFrame}>
+          <QRCode value={vCardText} size={224} />
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -867,12 +1068,10 @@ function CardView({
 function BillingView({
   loading,
   billingData,
-  billingQrText,
   onReload
 }: {
   loading: boolean;
   billingData: CompanyBillingResponse | null;
-  billingQrText: string;
   onReload: () => void;
 }) {
   if (loading) {
@@ -908,8 +1107,6 @@ function BillingView({
           <Text style={styles.billingLine}>SWIFT: {account.swiftCode || '-'}</Text>
         </View>
       ))}
-
-      {billingQrText ? <QRCode value={billingQrText} size={220} /> : null}
     </View>
   );
 }
@@ -956,12 +1153,14 @@ function ContactsView({
   loading,
   contacts,
   onReload,
-  onSelectContact
+  onSelectContact,
+  onOpenActions
 }: {
   loading: boolean;
   contacts: ContactItem[];
   onReload: () => void;
   onSelectContact: (contact: ContactItem) => void;
+  onOpenActions: () => void;
 }) {
   const groupedContacts = useMemo(() => {
     const sorted = [...contacts].sort((a, b) => {
@@ -989,9 +1188,14 @@ function ContactsView({
     <View style={styles.contactsCard}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Kişiler</Text>
-        <Pressable onPress={onReload}>
-          <Text style={styles.refreshText}>Yenile</Text>
-        </Pressable>
+        <View style={styles.headerActionsRow}>
+          <Pressable onPress={onOpenActions}>
+            <Text style={styles.refreshText}>Aksiyonlar</Text>
+          </Pressable>
+          <Pressable onPress={onReload}>
+            <Text style={styles.refreshText}>Yenile</Text>
+          </Pressable>
+        </View>
       </View>
 
       {contacts.length === 0 ? <Text style={styles.infoLine}>Kişi yok.</Text> : null}
@@ -1023,11 +1227,25 @@ function ContactsView({
   );
 }
 
-function SlideInView({ children, animationKey }: { children: ReactNode; animationKey: string }) {
+function SlideInView({
+  children,
+  animationKey,
+  disabled = false
+}: {
+  children: ReactNode;
+  animationKey: string;
+  disabled?: boolean;
+}) {
   const translateX = useRef(new Animated.Value(80)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (disabled) {
+      translateX.setValue(0);
+      opacity.setValue(1);
+      return;
+    }
+
     translateX.setValue(80);
     opacity.setValue(0);
     Animated.parallel([
@@ -1042,7 +1260,7 @@ function SlideInView({ children, animationKey }: { children: ReactNode; animatio
         useNativeDriver: true
       })
     ]).start();
-  }, [animationKey, opacity, translateX]);
+  }, [animationKey, disabled, opacity, translateX]);
 
   return <Animated.View style={{ opacity, transform: [{ translateX }] }}>{children}</Animated.View>;
 }
@@ -1268,338 +1486,550 @@ function actionInitial(value: ContactActionType) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#eef2f7',
     justifyContent: 'center',
-    padding: 16
+    padding: 20
   },
   appContainer: {
     flex: 1,
-    backgroundColor: '#f3f4f6'
+    backgroundColor: '#eef2f7'
   },
-  topBar: {
-    height: 56,
-    paddingHorizontal: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+  appShell: {
+    flex: 1,
+    backgroundColor: '#eef2f7'
+  },
+  appHeader: {
+    paddingHorizontal: 18,
+    paddingTop: 10,
+    paddingBottom: 16,
+    backgroundColor: '#eef2f7'
+  },
+  headerTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    gap: 12
   },
-  menuButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
+  headerAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#14213d',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  menuButtonSpacer: {
-    width: 36,
-    height: 36
+  headerAvatarText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15
   },
-  menuIcon: {
-    fontSize: 18,
-    color: '#0f172a'
+  headerIconButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#dde5ef'
   },
-  topTitle: {
-    fontSize: 16,
+  headerIconText: {
+    color: '#0f172a',
+    fontWeight: '800',
+    fontSize: 30,
+    lineHeight: 32
+  },
+  headerTitleBlock: {
+    flex: 1
+  },
+  headerKicker: {
+    color: '#64748b',
+    fontSize: 12,
     fontWeight: '700',
-    color: '#0f172a'
+    letterSpacing: 0.8,
+    textTransform: 'uppercase'
+  },
+  headerTitle: {
+    color: '#0f172a',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.5
+  },
+  headerSignOutButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#dde5ef'
+  },
+  headerSignOutText: {
+    color: '#334155',
+    fontSize: 12,
+    fontWeight: '800'
+  },
+  headerRightSpacer: {
+    width: 58,
+    height: 38
+  },
+  headerActionsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14
   },
   contentContainer: {
-    padding: 16,
-    gap: 12
+    paddingHorizontal: 18,
+    paddingBottom: 104,
+    gap: 14
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 28,
+    padding: 22,
+    gap: 14,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 18 },
+    shadowOpacity: 0.12,
+    shadowRadius: 30,
+    elevation: 4
+  },
+  title: {
+    fontSize: 34,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -1
+  },
+  subtitle: {
+    fontSize: 14,
+    color: '#64748b'
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#d7e0ea',
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 14,
+    backgroundColor: '#fff',
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  primaryButton: {
+    backgroundColor: '#1d4ed8',
+    borderRadius: 16,
+    paddingVertical: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#1d4ed8',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 3
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15
+  },
+  secondaryButton: {
+    borderWidth: 1,
+    borderColor: '#d7e0ea',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff'
+  },
+  secondaryButtonText: {
+    color: '#0f172a',
+    fontWeight: '800'
+  },
+  error: {
+    color: '#b91c1c',
+    fontSize: 14,
+    fontWeight: '700'
+  },
+  hint: {
+    fontSize: 12,
+    color: '#64748b',
+    fontWeight: '600'
+  },
+  heroCard: {
+    minHeight: 166,
+    borderRadius: 32,
+    overflow: 'hidden',
+    backgroundColor: '#12213f',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.18,
+    shadowRadius: 30,
+    elevation: 5
+  },
+  heroPattern: {
+    position: 'absolute',
+    right: -60,
+    top: -80,
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#2f6fed',
+    opacity: 0.52
+  },
+  heroContent: {
+    flex: 1,
+    padding: 20,
+    justifyContent: 'flex-end',
+    gap: 16
+  },
+  heroAvatar: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  heroAvatarImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    backgroundColor: '#dbeafe'
+  },
+  heroAvatarText: {
+    color: '#12213f',
+    fontSize: 24,
+    fontWeight: '900'
+  },
+  heroTextBlock: {
+    gap: 3
+  },
+  heroEyebrow: {
+    color: '#bfdbfe',
+    fontSize: 13,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 1
+  },
+  heroName: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.8
+  },
+  heroSubtitle: {
+    color: '#dbeafe',
+    fontSize: 15,
+    fontWeight: '600'
+  },
+  quickGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12
+  },
+  quickCard: {
+    width: '48%',
+    minHeight: 108,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    padding: 16,
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  quickAccent: {
+    width: 34,
+    height: 5,
+    borderRadius: 999
+  },
+  quickAccentBlue: {
+    backgroundColor: '#2563eb'
+  },
+  quickAccentGreen: {
+    backgroundColor: '#059669'
+  },
+  quickAccentOrange: {
+    backgroundColor: '#f97316'
+  },
+  quickAccentSlate: {
+    backgroundColor: '#334155'
+  },
+  quickLabel: {
+    color: '#64748b',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase'
+  },
+  quickValue: {
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: -0.3
   },
   sectionCard: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    gap: 10,
+    borderRadius: 24,
+    padding: 18,
+    gap: 12,
     borderWidth: 1,
     borderColor: '#e2e8f0'
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.4
+  },
+  cardIdentityBlock: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    gap: 4
+  },
+  cardName: {
+    color: '#0f172a',
+    fontSize: 28,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.8
+  },
+  cardTitle: {
+    color: '#64748b',
+    fontSize: 15,
+    fontWeight: '700',
+    textAlign: 'center'
+  },
+  qrFrame: {
+    alignSelf: 'center',
+    marginTop: 10,
+    padding: 18,
+    borderRadius: 26,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    elevation: 3
+  },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  refreshText: {
+    fontSize: 13,
+    color: '#1d4ed8',
+    fontWeight: '900'
+  },
+  emptyText: {
+    fontSize: 14,
+    color: '#64748b',
+    fontWeight: '600'
+  },
+  infoLine: {
+    fontSize: 14,
+    color: '#0f172a',
+    fontWeight: '600'
+  },
+  infoRow: {
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+    gap: 3
+  },
+  infoLabel: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 0.7,
+    textTransform: 'uppercase'
+  },
+  infoValue: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '700'
   },
   photoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 14
   },
   profilePhoto: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
+    width: 84,
+    height: 84,
+    borderRadius: 24,
     backgroundColor: '#e2e8f0'
   },
   profilePhotoPlaceholder: {
-    width: 72,
-    height: 72,
-    borderRadius: 8,
-    backgroundColor: '#e2e8f0',
+    width: 84,
+    height: 84,
+    borderRadius: 24,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center'
   },
   profilePhotoInitials: {
-    color: '#334155',
-    fontSize: 20,
-    fontWeight: '700'
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#111827'
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a'
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280'
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff'
-  },
-  primaryButton: {
-    backgroundColor: '#2563eb',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '600'
-  },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
-    paddingVertical: 11,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  secondaryButtonText: {
-    color: '#0f172a',
-    fontWeight: '600'
-  },
-  error: {
-    color: '#b91c1c',
-    fontSize: 13
-  },
-  hint: {
-    fontSize: 12,
-    color: '#64748b'
-  },
-  infoLine: {
-    fontSize: 14,
-    color: '#0f172a'
-  },
-  drawerOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-    backgroundColor: 'rgba(2, 6, 23, 0.35)'
-  },
-  drawerBackdrop: {
-    flex: 1
-  },
-  drawerPanel: {
-    width: 280,
-    backgroundColor: '#fff',
-    paddingTop: 48,
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16
-  },
-  drawerEmail: {
-    fontSize: 13,
-    color: '#64748b',
-    marginBottom: 14
-  },
-  drawerItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9'
-  },
-  drawerItemText: {
-    fontSize: 16,
-    color: '#0f172a',
-    fontWeight: '600'
-  },
-  drawerSpacer: {
-    flex: 1
-  },
-  signOutButton: {
-    borderWidth: 1,
-    borderColor: '#ef4444',
-    borderRadius: 8,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  signOutText: {
-    color: '#b91c1c',
-    fontWeight: '700'
+    color: '#1d4ed8',
+    fontSize: 24,
+    fontWeight: '900'
   },
   billingBlock: {
     width: '100%',
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 10,
-    gap: 4
+    borderRadius: 18,
+    padding: 14,
+    gap: 6
   },
   billingLine: {
-    fontSize: 12,
-    color: '#0f172a'
+    fontSize: 13,
+    color: '#334155',
+    fontWeight: '600'
   },
   billingLegalName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0f172a'
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.3
   },
   billingSectionTitle: {
     width: '100%',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '900',
     color: '#0f172a'
   },
   customerItem: {
+    backgroundColor: '#f8fafc',
     borderWidth: 1,
     borderColor: '#e2e8f0',
-    borderRadius: 8,
-    padding: 10,
-    gap: 2
+    borderRadius: 18,
+    padding: 14,
+    gap: 4
   },
   customerName: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '900',
     color: '#0f172a'
   },
   contactsCard: {
     backgroundColor: '#fff',
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    gap: 8,
+    borderRadius: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 10,
     borderWidth: 1,
     borderColor: '#e2e8f0'
   },
   contactGroup: {
-    gap: 4
+    gap: 5
   },
   contactLetter: {
-    paddingHorizontal: 6,
-    paddingTop: 8,
+    paddingHorizontal: 7,
+    paddingTop: 10,
     fontSize: 13,
-    fontWeight: '700',
-    color: '#2563eb'
+    fontWeight: '900',
+    color: '#1d4ed8'
   },
   contactGroupList: {
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9'
+    borderTopColor: '#eef2f7'
   },
   contactRow: {
-    minHeight: 62,
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: 13,
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9'
+    borderBottomColor: '#eef2f7'
   },
   contactAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#e0ecff',
+    width: 48,
+    height: 48,
+    borderRadius: 18,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center'
   },
   contactAvatarText: {
     color: '#1d4ed8',
-    fontWeight: '800',
-    fontSize: 14
+    fontWeight: '900',
+    fontSize: 15
   },
   contactTextBlock: {
     flex: 1
   },
   contactName: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '800',
     color: '#0f172a'
   },
   contactCompany: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 13,
-    color: '#64748b'
+    color: '#64748b',
+    fontWeight: '600'
   },
   contactDetailCard: {
     backgroundColor: '#fff',
-    borderRadius: 18,
-    padding: 16,
-    gap: 16,
+    borderRadius: 28,
+    padding: 18,
+    gap: 18,
     borderWidth: 1,
     borderColor: '#e2e8f0'
   },
   backButton: {
     alignSelf: 'flex-start',
-    paddingVertical: 6
+    paddingVertical: 7,
+    paddingHorizontal: 2
   },
   backButtonText: {
     fontSize: 16,
-    color: '#2563eb',
-    fontWeight: '600'
+    color: '#1d4ed8',
+    fontWeight: '900'
   },
   contactDetailHeader: {
     alignItems: 'center',
-    gap: 8
+    gap: 8,
+    paddingVertical: 6
   },
   contactDetailAvatar: {
-    width: 92,
-    height: 92,
-    borderRadius: 46,
-    backgroundColor: '#e0ecff',
+    width: 104,
+    height: 104,
+    borderRadius: 34,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center'
   },
   contactDetailAvatarText: {
     color: '#1d4ed8',
-    fontWeight: '800',
-    fontSize: 30
+    fontWeight: '900',
+    fontSize: 32
   },
   contactDetailName: {
-    fontSize: 24,
-    fontWeight: '800',
+    fontSize: 28,
+    fontWeight: '900',
     color: '#0f172a',
-    textAlign: 'center'
+    textAlign: 'center',
+    letterSpacing: -0.7
   },
   contactDetailCompany: {
     fontSize: 15,
     color: '#64748b',
-    textAlign: 'center'
+    textAlign: 'center',
+    fontWeight: '700'
   },
   contactActions: {
     flexDirection: 'row',
-    gap: 8
+    gap: 10
   },
   contactActionButton: {
     flex: 1,
-    borderRadius: 12,
-    backgroundColor: '#2563eb',
-    paddingVertical: 12,
+    borderRadius: 18,
+    backgroundColor: '#1d4ed8',
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
@@ -1608,94 +2038,156 @@ const styles = StyleSheet.create({
   },
   contactActionText: {
     color: '#fff',
-    fontWeight: '700',
+    fontWeight: '900',
     fontSize: 13
   },
   contactInfoList: {
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
+    borderTopColor: '#eef2f7',
     paddingTop: 12,
-    gap: 4
+    gap: 5
   },
   contactInfoLabel: {
-    marginTop: 8,
-    fontSize: 12,
-    fontWeight: '700',
+    marginTop: 9,
+    fontSize: 11,
+    fontWeight: '900',
     color: '#64748b',
-    textTransform: 'uppercase'
+    textTransform: 'uppercase',
+    letterSpacing: 0.8
   },
   contactInfoValue: {
     fontSize: 15,
-    color: '#0f172a'
+    color: '#0f172a',
+    fontWeight: '700'
+  },
+  homeActionBlock: {
+    minHeight: 64,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f8fafc',
+    borderRadius: 18,
+    padding: 12
   },
   actionLogRow: {
-    minHeight: 68,
+    minHeight: 74,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
     borderTopWidth: 1,
-    borderTopColor: '#f1f5f9',
-    paddingVertical: 10
+    borderTopColor: '#eef2f7',
+    paddingVertical: 12
   },
   actionLogIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#e0ecff',
+    width: 46,
+    height: 46,
+    borderRadius: 17,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center'
   },
   actionLogIconText: {
     color: '#1d4ed8',
     fontSize: 15,
-    fontWeight: '800'
+    fontWeight: '900'
   },
   actionLogTextBlock: {
     flex: 1
   },
   actionLogTitle: {
-    fontSize: 15,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '900',
     color: '#0f172a'
   },
   actionLogSubtitle: {
-    marginTop: 2,
+    marginTop: 3,
     fontSize: 12,
-    color: '#64748b'
+    color: '#64748b',
+    fontWeight: '600'
   },
   actionLogNote: {
-    marginTop: 4,
+    marginTop: 5,
     fontSize: 13,
-    color: '#334155'
+    color: '#334155',
+    fontWeight: '600'
   },
   actionDetailIcon: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: '#e0ecff',
+    width: 92,
+    height: 92,
+    borderRadius: 30,
+    backgroundColor: '#dbeafe',
     alignItems: 'center',
     justifyContent: 'center'
   },
   actionDetailIconText: {
     color: '#1d4ed8',
-    fontSize: 28,
-    fontWeight: '800'
+    fontSize: 30,
+    fontWeight: '900'
   },
   noteBlock: {
-    gap: 8
+    gap: 10
   },
   noteInput: {
-    minHeight: 110,
+    minHeight: 120,
     textAlignVertical: 'top'
   },
-  sectionHeaderRow: {
+  bottomTabs: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    bottom: 14,
+    minHeight: 72,
+    borderRadius: 28,
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between'
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#dbe3ed',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.16,
+    shadowRadius: 26,
+    elevation: 8
   },
-  refreshText: {
-    fontSize: 13,
-    color: '#2563eb',
-    fontWeight: '600'
+  bottomTabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    borderRadius: 20,
+    paddingVertical: 6
+  },
+  bottomTabItemActive: {
+    backgroundColor: '#eff6ff'
+  },
+  bottomTabIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 10,
+    backgroundColor: '#eef2f7',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  bottomTabIconActive: {
+    backgroundColor: '#1d4ed8'
+  },
+  bottomTabIconText: {
+    color: '#64748b',
+    fontWeight: '900',
+    fontSize: 11
+  },
+  bottomTabIconTextActive: {
+    color: '#fff'
+  },
+  bottomTabLabel: {
+    color: '#64748b',
+    fontSize: 10,
+    fontWeight: '800'
+  },
+  bottomTabLabelActive: {
+    color: '#1d4ed8'
   }
 });
