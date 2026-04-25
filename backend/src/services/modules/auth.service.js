@@ -12,6 +12,10 @@ const {
   hashToken
 } = require('../../utils/tokens');
 
+function safeUserQuery(id) {
+  return User.findById(id).select('-passwordHash').populate('departmentRoleId').lean();
+}
+
 async function issueTokenPair(user) {
   const payload = { sub: String(user._id), role: user.role };
 
@@ -52,7 +56,7 @@ async function register({ email, password, role }) {
   });
 
   const tokens = await issueTokenPair(user);
-  const safeUser = await User.findById(user._id).select('-passwordHash').lean();
+  const safeUser = await safeUserQuery(user._id);
 
   return { user: safeUser, ...tokens };
 }
@@ -73,7 +77,7 @@ async function login({ email, password }) {
   await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } });
 
   const tokens = await issueTokenPair(user);
-  const safeUser = await User.findById(user._id).select('-passwordHash').lean();
+  const safeUser = await safeUserQuery(user._id);
 
   return { user: safeUser, ...tokens };
 }
@@ -98,7 +102,7 @@ async function changePassword(userId, newPassword) {
   );
 
   const tokens = await issueTokenPair(user);
-  const safeUser = await User.findById(user._id).select('-passwordHash').lean();
+  const safeUser = await safeUserQuery(user._id);
 
   return { user: safeUser, ...tokens };
 }

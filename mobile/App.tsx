@@ -35,6 +35,12 @@ type AuthUser = {
   title?: string;
   workEmail?: string;
   department?: string;
+  departmentRoleId?: {
+    _id: string;
+    department: string;
+    name: string;
+    permissions: string[];
+  } | null;
   status?: string;
   businessCard?: {
     displayName?: string;
@@ -297,6 +303,7 @@ export default function App() {
   const [customersLoading, setCustomersLoading] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
   const [selectedContact, setSelectedContact] = useState<ContactItem | null>(null);
   const [actionLogs, setActionLogs] = useState<ContactActionLogItem[]>([]);
   const [actionLogsLoading, setActionLogsLoading] = useState(false);
@@ -309,8 +316,12 @@ export default function App() {
   const [requestFormVisible, setRequestFormVisible] = useState(false);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
+  const canApproveRequests = (session?.user.departmentRoleId?.permissions || []).some((permission) =>
+    ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL'].includes(permission)
+  );
   const isTabRoot =
     (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
+    !selectedCustomer &&
     !selectedContact &&
     !selectedActionLog;
   const isRefreshing =
@@ -323,6 +334,7 @@ export default function App() {
       loadRequests();
     }
     if (selectedMenu === 'CONTACTS') {
+      loadCustomers();
       loadContacts();
     }
     if (selectedMenu === 'CUSTOMERS') {
@@ -616,6 +628,7 @@ export default function App() {
     setBillingData(null);
     setCustomers([]);
     setContacts([]);
+    setSelectedCustomer(null);
     setSelectedContact(null);
     setActionLogs([]);
     setSelectedActionLog(null);
@@ -631,6 +644,7 @@ export default function App() {
 
   const onSelectMenu = (menu: MenuKey) => {
     setSelectedMenu(menu);
+    setSelectedCustomer(null);
     setSelectedContact(null);
     setSelectedActionLog(null);
   };
@@ -662,6 +676,10 @@ export default function App() {
       loadCustomers();
     }
 
+    if (selectedMenu === 'CONTACTS' && customers.length === 0 && !customersLoading) {
+      loadCustomers();
+    }
+
     if (selectedMenu === 'CONTACTS' && contacts.length === 0 && !contactsLoading) {
       loadContacts();
     }
@@ -674,7 +692,7 @@ export default function App() {
       loadRequests();
     }
 
-    if (selectedMenu === 'APPROVALS' && approvals.length === 0 && !approvalsLoading) {
+    if (canApproveRequests && selectedMenu === 'APPROVALS' && approvals.length === 0 && !approvalsLoading) {
       loadApprovals();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -734,6 +752,10 @@ export default function App() {
               setSelectedContact(null);
               return;
             }
+            if (selectedCustomer) {
+              setSelectedCustomer(null);
+              return;
+            }
             if (selectedActionLog) {
               setSelectedActionLog(null);
               return;
@@ -788,7 +810,7 @@ export default function App() {
           ) : null}
 
           {selectedMenu === 'CUSTOMERS' ? (
-            <CustomersView loading={customersLoading} customers={customers} onReload={loadCustomers} />
+            <CustomersView loading={customersLoading} customers={customers} onSelectCustomer={setSelectedCustomer} />
           ) : null}
 
           {selectedMenu === 'REQUESTS' ? (
@@ -814,13 +836,20 @@ export default function App() {
           ) : null}
 
           {selectedMenu === 'CONTACTS' && !selectedContact ? (
-            <ContactsView
-              loading={contactsLoading}
-              contacts={contacts}
-              onReload={loadContacts}
-              onSelectContact={setSelectedContact}
-              onOpenActions={() => setSelectedMenu('ACTIONS')}
-            />
+            selectedCustomer ? (
+              <CustomerContactsView
+                customer={selectedCustomer}
+                contacts={contacts.filter((contact) => contact.customerId?._id === selectedCustomer._id)}
+                onSelectContact={setSelectedContact}
+                onOpenActions={() => setSelectedMenu('ACTIONS')}
+              />
+            ) : (
+              <CustomersView
+                loading={customersLoading}
+                customers={customers}
+                onSelectCustomer={setSelectedCustomer}
+              />
+            )
           ) : null}
 
           {selectedMenu === 'CONTACTS' && selectedContact ? (
@@ -855,7 +884,7 @@ export default function App() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
 
-        <BottomTabs selectedMenu={selectedMenu} onSelect={onSelectMenu} />
+        <BottomTabs selectedMenu={selectedMenu} onSelect={onSelectMenu} canShowApprovals={canApproveRequests} />
 
         <Modal
           visible={requestFormVisible}
@@ -911,7 +940,7 @@ function titleForMenu(menu: MenuKey) {
   if (menu === 'REQUESTS') return 'Taleplerim';
   if (menu === 'APPROVALS') return 'Onaylar';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
-  if (menu === 'CONTACTS') return 'Kişiler';
+  if (menu === 'CONTACTS') return 'Müşteriler';
   if (menu === 'ACTIONS') return 'Aksiyonlarım';
   return 'Müşteriler';
 }
@@ -931,8 +960,6 @@ function AppHeader({
   onBack: () => void;
   onSignOut: () => void;
 }) {
-  const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || 'U';
-
   return (
     <View style={styles.appHeader}>
       <View style={styles.headerTopRow}>
@@ -941,9 +968,7 @@ function AppHeader({
             <Text style={styles.headerIconText}>‹</Text>
           </Pressable>
         ) : (
-          <View style={styles.headerAvatar}>
-            <Text style={styles.headerAvatarText}>{initials}</Text>
-          </View>
+          <View style={styles.headerLeftSpacer} />
         )}
 
         <View style={styles.headerTitleBlock}>
@@ -965,16 +990,18 @@ function AppHeader({
 
 function BottomTabs({
   selectedMenu,
-  onSelect
+  onSelect,
+  canShowApprovals
 }: {
   selectedMenu: MenuKey;
   onSelect: (menu: MenuKey) => void;
+  canShowApprovals: boolean;
 }) {
   const tabs: Array<{ key: MenuKey; label: string; icon: string }> = [
     { key: 'HOME', label: 'Ana', icon: '⌂' },
     { key: 'CARD', label: 'Kart', icon: '▣' },
     { key: 'REQUESTS', label: 'Talepler', icon: '≡' },
-    { key: 'APPROVALS', label: 'Onaylar', icon: '✓' },
+    ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
     { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' }
   ];
 
@@ -1532,11 +1559,11 @@ function DateTimeField({ label, value, onPress }: { label: string; value: Date; 
 function CustomersView({
   loading,
   customers,
-  onReload
+  onSelectCustomer
 }: {
   loading: boolean;
   customers: CustomerItem[];
-  onReload: () => void;
+  onSelectCustomer: (customer: CustomerItem) => void;
 }) {
   if (loading) {
     return <ActivityIndicator color="#2563eb" />;
@@ -1551,29 +1578,27 @@ function CustomersView({
       {customers.length === 0 ? <Text style={styles.infoLine}>Müşteri yok.</Text> : null}
 
       {customers.map((item) => (
-        <View key={item._id} style={styles.customerItem}>
+        <Pressable key={item._id} style={styles.customerItem} onPress={() => onSelectCustomer(item)}>
           <Text style={styles.customerName}>{item.companyName}</Text>
           <Text style={styles.infoLine}>{item.website || '-'}</Text>
           <Text style={styles.infoLine}>{item.phone || '-'}</Text>
           <Text style={styles.infoLine}>{item.taxNumber || '-'}</Text>
           <Text style={styles.infoLine}>{item.taxOffice || '-'}</Text>
           <Text style={styles.infoLine}>{item.status || '-'}</Text>
-        </View>
+        </Pressable>
       ))}
     </View>
   );
 }
 
-function ContactsView({
-  loading,
+function CustomerContactsView({
+  customer,
   contacts,
-  onReload,
   onSelectContact,
   onOpenActions
 }: {
-  loading: boolean;
+  customer: CustomerItem;
   contacts: ContactItem[];
-  onReload: () => void;
   onSelectContact: (contact: ContactItem) => void;
   onOpenActions: () => void;
 }) {
@@ -1595,14 +1620,10 @@ function ContactsView({
     }, []);
   }, [contacts]);
 
-  if (loading) {
-    return <ActivityIndicator color="#2563eb" />;
-  }
-
   return (
     <View style={styles.contactsCard}>
       <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Kişiler</Text>
+        <Text style={styles.sectionTitle}>{customer.companyName}</Text>
         <View style={styles.headerActionsRow}>
           <Pressable onPress={onOpenActions}>
             <Text style={styles.refreshText}>Aksiyonlar</Text>
@@ -1988,6 +2009,10 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 30,
     lineHeight: 32
+  },
+  headerLeftSpacer: {
+    width: 44,
+    height: 44
   },
   headerTitleBlock: {
     flex: 1
