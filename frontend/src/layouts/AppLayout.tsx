@@ -7,11 +7,15 @@ const adminNavItems = [
   { to: '/admin/employees', label: 'Personeller' },
   { to: '/admin/customers', label: 'Müşteriler' },
   { to: '/admin/contacts', label: 'Kişiler' },
+  { to: '/admin/contact-actions', label: 'Kişi Aksiyonları' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
 ];
 
-const employeeNavItems = [{ to: '/leave-requests', label: 'İzin Talepleri' }];
+const employeeNavItems = [
+  { to: '/leave-requests', label: 'İzin Talepleri' },
+  { to: '/contact-actions', label: 'Kişi Aksiyonları' }
+];
 
 export function AppLayout() {
   const navigate = useNavigate();

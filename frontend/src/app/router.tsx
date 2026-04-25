@@ -11,6 +11,7 @@ import { CustomersPage } from '../features/customers/pages/CustomersPage';
 import { CustomerDetailPage } from '../features/customers/pages/CustomerDetailPage';
 import { ContactsPage } from '../features/contacts/pages/ContactsPage';
 import { ContactDetailPage } from '../features/contacts/pages/ContactDetailPage';
+import { ContactActionLogsPage } from '../features/contactActionLogs/pages/ContactActionLogsPage';
 import { VehiclesPage } from '../features/vehicles/pages/VehiclesPage';
 import { VehicleDetailPage } from '../features/vehicles/pages/VehicleDetailPage';
 import { CompanySettingsPage } from '../features/companySettings/pages/CompanySettingsPage';
@@ -31,7 +32,10 @@ export const router = createBrowserRouter([
         children: [
           {
             element: <EmployeeRoute />,
-            children: [{ path: '/leave-requests', element: <LeaveRequestsPage /> }]
+            children: [
+              { path: '/leave-requests', element: <LeaveRequestsPage /> },
+              { path: '/contact-actions', element: <ContactActionLogsPage /> }
+            ]
           },
           {
             element: <AdminRoute />,
@@ -43,6 +47,7 @@ export const router = createBrowserRouter([
               { path: '/admin/customers/:id', element: <CustomerDetailPage /> },
               { path: '/admin/contacts', element: <ContactsPage /> },
               { path: '/admin/contacts/:id', element: <ContactDetailPage /> },
+              { path: '/admin/contact-actions', element: <ContactActionLogsPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },

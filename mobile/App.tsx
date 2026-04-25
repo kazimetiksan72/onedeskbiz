@@ -123,6 +123,8 @@ type ContactItem = {
   } | null;
 };
 
+type ContactActionType = 'CALL' | 'WHATSAPP' | 'EMAIL';
+
 type UploadPhotoResponse = {
   avatarUrl: string;
   user: AuthUser;
@@ -588,7 +590,11 @@ export default function App() {
         ) : null}
 
         {selectedMenu === 'CONTACTS' && selectedContact ? (
-          <ContactDetailView contact={selectedContact} onBack={() => setSelectedContact(null)} />
+          <ContactDetailView
+            contact={selectedContact}
+            accessToken={session.accessToken}
+            onBack={() => setSelectedContact(null)}
+          />
         ) : null}
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -924,24 +930,47 @@ function ContactsView({
   );
 }
 
-function ContactDetailView({ contact, onBack }: { contact: ContactItem; onBack: () => void }) {
+function ContactDetailView({
+  contact,
+  accessToken,
+  onBack
+}: {
+  contact: ContactItem;
+  accessToken: string;
+  onBack: () => void;
+}) {
   const fullName = `${contact.firstName} ${contact.lastName}`.trim();
   const initials = `${contact.firstName?.[0] || ''}${contact.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || '?';
   const normalizedPhone = (contact.phone || '').replace(/[^\d+]/g, '');
 
-  const openPhone = () => {
+  const logContactAction = async (actionType: ContactActionType) => {
+    try {
+      await api.post(
+        '/contact-action-logs',
+        { contactId: contact._id, actionType },
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+    } catch (_error) {
+      // The user action should still proceed even if audit logging temporarily fails.
+    }
+  };
+
+  const openPhone = async () => {
     if (!normalizedPhone) return;
+    await logContactAction('CALL');
     Linking.openURL(`tel:${normalizedPhone}`);
   };
 
-  const openWhatsApp = () => {
+  const openWhatsApp = async () => {
     if (!normalizedPhone) return;
     const phoneForWhatsApp = normalizedPhone.replace(/[^\d]/g, '');
+    await logContactAction('WHATSAPP');
     Linking.openURL(`https://wa.me/${phoneForWhatsApp}`);
   };
 
-  const openEmail = () => {
+  const openEmail = async () => {
     if (!contact.email) return;
+    await logContactAction('EMAIL');
     Linking.openURL(`mailto:${contact.email}`);
   };
 

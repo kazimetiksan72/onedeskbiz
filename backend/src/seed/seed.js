@@ -5,6 +5,7 @@ const env = require('../config/env');
 const { User } = require('../models/User');
 const { Customer } = require('../models/Customer');
 const { Contact } = require('../models/Contact');
+const { ContactActionLog } = require('../models/ContactActionLog');
 const { Vehicle } = require('../models/Vehicle');
 const { CompanySettings } = require('../models/CompanySettings');
 const { LeaveRequest } = require('../models/LeaveRequest');
@@ -26,6 +27,7 @@ async function run() {
     User.deleteMany({}),
     Customer.deleteMany({}),
     Contact.deleteMany({}),
+    ContactActionLog.deleteMany({}),
     Vehicle.deleteMany({}),
     CompanySettings.deleteMany({}),
     LeaveRequest.deleteMany({}),
