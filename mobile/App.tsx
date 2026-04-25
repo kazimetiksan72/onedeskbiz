@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import * as ImagePicker from 'expo-image-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
 import {
   ActivityIndicator,
@@ -11,6 +12,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -311,6 +313,22 @@ export default function App() {
     (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
     !selectedContact &&
     !selectedActionLog;
+  const isRefreshing =
+    (selectedMenu === 'REQUESTS' && requestsLoading) ||
+    (selectedMenu === 'CONTACTS' && contactsLoading) ||
+    (selectedMenu === 'CUSTOMERS' && customersLoading);
+
+  const refreshCurrentScreen = () => {
+    if (selectedMenu === 'REQUESTS') {
+      loadRequests();
+    }
+    if (selectedMenu === 'CONTACTS') {
+      loadContacts();
+    }
+    if (selectedMenu === 'CUSTOMERS') {
+      loadCustomers();
+    }
+  };
 
   const login = async () => {
     setError('');
@@ -729,7 +747,18 @@ export default function App() {
           onSignOut={signOut}
         />
 
-        <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={refreshCurrentScreen}
+              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
+              tintColor="#2563eb"
+            />
+          }
+        >
           {selectedMenu === 'HOME' ? (
             <HomeView
               user={session.user}
@@ -941,12 +970,12 @@ function BottomTabs({
   selectedMenu: MenuKey;
   onSelect: (menu: MenuKey) => void;
 }) {
-  const tabs: Array<{ key: MenuKey; label: string; short: string }> = [
-    { key: 'HOME', label: 'Ana', short: 'A' },
-    { key: 'CARD', label: 'Kart', short: 'K' },
-    { key: 'REQUESTS', label: 'Talepler', short: 'T' },
-    { key: 'APPROVALS', label: 'Onaylar', short: 'O' },
-    { key: 'CONTACTS', label: 'Kişiler', short: 'L' }
+  const tabs: Array<{ key: MenuKey; label: string; icon: string }> = [
+    { key: 'HOME', label: 'Ana', icon: '⌂' },
+    { key: 'CARD', label: 'Kart', icon: '▣' },
+    { key: 'REQUESTS', label: 'Talepler', icon: '≡' },
+    { key: 'APPROVALS', label: 'Onaylar', icon: '✓' },
+    { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' }
   ];
 
   return (
@@ -960,7 +989,7 @@ function BottomTabs({
             onPress={() => onSelect(tab.key)}
           >
             <View style={[styles.bottomTabIcon, active ? styles.bottomTabIconActive : null]}>
-              <Text style={[styles.bottomTabIconText, active ? styles.bottomTabIconTextActive : null]}>{tab.short}</Text>
+              <Text style={[styles.bottomTabIconText, active ? styles.bottomTabIconTextActive : null]}>{tab.icon}</Text>
             </View>
             <Text style={[styles.bottomTabLabel, active ? styles.bottomTabLabelActive : null]}>{tab.label}</Text>
           </Pressable>
@@ -1303,14 +1332,9 @@ function RequestsView({
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Taleplerim</Text>
-        <View style={styles.headerActionsRow}>
-          <Pressable onPress={onNewRequest}>
-            <Text style={styles.refreshText}>Yeni Talep</Text>
-          </Pressable>
-          <Pressable onPress={onReload}>
-            <Text style={styles.refreshText}>Yenile</Text>
-          </Pressable>
-        </View>
+        <Pressable onPress={onNewRequest}>
+          <Text style={styles.refreshText}>Yeni Talep</Text>
+        </Pressable>
       </View>
       {items.length === 0 ? <Text style={styles.emptyText}>Talep kaydı yok.</Text> : null}
       {items.map((item) => (
@@ -1398,8 +1422,9 @@ function RequestForm({
 }) {
   const [type, setType] = useState<RequestType>('VEHICLE');
   const [vehicleId, setVehicleId] = useState('');
-  const [startAt, setStartAt] = useState('');
-  const [endAt, setEndAt] = useState('');
+  const [startAt, setStartAt] = useState(() => new Date());
+  const [endAt, setEndAt] = useState(() => new Date(Date.now() + 60 * 60 * 1000));
+  const [activeDateField, setActiveDateField] = useState<'start' | 'end' | null>(null);
   const [materialText, setMaterialText] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -1411,8 +1436,8 @@ function RequestForm({
           ? { type, materialText }
           : {
               type,
-              startAt: new Date(startAt).toISOString(),
-              endAt: new Date(endAt).toISOString(),
+              startAt: startAt.toISOString(),
+              endAt: endAt.toISOString(),
               ...(type === 'VEHICLE' ? { vehicleId } : {})
             };
       await onSubmit(payload);
@@ -1446,9 +1471,37 @@ function RequestForm({
       {type !== 'MATERIAL' ? (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Tarih Aralığı</Text>
-          <TextInput style={styles.input} placeholder="Başlangıç: 2026-04-25T09:00" value={startAt} onChangeText={setStartAt} />
-          <TextInput style={styles.input} placeholder="Bitiş: 2026-04-25T18:00" value={endAt} onChangeText={setEndAt} />
-          <Text style={styles.hint}>Tarih formatı: YYYY-MM-DDTHH:mm</Text>
+          <DateTimeField label="Başlangıç" value={startAt} onPress={() => setActiveDateField('start')} />
+          <DateTimeField label="Bitiş" value={endAt} onPress={() => setActiveDateField('end')} />
+          {activeDateField ? (
+            <View style={styles.datePickerPanel}>
+              <DateTimePicker
+                value={activeDateField === 'start' ? startAt : endAt}
+                mode="datetime"
+                display={Platform.OS === 'ios' ? 'inline' : 'default'}
+                minimumDate={new Date(2020, 0, 1)}
+                onChange={(_event, selectedDate) => {
+                  if (!selectedDate) return;
+                  if (activeDateField === 'start') {
+                    setStartAt(selectedDate);
+                    if (selectedDate.getTime() >= endAt.getTime()) {
+                      setEndAt(new Date(selectedDate.getTime() + 60 * 60 * 1000));
+                    }
+                  } else {
+                    setEndAt(selectedDate);
+                  }
+                  if (Platform.OS !== 'ios') {
+                    setActiveDateField(null);
+                  }
+                }}
+              />
+              {Platform.OS === 'ios' ? (
+                <Pressable style={styles.datePickerDoneButton} onPress={() => setActiveDateField(null)}>
+                  <Text style={styles.secondaryButtonText}>Tamam</Text>
+                </Pressable>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       ) : (
         <View style={styles.sectionCard}>
@@ -1461,6 +1514,18 @@ function RequestForm({
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Onaya Gönder</Text>}
       </Pressable>
     </ScrollView>
+  );
+}
+
+function DateTimeField({ label, value, onPress }: { label: string; value: Date; onPress: () => void }) {
+  return (
+    <Pressable style={styles.dateField} onPress={onPress}>
+      <View>
+        <Text style={styles.infoLabel}>{label}</Text>
+        <Text style={styles.dateFieldValue}>{value.toLocaleString('tr-TR')}</Text>
+      </View>
+      <Text style={styles.refreshText}>Seç</Text>
+    </Pressable>
   );
 }
 
@@ -1481,9 +1546,6 @@ function CustomersView({
     <View style={styles.sectionCard}>
       <View style={styles.sectionHeaderRow}>
         <Text style={styles.sectionTitle}>Müşteri Listesi</Text>
-        <Pressable onPress={onReload}>
-          <Text style={styles.refreshText}>Yenile</Text>
-        </Pressable>
       </View>
 
       {customers.length === 0 ? <Text style={styles.infoLine}>Müşteri yok.</Text> : null}
@@ -1544,9 +1606,6 @@ function ContactsView({
         <View style={styles.headerActionsRow}>
           <Pressable onPress={onOpenActions}>
             <Text style={styles.refreshText}>Aksiyonlar</Text>
-          </Pressable>
-          <Pressable onPress={onReload}>
-            <Text style={styles.refreshText}>Yenile</Text>
           </Pressable>
         </View>
       </View>
@@ -1664,10 +1723,6 @@ function ContactDetailView({
 
   return (
     <View style={styles.contactDetailCard}>
-      <Pressable style={styles.backButton} onPress={onBack}>
-        <Text style={styles.backButtonText}>‹ Kişiler</Text>
-      </Pressable>
-
       <View style={styles.contactDetailHeader}>
         <View style={styles.contactDetailAvatar}>
           <Text style={styles.contactDetailAvatarText}>{initials}</Text>
@@ -2412,6 +2467,37 @@ const styles = StyleSheet.create({
   vehicleChoiceActive: {
     borderColor: '#2563eb',
     backgroundColor: '#eff6ff'
+  },
+  dateField: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    backgroundColor: '#f8fafc'
+  },
+  dateFieldValue: {
+    marginTop: 4,
+    color: '#0f172a',
+    fontSize: 16,
+    fontWeight: '800'
+  },
+  datePickerPanel: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: '#fff'
+  },
+  datePickerDoneButton: {
+    borderTopWidth: 1,
+    borderTopColor: '#e2e8f0',
+    paddingVertical: 13,
+    alignItems: 'center',
+    backgroundColor: '#f8fafc'
   },
   contactsCard: {
     backgroundColor: '#fff',
