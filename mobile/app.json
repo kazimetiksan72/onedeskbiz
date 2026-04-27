@@ -14,8 +14,12 @@
       "bundleIdentifier": "com.pikselmutfak.onedesk",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Profil fotoğrafınızı çekmek için kamera erişimi gerekiyor."
-      }
+        "NSCameraUsageDescription": "Profil fotoğrafınızı çekmek için kamera erişimi gerekiyor.",
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
+      },
+      "icon": "./assets/icon.png"
     },
     "android": {},
     "web": {
@@ -24,10 +28,18 @@
     "extra": {
       "eas": {
         "projectId": "b1e63e76-a381-46cc-8a77-da312b788ae9"
-      }
+      },
+      "oneSignalAppId": ""
     },
     "plugins": [
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "production"
+        }
+      ],
       "@react-native-community/datetimepicker"
-    ]
+    ],
+    "icon": "./assets/icon.png"
   }
 }

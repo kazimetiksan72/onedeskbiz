@@ -30,8 +30,6 @@ function buildVCard(data: any) {
   if (card.website) lines.push(`URL:${escapeVCardValue(card.website)}`);
   if (card.address) lines.push(`ADR;TYPE=WORK:;;${escapeVCardValue(card.address)};;;;`);
   if (card.bio) lines.push(`NOTE:${escapeVCardValue(card.bio)}`);
-  if (card.avatarPublicUrl) lines.push(`PHOTO;VALUE=uri:${escapeVCardValue(card.avatarPublicUrl)}`);
-
   lines.push('END:VCARD');
   return lines.join('\n');
 }

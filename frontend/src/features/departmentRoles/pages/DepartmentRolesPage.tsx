@@ -27,6 +27,7 @@ export function DepartmentRolesPage() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState<DepartmentRole | null>(null);
+  const [roleAssignments, setRoleAssignments] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
 
   const load = async () => {
@@ -38,6 +39,7 @@ export function DepartmentRolesPage() {
     setRoles(roleItems);
     setEmployees(employeeItems);
     setDepartments(settings?.departments || []);
+    setRoleAssignments(Object.fromEntries(employeeItems.map((employee) => [employee._id, employee.departmentRoleId?._id || ''])));
   };
 
   useEffect(() => {
@@ -84,8 +86,12 @@ export function DepartmentRolesPage() {
     await load();
   };
 
-  const assignRole = async (employeeId: string, roleId: string) => {
-    await assignDepartmentRole(employeeId, roleId || null);
+  const saveAssignments = async () => {
+    await Promise.all(
+      employees
+        .filter((employee) => (employee.departmentRoleId?._id || '') !== (roleAssignments[employee._id] || ''))
+        .map((employee) => assignDepartmentRole(employee._id, roleAssignments[employee._id] || null))
+    );
     await load();
   };
 
@@ -151,7 +157,11 @@ export function DepartmentRolesPage() {
                   <td className="py-2">{employee.firstName} {employee.lastName}</td>
                   <td className="py-2">{employee.department || '-'}</td>
                   <td className="py-2">
-                    <select className="input" value={employee.departmentRoleId?._id || ''} onChange={(e) => assignRole(employee._id, e.target.value)}>
+                    <select
+                      className="input"
+                      value={roleAssignments[employee._id] || ''}
+                      onChange={(e) => setRoleAssignments((current) => ({ ...current, [employee._id]: e.target.value }))}
+                    >
                       <option value="">Rol yok</option>
                       {roles.filter((role) => !employee.department || role.department === employee.department).map((role) => (
                         <option key={role._id} value={role._id}>{role.department} / {role.name}</option>
@@ -162,6 +172,9 @@ export function DepartmentRolesPage() {
               ))}
             </tbody>
           </table>
+        </div>
+        <div className="flex justify-start">
+          <button className="btn-primary" type="button" onClick={saveAssignments}>Kaydet</button>
         </div>
       </section>
     </div>

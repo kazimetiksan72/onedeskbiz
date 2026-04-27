@@ -22,6 +22,8 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 
+declare const require: (moduleName: string) => any;
+
 type UserRole = 'ADMIN' | 'EMPLOYEE';
 type MenuKey = 'HOME' | 'CARD' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
 
@@ -223,6 +225,75 @@ const api = axios.create({
   timeout: 15000
 });
 
+const oneSignalAppId = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() || '';
+let oneSignalInitialized = false;
+let oneSignalModuleLoadAttempted = false;
+let oneSignalModule: any = null;
+
+function getOneSignal() {
+  if (!oneSignalAppId) return null;
+
+  if (!oneSignalModuleLoadAttempted) {
+    oneSignalModuleLoadAttempted = true;
+    try {
+      oneSignalModule = require('react-native-onesignal');
+    } catch (error) {
+      console.warn('OneSignal native module is not available in this runtime.', error);
+      oneSignalModule = null;
+    }
+  }
+
+  const oneSignal = oneSignalModule?.OneSignal;
+  if (!oneSignal) return null;
+
+  if (!oneSignalInitialized) {
+    oneSignal.initialize(oneSignalAppId);
+    oneSignalInitialized = true;
+  }
+
+  return oneSignal;
+}
+
+async function identifyOneSignalUser(user: AuthUser) {
+  const oneSignal = getOneSignal();
+  if (!oneSignal) return false;
+
+  try {
+    oneSignal.login(user._id || user.email);
+    oneSignal.User.addTag('email', user.email);
+    return true;
+  } catch (error) {
+    console.warn('OneSignal user identification failed.', error);
+    return false;
+  }
+}
+
+async function canShowOneSignalPermissionModal() {
+  const oneSignal = getOneSignal();
+  if (!oneSignal) return false;
+
+  try {
+    const hasPermission = await oneSignal.Notifications.getPermissionAsync();
+    if (hasPermission) return false;
+    return await oneSignal.Notifications.canRequestPermission();
+  } catch (error) {
+    console.warn('OneSignal permission status could not be read.', error);
+    return false;
+  }
+}
+
+async function requestOneSignalPushPermission() {
+  const oneSignal = getOneSignal();
+  if (!oneSignal) return false;
+
+  try {
+    return await oneSignal.Notifications.requestPermission(false);
+  } catch (error) {
+    console.warn('OneSignal permission request failed.', error);
+    return false;
+  }
+}
+
 function escapeVCardValue(value: string) {
   return value
     .replace(/\\/g, '\\\\')
@@ -252,8 +323,6 @@ function buildVCard(data: PublicCardResponse | null) {
   if (card.email) lines.push(`EMAIL;TYPE=INTERNET:${escapeVCardValue(card.email)}`);
   if (card.website) lines.push(`URL:${escapeVCardValue(card.website)}`);
   if (card.address) lines.push(`ADR:;;${escapeVCardValue(card.address)};;;;`);
-  if (card.avatarPublicUrl) lines.push(`PHOTO;VALUE=uri:${escapeVCardValue(card.avatarPublicUrl)}`);
-
   lines.push('END:VCARD');
   return lines.join('\n');
 }
@@ -290,6 +359,8 @@ export default function App() {
   const [session, setSession] = useState<LoginResponse | null>(null);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
+  const [pushPermissionVisible, setPushPermissionVisible] = useState(false);
+  const [pushPermissionLoading, setPushPermissionLoading] = useState(false);
 
   const [selectedMenu, setSelectedMenu] = useState<MenuKey>('HOME');
 
@@ -360,6 +431,10 @@ export default function App() {
 
       setSession(data);
       setSelectedMenu('HOME');
+      const oneSignalReady = await identifyOneSignalUser(data.user);
+      if (oneSignalReady && await canShowOneSignalPermissionModal()) {
+        setPushPermissionVisible(true);
+      }
     } catch (requestError: any) {
       setError(requestError?.response?.data?.message || 'Giriş başarısız. Bilgileri kontrol edin.');
     } finally {
@@ -622,6 +697,10 @@ export default function App() {
   };
 
   const signOut = () => {
+    const oneSignal = getOneSignal();
+    if (oneSignal) {
+      oneSignal.logout();
+    }
     setSession(null);
     setSelectedMenu('HOME');
     setCardData(null);
@@ -637,9 +716,17 @@ export default function App() {
     setVehicles([]);
     setRequestFormVisible(false);
     setProfileVisible(false);
+    setPushPermissionVisible(false);
     setError('');
     setEmail('mert@smallbiz.local');
     setPassword('App12345');
+  };
+
+  const handlePushPermissionRequest = async () => {
+    setPushPermissionLoading(true);
+    await requestOneSignalPushPermission();
+    setPushPermissionLoading(false);
+    setPushPermissionVisible(false);
   };
 
   const onSelectMenu = (menu: MenuKey) => {
@@ -928,6 +1015,28 @@ export default function App() {
               <ProfilePhotoCard user={session.user} uploading={photoUploading} onTakePhoto={takeProfilePhoto} />
             </ScrollView>
           </SafeAreaView>
+        </Modal>
+
+        <Modal
+          visible={pushPermissionVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPushPermissionVisible(false)}
+        >
+          <View style={styles.permissionOverlay}>
+            <View style={styles.permissionCard}>
+              <View style={styles.permissionIcon}>
+                <Text style={styles.permissionIconText}>!</Text>
+              </View>
+              <Text style={styles.permissionTitle}>Bildirimleri Aç</Text>
+              <Text style={styles.permissionBody}>
+                Talepler, onaylar ve önemli şirket bildirimleri için push notification izni gerekiyor.
+              </Text>
+              <Pressable style={styles.primaryButton} onPress={handlePushPermissionRequest} disabled={pushPermissionLoading}>
+                {pushPermissionLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>İzin Ver</Text>}
+              </Pressable>
+            </View>
+          </View>
         </Modal>
       </View>
     </SafeAreaView>
@@ -1969,6 +2078,49 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingBottom: 28,
     gap: 14
+  },
+  permissionOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24
+  },
+  permissionCard: {
+    width: '100%',
+    borderRadius: 30,
+    backgroundColor: '#fff',
+    padding: 24,
+    gap: 14,
+    shadowColor: '#0f172a',
+    shadowOpacity: 0.2,
+    shadowOffset: { width: 0, height: 18 },
+    shadowRadius: 30,
+    elevation: 10
+  },
+  permissionIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  permissionIconText: {
+    color: '#1d4ed8',
+    fontSize: 28,
+    fontWeight: '900'
+  },
+  permissionTitle: {
+    color: '#0f172a',
+    fontSize: 25,
+    fontWeight: '900',
+    letterSpacing: -0.5
+  },
+  permissionBody: {
+    color: '#64748b',
+    fontSize: 15,
+    lineHeight: 22
   },
   appHeader: {
     paddingHorizontal: 18,
