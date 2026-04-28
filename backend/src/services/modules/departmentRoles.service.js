@@ -1,6 +1,8 @@
 const { DepartmentRole } = require('../../models/DepartmentRole');
+const { DepartmentRoleAssignment } = require('../../models/DepartmentRoleAssignment');
 const { User } = require('../../models/User');
 const { ApiError } = require('../../utils/apiError');
+const { attachDepartmentRole } = require('./departmentRoleAssignments.service');
 
 async function listDepartmentRoles() {
   return DepartmentRole.find({}).sort({ department: 1, name: 1 }).lean();
@@ -17,13 +19,11 @@ async function updateDepartmentRole(id, payload) {
 }
 
 async function deleteDepartmentRole(id) {
-  const assignedCount = await User.countDocuments({ departmentRoleId: id });
-  if (assignedCount > 0) {
-    throw new ApiError(409, 'Bu rol personele atanmış olduğu için silinemez.');
-  }
-
   const item = await DepartmentRole.findByIdAndDelete(id).lean();
   if (!item) throw new ApiError(404, 'Rol bulunamadı.');
+
+  await DepartmentRoleAssignment.deleteMany({ departmentRoleId: id });
+  await User.collection.updateMany({ departmentRoleId: item._id }, { $unset: { departmentRoleId: '' } });
 }
 
 async function assignRoleToUser(userId, departmentRoleId) {
@@ -37,18 +37,29 @@ async function assignRoleToUser(userId, departmentRoleId) {
     userId,
     {
       $set: {
-        departmentRoleId: departmentRoleId || null,
         ...(role ? { department: role.department } : {})
       }
     },
     { new: true, runValidators: true }
   )
     .select('-passwordHash')
-    .populate('departmentRoleId')
     .lean();
 
   if (!user) throw new ApiError(404, 'Kullanıcı bulunamadı.');
-  return user;
+
+  if (role) {
+    await DepartmentRoleAssignment.findOneAndUpdate(
+      { userId },
+      { $set: { userId, departmentRoleId } },
+      { upsert: true, new: true, runValidators: true }
+    );
+    await User.collection.updateOne({ _id: user._id }, { $unset: { departmentRoleId: '' } });
+  } else {
+    await DepartmentRoleAssignment.deleteOne({ userId });
+    await User.collection.updateOne({ _id: user._id }, { $unset: { departmentRoleId: '' } });
+  }
+
+  return attachDepartmentRole(user);
 }
 
 module.exports = {

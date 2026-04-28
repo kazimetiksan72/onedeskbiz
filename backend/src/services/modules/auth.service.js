@@ -11,9 +11,13 @@ const {
   verifyRefreshToken,
   hashToken
 } = require('../../utils/tokens');
+const { attachDepartmentRole } = require('./departmentRoleAssignments.service');
 
 function safeUserQuery(id) {
-  return User.findById(id).select('-passwordHash').populate('departmentRoleId').lean();
+  return User.findById(id)
+    .select('-passwordHash')
+    .lean()
+    .then(attachDepartmentRole);
 }
 
 async function issueTokenPair(user) {

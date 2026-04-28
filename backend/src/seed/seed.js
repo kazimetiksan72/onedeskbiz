@@ -8,6 +8,7 @@ const { Contact } = require('../models/Contact');
 const { ContactActionLog } = require('../models/ContactActionLog');
 const { Vehicle } = require('../models/Vehicle');
 const { DepartmentRole, PERMISSIONS } = require('../models/DepartmentRole');
+const { DepartmentRoleAssignment } = require('../models/DepartmentRoleAssignment');
 const { Request } = require('../models/Request');
 const { CompanySettings } = require('../models/CompanySettings');
 const { LeaveRequest } = require('../models/LeaveRequest');
@@ -32,6 +33,7 @@ async function run() {
     ContactActionLog.deleteMany({}),
     Vehicle.deleteMany({}),
     DepartmentRole.deleteMany({}),
+    DepartmentRoleAssignment.deleteMany({}),
     Request.deleteMany({}),
     CompanySettings.deleteMany({}),
     LeaveRequest.deleteMany({}),
@@ -72,7 +74,6 @@ async function run() {
       firstName: 'Aylin',
       lastName: 'Kaya',
       department: 'Management',
-      departmentRoleId: findRole('Management', 'Yönetici'),
       title: 'General Manager',
       phone: '+905551000001',
       startDate: new Date('2023-01-10'),
@@ -89,7 +90,6 @@ async function run() {
       firstName: 'Mert',
       lastName: 'Demir',
       department: 'Sales',
-      departmentRoleId: findRole('Sales', 'Yönetici'),
       title: 'Sales Specialist',
       phone: '+905551000002',
       startDate: new Date('2024-03-20'),
@@ -113,7 +113,6 @@ async function run() {
       firstName: 'Selin',
       lastName: 'Yilmaz',
       department: 'Operations',
-      departmentRoleId: findRole('Operations', 'Çalışan'),
       title: 'Operations Specialist',
       phone: '+905551000003',
       startDate: new Date('2024-06-05'),
@@ -128,6 +127,21 @@ async function run() {
         email: 'selin@smallbiz.local',
         isPublic: true
       }
+    }
+  ]);
+
+  await DepartmentRoleAssignment.insertMany([
+    {
+      userId: users.find((user) => user.email === 'admin@smallbiz.local')._id,
+      departmentRoleId: findRole('Management', 'Yönetici')
+    },
+    {
+      userId: users.find((user) => user.email === 'mert@smallbiz.local')._id,
+      departmentRoleId: findRole('Sales', 'Yönetici')
+    },
+    {
+      userId: users.find((user) => user.email === 'selin@smallbiz.local')._id,
+      departmentRoleId: findRole('Operations', 'Çalışan')
     }
   ]);
 

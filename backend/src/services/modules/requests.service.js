@@ -62,9 +62,13 @@ async function getApprovalPermissions(user) {
     return Object.values(permissionByRequestType);
   }
 
-  if (!user.departmentRoleId) return [];
+  const roleId = user.departmentRoleId?._id || user.departmentRoleId;
+  if (!roleId) return [];
 
-  const role = await DepartmentRole.findById(user.departmentRoleId).select('permissions').lean();
+  const role = typeof user.departmentRoleId === 'object' && Array.isArray(user.departmentRoleId.permissions)
+    ? user.departmentRoleId
+    : await DepartmentRole.findById(roleId).select('permissions').lean();
+
   return role?.permissions || [];
 }
 

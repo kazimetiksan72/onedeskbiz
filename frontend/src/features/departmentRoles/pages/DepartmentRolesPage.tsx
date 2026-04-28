@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { PageHeader } from '../../../components/PageHeader';
 import { EmptyState } from '../../../components/EmptyState';
+import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { getEmployees } from '../../employees/api/employees.api';
 import type { Employee } from '../../employees/types/employee.types';
 import { getCompanySettings } from '../../companySettings/api/companySettings.api';
@@ -28,6 +29,8 @@ export function DepartmentRolesPage() {
   const [form, setForm] = useState(initialForm);
   const [editing, setEditing] = useState<DepartmentRole | null>(null);
   const [roleAssignments, setRoleAssignments] = useState<Record<string, string>>({});
+  const [roleToDelete, setRoleToDelete] = useState<DepartmentRole | null>(null);
+  const [deleteError, setDeleteError] = useState('');
   const [error, setError] = useState('');
 
   const load = async () => {
@@ -80,10 +83,18 @@ export function DepartmentRolesPage() {
     }));
   };
 
-  const removeRole = async (id: string) => {
-    if (!window.confirm('Bu rolü silmek istediğinize emin misiniz?')) return;
-    await deleteDepartmentRole(id);
-    await load();
+  const removeRole = async () => {
+    if (!roleToDelete) return;
+
+    setDeleteError('');
+
+    try {
+      await deleteDepartmentRole(roleToDelete._id);
+      setRoleToDelete(null);
+      await load();
+    } catch (requestError: any) {
+      setDeleteError(requestError?.response?.data?.message || 'Rol silinemedi.');
+    }
   };
 
   const saveAssignments = async () => {
@@ -138,7 +149,7 @@ export function DepartmentRolesPage() {
                 </div>
                 <div className="flex gap-2">
                   <button className="btn-secondary" type="button" onClick={() => startEdit(role)}>Düzenle</button>
-                  <button className="btn-danger" type="button" onClick={() => removeRole(role._id)}>Sil</button>
+                  <button className="btn-danger" type="button" onClick={() => { setDeleteError(''); setRoleToDelete(role); }}>Sil</button>
                 </div>
               </div>
             ))}
@@ -177,6 +188,17 @@ export function DepartmentRolesPage() {
           <button className="btn-primary" type="button" onClick={saveAssignments}>Kaydet</button>
         </div>
       </section>
+
+      {roleToDelete ? (
+        <ConfirmDialog
+          title="Rolü Sil"
+          message={`${roleToDelete.department} / ${roleToDelete.name} rolünü silmek istediğinize emin misiniz?`}
+          onConfirm={removeRole}
+          onCancel={() => { setDeleteError(''); setRoleToDelete(null); }}
+        >
+          {deleteError ? <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{deleteError}</p> : null}
+        </ConfirmDialog>
+      ) : null}
     </div>
   );
 }

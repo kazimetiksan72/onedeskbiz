@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import axios from 'axios';
+import Constants from 'expo-constants';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
@@ -15,6 +16,7 @@ import {
   RefreshControl,
   SafeAreaView,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -199,6 +201,13 @@ type RequestItem = {
   } | null;
 };
 
+const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL'];
+
+function userCanApproveRequests(user?: AuthUser | null) {
+  const permissions = user?.departmentRoleId?.permissions;
+  if (!Array.isArray(permissions)) return false;
+  return permissions.some((permission) => approvalPermissions.includes(permission));
+}
 
 function cardFromSessionUser(user: AuthUser): PublicCardResponse {
   return {
@@ -232,6 +241,7 @@ let oneSignalModule: any = null;
 
 function getOneSignal() {
   if (!oneSignalAppId) return null;
+  if (Constants.appOwnership === 'expo') return null;
 
   if (!oneSignalModuleLoadAttempted) {
     oneSignalModuleLoadAttempted = true;
@@ -351,6 +361,28 @@ function mergeCardWithCompanyInfo(card: PublicCardResponse, company: CompanyBill
   };
 }
 
+function buildBillingShareText(billingData: CompanyBillingResponse) {
+  const billing = billingData.billingInfo || {};
+  const lines = [
+    billing.legalCompanyName || billingData.companyName || '-',
+    billing.taxNumber ? `Vergi No: ${billing.taxNumber}` : '',
+    billing.taxOffice ? `Vergi Dairesi: ${billing.taxOffice}` : '',
+    billing.address ? `Adres: ${billing.address}` : '',
+    billingData.website ? `Web Sitesi: ${billingData.website}` : ''
+  ].filter(Boolean);
+
+  const bankLines = (billing.bankAccounts || []).flatMap((account, index) => [
+    '',
+    `Banka Bilgileri ${index + 1}`,
+    account.bankName ? `Banka: ${account.bankName}` : '',
+    account.branchName ? `Şube: ${account.branchName}` : '',
+    account.iban ? `IBAN: ${account.iban}` : '',
+    account.swiftCode ? `SWIFT: ${account.swiftCode}` : ''
+  ]).filter((line) => line !== '');
+
+  return [...lines, ...bankLines].join('\n');
+}
+
 export default function App() {
   const [email, setEmail] = useState('mert@smallbiz.local');
   const [password, setPassword] = useState('App12345');
@@ -387,9 +419,7 @@ export default function App() {
   const [requestFormVisible, setRequestFormVisible] = useState(false);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
-  const canApproveRequests = (session?.user.departmentRoleId?.permissions || []).some((permission) =>
-    ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL'].includes(permission)
-  );
+  const canApproveRequests = userCanApproveRequests(session?.user);
   const isTabRoot =
     (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
     !selectedCustomer &&
@@ -730,11 +760,18 @@ export default function App() {
   };
 
   const onSelectMenu = (menu: MenuKey) => {
+    if (menu === 'APPROVALS' && !canApproveRequests) return;
     setSelectedMenu(menu);
     setSelectedCustomer(null);
     setSelectedContact(null);
     setSelectedActionLog(null);
   };
+
+  useEffect(() => {
+    if (selectedMenu === 'APPROVALS' && !canApproveRequests) {
+      setSelectedMenu('HOME');
+    }
+  }, [canApproveRequests, selectedMenu]);
 
   useEffect(() => {
     if (!session) return;
@@ -1412,6 +1449,14 @@ function BillingView({
   billingData: CompanyBillingResponse | null;
   onReload: () => void;
 }) {
+  const shareBillingInfo = async () => {
+    if (!billingData) return;
+    await Share.share({
+      title: 'Fatura Bilgileri',
+      message: buildBillingShareText(billingData)
+    });
+  };
+
   if (loading) {
     return <ActivityIndicator color="#2563eb" />;
   }
@@ -1429,6 +1474,16 @@ function BillingView({
 
   return (
     <View style={styles.sectionCard}>
+      <View style={styles.billingHeaderRow}>
+        <View>
+          <Text style={styles.cardKicker}>FATURA</Text>
+          <Text style={styles.sectionTitle}>Fatura Bilgileri</Text>
+        </View>
+        <Pressable style={styles.billingShareButton} onPress={shareBillingInfo}>
+          <Text style={styles.billingShareButtonText}>Paylaş</Text>
+        </Pressable>
+      </View>
+
       <View style={styles.billingBlock}>
         <Text style={styles.billingLegalName}>{billingData.billingInfo?.legalCompanyName || '-'}</Text>
         <Text style={styles.billingLine}>{billingData.billingInfo?.taxNumber || '-'}</Text>
@@ -2425,6 +2480,13 @@ const styles = StyleSheet.create({
     color: '#0f172a',
     letterSpacing: -0.4
   },
+  cardKicker: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    textTransform: 'uppercase'
+  },
   cardIdentityBlock: {
     alignItems: 'center',
     paddingVertical: 10,
@@ -2528,6 +2590,24 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 14,
     gap: 6
+  },
+  billingHeaderRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14
+  },
+  billingShareButton: {
+    paddingHorizontal: 13,
+    paddingVertical: 9,
+    borderRadius: 999,
+    backgroundColor: '#1d4ed8'
+  },
+  billingShareButtonText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '900'
   },
   billingLine: {
     fontSize: 13,

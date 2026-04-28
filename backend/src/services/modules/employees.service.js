@@ -4,6 +4,8 @@ const { ROLES } = require('../../constants/roles');
 const env = require('../../config/env');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
+const { DepartmentRoleAssignment } = require('../../models/DepartmentRoleAssignment');
+const { attachDepartmentRole, attachDepartmentRoles } = require('./departmentRoleAssignments.service');
 
 function syncBusinessCard(userPayload) {
   const existingCard = userPayload.businessCard || {};
@@ -80,7 +82,8 @@ async function createEmployee(payload) {
     passwordUpdatedAt: new Date()
   });
 
-  return User.findById(created._id).select('-passwordHash').lean();
+  const employee = await User.findById(created._id).select('-passwordHash').lean();
+  return attachDepartmentRole(employee);
 }
 
 async function listEmployees({ page, limit, search }) {
@@ -99,7 +102,6 @@ async function listEmployees({ page, limit, search }) {
   const [items, total] = await Promise.all([
     User.find(query)
       .select('-passwordHash')
-      .populate('departmentRoleId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -107,19 +109,18 @@ async function listEmployees({ page, limit, search }) {
     User.countDocuments(query)
   ]);
 
-  return { items, total, page, limit };
+  return { items: await attachDepartmentRoles(items), total, page, limit };
 }
 
 async function getEmployeeById(id) {
   const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
     .select('-passwordHash')
-    .populate('departmentRoleId')
     .lean();
   if (!employee) {
     throw new ApiError(404, 'Employee not found');
   }
 
-  return employee;
+  return attachDepartmentRole(employee);
 }
 
 async function updateEmployee(id, payload) {
@@ -159,10 +160,9 @@ async function updateEmployee(id, payload) {
 
   const employee = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true })
     .select('-passwordHash')
-    .populate('departmentRoleId')
     .lean();
 
-  return employee;
+  return attachDepartmentRole(employee);
 }
 
 async function deleteEmployee(id) {
@@ -171,6 +171,8 @@ async function deleteEmployee(id) {
   if (!employee) {
     throw new ApiError(404, 'Employee not found');
   }
+
+  await DepartmentRoleAssignment.deleteOne({ userId: id });
 }
 
 module.exports = {
