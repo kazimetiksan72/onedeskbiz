@@ -65,6 +65,10 @@ type LoginResponse = {
   refreshToken: string;
 };
 
+type AuthMeResponse = {
+  user: AuthUser;
+};
+
 type PublicCardResponse = {
   userId?: string;
   firstName: string;
@@ -180,7 +184,7 @@ type VehicleItem = {
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
-type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL';
+type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE';
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 type RequestItem = {
@@ -190,6 +194,9 @@ type RequestItem = {
   startAt?: string | null;
   endAt?: string | null;
   materialText?: string;
+  expenseAmount?: number;
+  expenseCurrency?: string;
+  expenseDescription?: string;
   createdAt: string;
   requesterUserId?: { firstName?: string; lastName?: string; workEmail?: string; department?: string } | string;
   vehicleId?: VehicleItem | null;
@@ -201,7 +208,7 @@ type RequestItem = {
   } | null;
 };
 
-const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL'];
+const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL'];
 
 function userCanApproveRequests(user?: AuthUser | null) {
   const permissions = user?.departmentRoleId?.permissions;
@@ -393,6 +400,7 @@ export default function App() {
   const [profileVisible, setProfileVisible] = useState(false);
   const [pushPermissionVisible, setPushPermissionVisible] = useState(false);
   const [pushPermissionLoading, setPushPermissionLoading] = useState(false);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const [selectedMenu, setSelectedMenu] = useState<MenuKey>('HOME');
 
@@ -411,6 +419,7 @@ export default function App() {
   const [actionLogs, setActionLogs] = useState<ContactActionLogItem[]>([]);
   const [actionLogsLoading, setActionLogsLoading] = useState(false);
   const [selectedActionLog, setSelectedActionLog] = useState<ContactActionLogItem | null>(null);
+  const [actionReturnMenu, setActionReturnMenu] = useState<MenuKey>('HOME');
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
   const [approvals, setApprovals] = useState<RequestItem[]>([]);
@@ -649,6 +658,19 @@ export default function App() {
     }
   };
 
+  const refreshSessionUser = async () => {
+    if (!session?.accessToken) return;
+
+    try {
+      const { data } = await api.get<AuthMeResponse>('/auth/me', {
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setSession((current) => (current ? { ...current, user: data.user } : current));
+    } catch (requestError: any) {
+      console.warn('Kullanıcı yetki bilgileri yenilenemedi.', requestError?.response?.data || requestError);
+    }
+  };
+
   const loadVehiclesForRequests = async () => {
     if (!session?.accessToken || vehicles.length > 0) return;
     const { data } = await api.get<ApiListResponse<VehicleItem>>('/vehicles', {
@@ -741,12 +763,14 @@ export default function App() {
     setSelectedContact(null);
     setActionLogs([]);
     setSelectedActionLog(null);
+    setActionReturnMenu('HOME');
     setRequests([]);
     setApprovals([]);
     setVehicles([]);
     setRequestFormVisible(false);
     setProfileVisible(false);
     setPushPermissionVisible(false);
+    setDrawerVisible(false);
     setError('');
     setEmail('mert@smallbiz.local');
     setPassword('App12345');
@@ -761,10 +785,14 @@ export default function App() {
 
   const onSelectMenu = (menu: MenuKey) => {
     if (menu === 'APPROVALS' && !canApproveRequests) return;
+    if (menu === 'ACTIONS' && selectedMenu !== 'ACTIONS') {
+      setActionReturnMenu(selectedMenu);
+    }
     setSelectedMenu(menu);
     setSelectedCustomer(null);
     setSelectedContact(null);
     setSelectedActionLog(null);
+    setDrawerVisible(false);
   };
 
   useEffect(() => {
@@ -772,6 +800,13 @@ export default function App() {
       setSelectedMenu('HOME');
     }
   }, [canApproveRequests, selectedMenu]);
+
+  useEffect(() => {
+    if (drawerVisible) {
+      refreshSessionUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerVisible]);
 
   useEffect(() => {
     if (!session) return;
@@ -870,7 +905,7 @@ export default function App() {
           title={titleForMenu(selectedMenu)}
           user={session.user}
           showBack={!isTabRoot}
-          showSignOut={selectedMenu === 'HOME'}
+          onMenu={() => setDrawerVisible(true)}
           onBack={() => {
             if (selectedContact) {
               setSelectedContact(null);
@@ -885,12 +920,11 @@ export default function App() {
               return;
             }
             if (selectedMenu === 'ACTIONS') {
-              setSelectedMenu('CONTACTS');
+              setSelectedMenu(actionReturnMenu);
               return;
             }
             setSelectedMenu('HOME');
           }}
-          onSignOut={signOut}
         />
 
         <ScrollView
@@ -911,7 +945,7 @@ export default function App() {
               cardData={cardData}
               billingData={billingData}
               actionLogs={actionLogs}
-              onNavigate={setSelectedMenu}
+              onNavigate={onSelectMenu}
               onOpenProfile={() => setProfileVisible(true)}
             />
           ) : null}
@@ -965,7 +999,10 @@ export default function App() {
                 customer={selectedCustomer}
                 contacts={contacts.filter((contact) => contact.customerId?._id === selectedCustomer._id)}
                 onSelectContact={setSelectedContact}
-                onOpenActions={() => setSelectedMenu('ACTIONS')}
+                onOpenActions={() => {
+                  setActionReturnMenu('CONTACTS');
+                  setSelectedMenu('ACTIONS');
+                }}
               />
             ) : (
               <CustomersView
@@ -1008,7 +1045,15 @@ export default function App() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
         </ScrollView>
 
-        <BottomTabs selectedMenu={selectedMenu} onSelect={onSelectMenu} canShowApprovals={canApproveRequests} />
+        <DrawerMenu
+          visible={drawerVisible}
+          selectedMenu={selectedMenu}
+          user={session.user}
+          canShowApprovals={canApproveRequests}
+          onClose={() => setDrawerVisible(false)}
+          onSelect={onSelectMenu}
+          onSignOut={signOut}
+        />
 
         <Modal
           visible={requestFormVisible}
@@ -1095,16 +1140,14 @@ function AppHeader({
   title,
   user,
   showBack,
-  showSignOut,
-  onBack,
-  onSignOut
+  onMenu,
+  onBack
 }: {
   title: string;
   user: AuthUser;
   showBack: boolean;
-  showSignOut: boolean;
+  onMenu: () => void;
   onBack: () => void;
-  onSignOut: () => void;
 }) {
   return (
     <View style={styles.appHeader}>
@@ -1114,7 +1157,9 @@ function AppHeader({
             <Text style={styles.headerIconText}>‹</Text>
           </Pressable>
         ) : (
-          <View style={styles.headerLeftSpacer} />
+          <Pressable style={styles.headerIconButton} onPress={onMenu}>
+            <Text style={styles.headerMenuText}>☰</Text>
+          </Pressable>
         )}
 
         <View style={styles.headerTitleBlock}>
@@ -1122,53 +1167,77 @@ function AppHeader({
           <Text style={styles.headerTitle}>{title}</Text>
         </View>
 
-        {showSignOut ? (
-          <Pressable style={styles.headerSignOutButton} onPress={onSignOut}>
-            <Text style={styles.headerSignOutText}>Çıkış</Text>
-          </Pressable>
-        ) : (
-          <View style={styles.headerRightSpacer} />
-        )}
+        <View style={styles.headerRightSpacer} />
       </View>
     </View>
   );
 }
 
-function BottomTabs({
+function DrawerMenu({
+  visible,
   selectedMenu,
+  user,
+  canShowApprovals,
+  onClose,
   onSelect,
-  canShowApprovals
+  onSignOut
 }: {
+  visible: boolean;
   selectedMenu: MenuKey;
-  onSelect: (menu: MenuKey) => void;
+  user: AuthUser;
   canShowApprovals: boolean;
+  onClose: () => void;
+  onSelect: (menu: MenuKey) => void;
+  onSignOut: () => void;
 }) {
-  const tabs: Array<{ key: MenuKey; label: string; icon: string }> = [
-    { key: 'HOME', label: 'Ana', icon: '⌂' },
-    { key: 'CARD', label: 'Kart', icon: '▣' },
-    { key: 'REQUESTS', label: 'Talepler', icon: '≡' },
+  const menuItems: Array<{ key: MenuKey; label: string; icon: string }> = [
+    { key: 'HOME', label: 'Ana Sayfa', icon: '⌂' },
+    { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
+    { key: 'REQUESTS', label: 'Taleplerim', icon: '≡' },
     ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
-    { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' }
+    { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' },
+    { key: 'BILLING', label: 'Fatura Bilgileri', icon: '₺' },
+    { key: 'ACTIONS', label: 'Aksiyonlarım', icon: '↗' }
   ];
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
 
   return (
-    <View style={styles.bottomTabs}>
-      {tabs.map((tab) => {
-        const active = selectedMenu === tab.key;
-        return (
-          <Pressable
-            key={tab.key}
-            style={[styles.bottomTabItem, active ? styles.bottomTabItemActive : null]}
-            onPress={() => onSelect(tab.key)}
-          >
-            <View style={[styles.bottomTabIcon, active ? styles.bottomTabIconActive : null]}>
-              <Text style={[styles.bottomTabIconText, active ? styles.bottomTabIconTextActive : null]}>{tab.icon}</Text>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.drawerOverlay}>
+        <Pressable style={styles.drawerDismissArea} onPress={onClose} />
+        <View style={styles.drawerPanel}>
+          <View>
+            <View style={styles.drawerHeader}>
+              <Text style={styles.drawerBrand}>OneDesk</Text>
+              <Text style={styles.drawerUserName}>{fullName}</Text>
+              <Text style={styles.drawerUserMeta}>{user.title || user.department || user.email}</Text>
             </View>
-            <Text style={[styles.bottomTabLabel, active ? styles.bottomTabLabelActive : null]}>{tab.label}</Text>
+
+            <View style={styles.drawerItems}>
+              {menuItems.map((item) => {
+                const active = selectedMenu === item.key;
+                return (
+                  <Pressable
+                    key={item.key}
+                    style={[styles.drawerItem, active ? styles.drawerItemActive : null]}
+                    onPress={() => onSelect(item.key)}
+                  >
+                    <View style={[styles.drawerItemIcon, active ? styles.drawerItemIconActive : null]}>
+                      <Text style={[styles.drawerItemIconText, active ? styles.drawerItemIconTextActive : null]}>{item.icon}</Text>
+                    </View>
+                    <Text style={[styles.drawerItemText, active ? styles.drawerItemTextActive : null]}>{item.label}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          <Pressable style={styles.drawerSignOutButton} onPress={onSignOut}>
+            <Text style={styles.drawerSignOutText}>Çıkış Yap</Text>
           </Pressable>
-        );
-      })}
-    </View>
+        </View>
+      </View>
+    </Modal>
   );
 }
 
@@ -1593,6 +1662,7 @@ function RequestRow({ item }: { item: RequestItem }) {
       {requester ? <Text style={styles.infoLine}>{requester}</Text> : null}
       {item.vehicleId ? <Text style={styles.infoLine}>{item.vehicleId.plate} - {item.vehicleId.brand} {item.vehicleId.model}</Text> : null}
       {item.materialText ? <Text style={styles.infoLine}>{item.materialText}</Text> : null}
+      {item.type === 'EXPENSE' ? <Text style={styles.infoLine}>{formatMoney(item.expenseAmount, item.expenseCurrency)} • {item.expenseDescription || '-'}</Text> : null}
       {item.startAt ? <Text style={styles.infoLine}>{formatDateTime(item.startAt)} - {item.endAt ? formatDateTime(item.endAt) : '-'}</Text> : null}
       <Text style={styles.actionLogSubtitle}>Oluşturma: {formatDateTime(item.createdAt)}</Text>
       {item.approvalAction?.action ? (
@@ -1617,6 +1687,9 @@ function RequestForm({
   const [endAt, setEndAt] = useState(() => new Date(Date.now() + 60 * 60 * 1000));
   const [activeDateField, setActiveDateField] = useState<'start' | 'end' | null>(null);
   const [materialText, setMaterialText] = useState('');
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCurrency, setExpenseCurrency] = useState('TRY');
+  const [expenseDescription, setExpenseDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -1625,7 +1698,9 @@ function RequestForm({
       const payload =
         type === 'MATERIAL'
           ? { type, materialText }
-          : {
+          : type === 'EXPENSE'
+            ? { type, expenseAmount: Number(expenseAmount), expenseCurrency, expenseDescription }
+            : {
               type,
               startAt: startAt.toISOString(),
               endAt: endAt.toISOString(),
@@ -1640,7 +1715,7 @@ function RequestForm({
   return (
     <ScrollView contentContainerStyle={styles.presentationContent} showsVerticalScrollIndicator={false}>
       <View style={styles.segmentedControl}>
-        {(['VEHICLE', 'LEAVE', 'MATERIAL'] as RequestType[]).map((item) => (
+        {(['VEHICLE', 'LEAVE', 'MATERIAL', 'EXPENSE'] as RequestType[]).map((item) => (
           <Pressable key={item} style={[styles.segmentItem, type === item ? styles.segmentItemActive : null]} onPress={() => setType(item)}>
             <Text style={[styles.segmentText, type === item ? styles.segmentTextActive : null]}>{requestTypeLabel(item)}</Text>
           </Pressable>
@@ -1659,7 +1734,7 @@ function RequestForm({
         </View>
       ) : null}
 
-      {type !== 'MATERIAL' ? (
+      {type !== 'MATERIAL' && type !== 'EXPENSE' ? (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Tarih Aralığı</Text>
           <DateTimeField label="Başlangıç" value={startAt} onPress={() => setActiveDateField('start')} />
@@ -1694,10 +1769,17 @@ function RequestForm({
             </View>
           ) : null}
         </View>
-      ) : (
+      ) : type === 'MATERIAL' ? (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Malzeme Talebi</Text>
           <TextInput style={[styles.input, styles.noteInput]} placeholder="Talep edilen malzemeyi yazın" value={materialText} onChangeText={setMaterialText} multiline />
+        </View>
+      ) : (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Masraf Talebi</Text>
+          <TextInput style={styles.input} placeholder="Tutar" value={expenseAmount} onChangeText={setExpenseAmount} keyboardType="decimal-pad" />
+          <TextInput style={styles.input} placeholder="Para birimi" value={expenseCurrency} onChangeText={(value) => setExpenseCurrency(value.toUpperCase().slice(0, 3))} autoCapitalize="characters" />
+          <TextInput style={[styles.input, styles.noteInput]} placeholder="Masraf açıklaması" value={expenseDescription} onChangeText={setExpenseDescription} multiline />
         </View>
       )}
 
@@ -1735,10 +1817,6 @@ function CustomersView({
 
   return (
     <View style={styles.sectionCard}>
-      <View style={styles.sectionHeaderRow}>
-        <Text style={styles.sectionTitle}>Müşteri Listesi</Text>
-      </View>
-
       {customers.length === 0 ? <Text style={styles.infoLine}>Müşteri yok.</Text> : null}
 
       {customers.map((item) => (
@@ -1748,7 +1826,6 @@ function CustomersView({
           <Text style={styles.infoLine}>{item.phone || '-'}</Text>
           <Text style={styles.infoLine}>{item.taxNumber || '-'}</Text>
           <Text style={styles.infoLine}>{item.taxOffice || '-'}</Text>
-          <Text style={styles.infoLine}>{item.status || '-'}</Text>
         </Pressable>
       ))}
     </View>
@@ -2079,7 +2156,8 @@ function actionInitial(value: ContactActionType) {
 function requestTypeLabel(value: RequestType) {
   if (value === 'VEHICLE') return 'Araç Talebi';
   if (value === 'LEAVE') return 'İzin Talebi';
-  return 'Malzeme Talebi';
+  if (value === 'MATERIAL') return 'Malzeme Talebi';
+  return 'Masraf Talebi';
 }
 
 function requestStatusLabel(value: RequestStatus) {
@@ -2096,6 +2174,11 @@ function requestStatusStyle(value: RequestStatus) {
 
 function formatDateTime(value: string) {
   return new Date(value).toLocaleString('tr-TR');
+}
+
+function formatMoney(amount?: number, currency = 'TRY') {
+  if (!amount) return '-';
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency }).format(amount);
 }
 
 const styles = StyleSheet.create({
@@ -2217,6 +2300,12 @@ const styles = StyleSheet.create({
     fontSize: 30,
     lineHeight: 32
   },
+  headerMenuText: {
+    color: '#0f172a',
+    fontWeight: '900',
+    fontSize: 20,
+    lineHeight: 24
+  },
   headerLeftSpacer: {
     width: 44,
     height: 44
@@ -2261,7 +2350,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 18,
-    paddingBottom: 104,
+    paddingBottom: 30,
     gap: 14
   },
   card: {
@@ -2973,63 +3062,110 @@ const styles = StyleSheet.create({
     minHeight: 120,
     textAlignVertical: 'top'
   },
-  bottomTabs: {
+  drawerOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.42)',
+    flexDirection: 'row'
+  },
+  drawerDismissArea: {
     position: 'absolute',
-    left: 14,
-    right: 14,
-    bottom: 14,
-    minHeight: 72,
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0
+  },
+  drawerPanel: {
+    width: '78%',
+    maxWidth: 330,
+    height: '100%',
+    backgroundColor: '#eef2f7',
+    paddingHorizontal: 18,
+    paddingTop: 58,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 16, height: 0 },
+    shadowOpacity: 0.2,
+    shadowRadius: 28,
+    elevation: 12
+  },
+  drawerHeader: {
     borderRadius: 28,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#12213f',
+    padding: 18,
+    gap: 5,
+    marginBottom: 16
+  },
+  drawerBrand: {
+    color: '#93c5fd',
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase'
+  },
+  drawerUserName: {
+    color: '#fff',
+    fontSize: 23,
+    fontWeight: '900',
+    letterSpacing: -0.5
+  },
+  drawerUserMeta: {
+    color: '#dbeafe',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  drawerItems: {
+    gap: 8
+  },
+  drawerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: '#dbe3ed',
-    shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.16,
-    shadowRadius: 26,
-    elevation: 8
+    gap: 12,
+    padding: 10,
+    borderRadius: 18
   },
-  bottomTabItem: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    borderRadius: 20,
-    paddingVertical: 6
+  drawerItemActive: {
+    backgroundColor: '#fff'
   },
-  bottomTabItemActive: {
-    backgroundColor: '#eff6ff'
-  },
-  bottomTabIcon: {
-    width: 26,
-    height: 26,
-    borderRadius: 10,
-    backgroundColor: '#eef2f7',
+  drawerItemIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 13,
+    backgroundColor: '#e2e8f0',
     alignItems: 'center',
     justifyContent: 'center'
   },
-  bottomTabIconActive: {
+  drawerItemIconActive: {
     backgroundColor: '#1d4ed8'
   },
-  bottomTabIconText: {
+  drawerItemIconText: {
     color: '#64748b',
-    fontWeight: '900',
-    fontSize: 11
+    fontSize: 13,
+    fontWeight: '900'
   },
-  bottomTabIconTextActive: {
+  drawerItemIconTextActive: {
     color: '#fff'
   },
-  bottomTabLabel: {
-    color: '#64748b',
-    fontSize: 10,
+  drawerItemText: {
+    color: '#334155',
+    fontSize: 15,
     fontWeight: '800'
   },
-  bottomTabLabelActive: {
-    color: '#1d4ed8'
+  drawerItemTextActive: {
+    color: '#0f172a'
+  },
+  drawerSignOutButton: {
+    borderRadius: 18,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#fecaca',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  drawerSignOutText: {
+    color: '#b91c1c',
+    fontSize: 15,
+    fontWeight: '900'
   }
 });

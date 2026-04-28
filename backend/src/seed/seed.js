@@ -51,7 +51,8 @@ async function run() {
         permissions: [
           PERMISSIONS.VEHICLE_APPROVAL,
           PERMISSIONS.LEAVE_APPROVAL,
-          PERMISSIONS.MATERIAL_APPROVAL
+          PERMISSIONS.MATERIAL_APPROVAL,
+          PERMISSIONS.EXPENSE_APPROVAL
         ]
       },
       {

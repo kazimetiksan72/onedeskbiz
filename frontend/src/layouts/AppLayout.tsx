@@ -15,6 +15,9 @@ const adminNavItems = [
 
 const employeeNavItems = [
   { to: '/leave-requests', label: 'İzin Talepleri' },
+  { to: '/vehicle-requests', label: 'Araç Talepleri' },
+  { to: '/material-requests', label: 'Malzeme Talepleri' },
+  { to: '/expense-requests', label: 'Masraf Talepleri' },
   { to: '/contact-actions', label: 'Kişi Aksiyonları' }
 ];
 

@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const REQUEST_TYPES = {
   VEHICLE: 'VEHICLE',
   LEAVE: 'LEAVE',
-  MATERIAL: 'MATERIAL'
+  MATERIAL: 'MATERIAL',
+  EXPENSE: 'EXPENSE'
 };
 
 const REQUEST_STATUS = {
@@ -37,6 +38,9 @@ const requestSchema = new mongoose.Schema(
     startAt: { type: Date, default: null, index: true },
     endAt: { type: Date, default: null, index: true },
     materialText: { type: String, trim: true },
+    expenseAmount: { type: Number, min: 0 },
+    expenseCurrency: { type: String, trim: true, uppercase: true, default: 'TRY' },
+    expenseDescription: { type: String, trim: true },
     approvalAction: { type: approvalActionSchema, default: null }
   },
   {

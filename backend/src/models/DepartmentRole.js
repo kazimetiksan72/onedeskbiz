@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const PERMISSIONS = {
   VEHICLE_APPROVAL: 'VEHICLE_APPROVAL',
   LEAVE_APPROVAL: 'LEAVE_APPROVAL',
-  MATERIAL_APPROVAL: 'MATERIAL_APPROVAL'
+  MATERIAL_APPROVAL: 'MATERIAL_APPROVAL',
+  EXPENSE_APPROVAL: 'EXPENSE_APPROVAL'
 };
 
 const departmentRoleSchema = new mongoose.Schema(

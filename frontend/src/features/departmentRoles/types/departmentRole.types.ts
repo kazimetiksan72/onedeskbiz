@@ -1,4 +1,4 @@
-export type RolePermission = 'VEHICLE_APPROVAL' | 'LEAVE_APPROVAL' | 'MATERIAL_APPROVAL';
+export type RolePermission = 'VEHICLE_APPROVAL' | 'LEAVE_APPROVAL' | 'MATERIAL_APPROVAL' | 'EXPENSE_APPROVAL';
 
 export interface DepartmentRole {
   _id: string;

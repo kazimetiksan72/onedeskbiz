@@ -8,7 +8,10 @@ const createRequestSchema = z.object({
       vehicleId: objectId.optional(),
       startAt: z.string().datetime().optional(),
       endAt: z.string().datetime().optional(),
-      materialText: z.string().min(1).max(2000).optional()
+      materialText: z.string().min(1).max(2000).optional(),
+      expenseAmount: z.coerce.number().positive().optional(),
+      expenseCurrency: z.string().min(3).max(3).default('TRY').optional(),
+      expenseDescription: z.string().min(1).max(2000).optional()
     })
     .superRefine((body, ctx) => {
       if (body.type === REQUEST_TYPES.VEHICLE && (!body.vehicleId || !body.startAt || !body.endAt)) {
@@ -19,6 +22,9 @@ const createRequestSchema = z.object({
       }
       if (body.type === REQUEST_TYPES.MATERIAL && !body.materialText) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Malzeme talep metni zorunludur.' });
+      }
+      if (body.type === REQUEST_TYPES.EXPENSE && (!body.expenseAmount || !body.expenseDescription)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Masraf tutarı ve açıklaması zorunludur.' });
       }
     }),
   params: z.object({}),

@@ -19,10 +19,14 @@ async function updateDepartmentRole(id, payload) {
 }
 
 async function deleteDepartmentRole(id) {
+  const assignedCount = await DepartmentRoleAssignment.countDocuments({ departmentRoleId: id });
+  if (assignedCount > 0) {
+    throw new ApiError(409, 'Bu rol personele atanmış olduğu için silinemez. Önce rol atamalarını kaldırın.');
+  }
+
   const item = await DepartmentRole.findByIdAndDelete(id).lean();
   if (!item) throw new ApiError(404, 'Rol bulunamadı.');
 
-  await DepartmentRoleAssignment.deleteMany({ departmentRoleId: id });
   await User.collection.updateMany({ departmentRoleId: item._id }, { $unset: { departmentRoleId: '' } });
 }
 

@@ -17,6 +17,9 @@ import { VehicleDetailPage } from '../features/vehicles/pages/VehicleDetailPage'
 import { CompanySettingsPage } from '../features/companySettings/pages/CompanySettingsPage';
 import { DepartmentRolesPage } from '../features/departmentRoles/pages/DepartmentRolesPage';
 import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequestsPage';
+import { VehicleRequestsPage } from '../features/requests/pages/VehicleRequestsPage';
+import { MaterialRequestsPage } from '../features/requests/pages/MaterialRequestsPage';
+import { ExpenseRequestsPage } from '../features/requests/pages/ExpenseRequestsPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
 
 export const router = createBrowserRouter([
@@ -35,6 +38,9 @@ export const router = createBrowserRouter([
             element: <EmployeeRoute />,
             children: [
               { path: '/leave-requests', element: <LeaveRequestsPage /> },
+              { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
+              { path: '/material-requests', element: <MaterialRequestsPage /> },
+              { path: '/expense-requests', element: <ExpenseRequestsPage /> },
               { path: '/contact-actions', element: <ContactActionLogsPage /> }
             ]
           },

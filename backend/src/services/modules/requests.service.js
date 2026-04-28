@@ -8,7 +8,8 @@ const { ROLES } = require('../../constants/roles');
 const permissionByRequestType = {
   [REQUEST_TYPES.VEHICLE]: PERMISSIONS.VEHICLE_APPROVAL,
   [REQUEST_TYPES.LEAVE]: PERMISSIONS.LEAVE_APPROVAL,
-  [REQUEST_TYPES.MATERIAL]: PERMISSIONS.MATERIAL_APPROVAL
+  [REQUEST_TYPES.MATERIAL]: PERMISSIONS.MATERIAL_APPROVAL,
+  [REQUEST_TYPES.EXPENSE]: PERMISSIONS.EXPENSE_APPROVAL
 };
 
 function ensureValidDateRange(startAt, endAt) {
@@ -35,7 +36,10 @@ async function createRequest(user, payload) {
     vehicleId: payload.type === REQUEST_TYPES.VEHICLE ? payload.vehicleId : null,
     startAt: payload.startAt ? new Date(payload.startAt) : null,
     endAt: payload.endAt ? new Date(payload.endAt) : null,
-    materialText: payload.type === REQUEST_TYPES.MATERIAL ? payload.materialText : ''
+    materialText: payload.type === REQUEST_TYPES.MATERIAL ? payload.materialText : '',
+    expenseAmount: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseAmount : undefined,
+    expenseCurrency: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseCurrency || 'TRY' : undefined,
+    expenseDescription: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseDescription : ''
   });
 }
 
