@@ -25,7 +25,7 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
       return;
     }
 
-    navigate(user.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests', { replace: true });
+    navigate(user.role === 'ADMIN' ? '/admin/dashboard' : '/home', { replace: true });
   }, [accessToken, user, navigate]);
 
   const onSubmit = async (event: FormEvent) => {
@@ -39,7 +39,7 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
       if (result.user.mustChangePassword) {
         navigate('/change-password');
       } else {
-        navigate(result.user.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests');
+        navigate(result.user.role === 'ADMIN' ? '/admin/dashboard' : '/home');
       }
     } catch (err: any) {
       setError(err?.response?.data?.message || 'Giriş başarısız.');

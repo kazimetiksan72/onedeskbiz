@@ -9,12 +9,14 @@ const adminNavItems = [
   { to: '/admin/contacts', label: 'Kişiler' },
   { to: '/admin/contact-actions', label: 'Kişi Aksiyonları' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
+  { to: '/admin/feed', label: 'Feed Yönetimi' },
   { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
 ];
 
 const employeeNavItems = [
-  { to: '/employee-documents', label: 'Özlük Belgeleri' },
+  { to: '/home', label: 'Ana Sayfa' },
+  { to: '/employee-documents', label: 'Özlük Belgelerim' },
   { to: '/leave-requests', label: 'İzin Talepleri' },
   { to: '/vehicle-requests', label: 'Araç Talepleri' },
   { to: '/material-requests', label: 'Malzeme Talepleri' },
@@ -43,7 +45,7 @@ export function AppLayout() {
       <header className="border-b border-slate-200 bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link
-            to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests'}
+            to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/home'}
             className="text-lg font-semibold text-brand-700"
           >
             SmallBiz Platform

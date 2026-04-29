@@ -1,5 +1,6 @@
 const path = require('path');
 const { BlobServiceClient } = require('@azure/storage-blob');
+const PDFDocument = require('pdfkit');
 const env = require('../../config/env');
 const { EmployeeDocument, EMPLOYEE_DOCUMENT_TYPES } = require('../../models/EmployeeDocument');
 const { User } = require('../../models/User');
@@ -9,6 +10,8 @@ const { logger } = require('../../utils/logger');
 const documentLabels = {
   [EMPLOYEE_DOCUMENT_TYPES.POPULATION_REGISTRY]: 'nufus-kayit-ornegi',
   [EMPLOYEE_DOCUMENT_TYPES.RESIDENCE_CERTIFICATE]: 'ikametgah-belgesi',
+  [EMPLOYEE_DOCUMENT_TYPES.GRADUATION_CERTIFICATE]: 'mezuniyet-belgesi',
+  [EMPLOYEE_DOCUMENT_TYPES.HEALTH_REPORT]: 'saglik-raporu',
   [EMPLOYEE_DOCUMENT_TYPES.ID_CARD_FRONT]: 'tc-kimlik-on',
   [EMPLOYEE_DOCUMENT_TYPES.ID_CARD_BACK]: 'tc-kimlik-arka'
 };
@@ -22,8 +25,31 @@ function getBlobExtension(file) {
   return '.jpg';
 }
 
+function createPdfFromImage(file) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const document = new PDFDocument({ size: 'A4', margin: 32, autoFirstPage: true });
+
+    document.on('data', (chunk) => chunks.push(chunk));
+    document.on('end', () => resolve(Buffer.concat(chunks)));
+    document.on('error', reject);
+
+    document.image(file.buffer, 32, 32, {
+      fit: [531, 778],
+      align: 'center',
+      valign: 'center'
+    });
+    document.end();
+  });
+}
+
 function assertFileMatchesType(type, file) {
-  const pdfTypes = [EMPLOYEE_DOCUMENT_TYPES.POPULATION_REGISTRY, EMPLOYEE_DOCUMENT_TYPES.RESIDENCE_CERTIFICATE];
+  const pdfTypes = [
+    EMPLOYEE_DOCUMENT_TYPES.POPULATION_REGISTRY,
+    EMPLOYEE_DOCUMENT_TYPES.RESIDENCE_CERTIFICATE,
+    EMPLOYEE_DOCUMENT_TYPES.GRADUATION_CERTIFICATE,
+    EMPLOYEE_DOCUMENT_TYPES.HEALTH_REPORT
+  ];
   const imageTypes = [EMPLOYEE_DOCUMENT_TYPES.ID_CARD_FRONT, EMPLOYEE_DOCUMENT_TYPES.ID_CARD_BACK];
 
   if (!Object.values(EMPLOYEE_DOCUMENT_TYPES).includes(type)) {
@@ -65,7 +91,18 @@ async function uploadForUser(actorUser, userId, payload, file) {
   const containerClient = blobServiceClient.getContainerClient(env.azureStorage.containerName);
   await containerClient.createIfNotExists({ access: 'blob' });
 
-  const extension = getBlobExtension(file);
+  const shouldStoreScannedDocumentAsPdf =
+    payload.source === 'MOBILE_SCAN' &&
+    [
+      EMPLOYEE_DOCUMENT_TYPES.POPULATION_REGISTRY,
+      EMPLOYEE_DOCUMENT_TYPES.RESIDENCE_CERTIFICATE,
+      EMPLOYEE_DOCUMENT_TYPES.GRADUATION_CERTIFICATE,
+      EMPLOYEE_DOCUMENT_TYPES.HEALTH_REPORT
+    ].includes(type) &&
+    file.mimetype.startsWith('image/');
+  const uploadBuffer = shouldStoreScannedDocumentAsPdf ? await createPdfFromImage(file) : file.buffer;
+  const uploadMimeType = shouldStoreScannedDocumentAsPdf ? 'application/pdf' : file.mimetype;
+  const extension = shouldStoreScannedDocumentAsPdf ? '.pdf' : getBlobExtension(file);
   const safeType = documentLabels[type] || type.toLowerCase();
   const fileName = `${safeType}-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
   const blobName = `employee-documents/${userId}/${safeType}/${fileName}`;
@@ -76,13 +113,13 @@ async function uploadForUser(actorUser, userId, payload, file) {
     userId: userId.toString(),
     type,
     blobName,
-    mimeType: file.mimetype,
-    size: file.size
+    mimeType: uploadMimeType,
+    size: uploadBuffer.length
   });
 
-  await blockBlobClient.uploadData(file.buffer, {
+  await blockBlobClient.uploadData(uploadBuffer, {
     blobHTTPHeaders: {
-      blobContentType: file.mimetype,
+      blobContentType: uploadMimeType,
       blobCacheControl: 'private, max-age=86400'
     }
   });
@@ -93,8 +130,8 @@ async function uploadForUser(actorUser, userId, payload, file) {
     url: blockBlobClient.url,
     fileName,
     originalName: file.originalname,
-    mimeType: file.mimetype,
-    size: file.size,
+    mimeType: uploadMimeType,
+    size: uploadBuffer.length,
     uploadedByUserId: actorUser._id,
     source: payload.source || 'WEB_UPLOAD'
   });

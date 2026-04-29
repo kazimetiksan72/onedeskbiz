@@ -9,7 +9,7 @@ export function AdminRoute() {
   }
 
   if (user.role !== 'ADMIN') {
-    return <Navigate to="/leave-requests" replace />;
+    return <Navigate to="/home" replace />;
   }
 
   return <Outlet />;

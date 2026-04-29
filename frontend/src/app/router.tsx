@@ -21,6 +21,8 @@ import { VehicleRequestsPage } from '../features/requests/pages/VehicleRequestsP
 import { MaterialRequestsPage } from '../features/requests/pages/MaterialRequestsPage';
 import { ExpenseRequestsPage } from '../features/requests/pages/ExpenseRequestsPage';
 import { EmployeeDocumentsPage } from '../features/employeeDocuments/pages/EmployeeDocumentsPage';
+import { AdminFeedPage } from '../features/feed/pages/AdminFeedPage';
+import { EmployeeHomePage } from '../features/feed/pages/EmployeeHomePage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
 
 export const router = createBrowserRouter([
@@ -39,6 +41,7 @@ export const router = createBrowserRouter([
             element: <EmployeeRoute />,
             children: [
               { path: '/leave-requests', element: <LeaveRequestsPage /> },
+              { path: '/home', element: <EmployeeHomePage /> },
               { path: '/employee-documents', element: <EmployeeDocumentsPage /> },
               { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
@@ -59,6 +62,7 @@ export const router = createBrowserRouter([
               { path: '/admin/contact-actions', element: <ContactActionLogsPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
+              { path: '/admin/feed', element: <AdminFeedPage /> },
               { path: '/admin/department-roles', element: <DepartmentRolesPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
               { path: '/dashboard', element: <Navigate to="/admin/dashboard" replace /> },

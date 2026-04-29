@@ -14,7 +14,7 @@ export function ProtectedRoute() {
   }
 
   if (!user?.mustChangePassword && location.pathname === '/change-password') {
-    return <Navigate to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/leave-requests'} replace />;
+    return <Navigate to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/home'} replace />;
   }
 
   return <Outlet />;

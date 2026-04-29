@@ -40,6 +40,12 @@
           "mode": "production"
         }
       ],
+      [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "Özlük belgelerinizi otomatik taramak için kamera erişimi gerekiyor."
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "icon": "./assets/icon.png"

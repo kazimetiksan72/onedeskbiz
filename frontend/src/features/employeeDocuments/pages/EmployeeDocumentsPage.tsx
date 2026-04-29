@@ -18,6 +18,18 @@ const documentTypes: Array<{ type: EmployeeDocumentType; title: string; descript
     accept: 'application/pdf'
   },
   {
+    type: 'GRADUATION_CERTIFICATE',
+    title: 'Mezuniyet Belgesi',
+    description: 'PDF belge yükleyin.',
+    accept: 'application/pdf'
+  },
+  {
+    type: 'HEALTH_REPORT',
+    title: 'Sağlık Raporu',
+    description: 'PDF belge yükleyin.',
+    accept: 'application/pdf'
+  },
+  {
     type: 'ID_CARD_FRONT',
     title: 'TC Kimlik Kartı Ön Yüz',
     description: 'JPG veya PNG görsel yükleyin.',
@@ -79,7 +91,7 @@ export function EmployeeDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Özlük Belgeleri" subtitle="Nüfus, ikametgah ve kimlik belgelerinizi yükleyin" />
+      <PageHeader title="Özlük Belgelerim" subtitle="Nüfus, ikametgah ve kimlik belgelerinizi yükleyin" />
 
       {error ? <div className="page-card text-sm text-red-600">{error}</div> : null}
       {message ? <div className="page-card text-sm text-emerald-700">{message}</div> : null}

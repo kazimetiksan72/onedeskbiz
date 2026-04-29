@@ -13,6 +13,7 @@ const leaveRequestRoutes = require('./modules/leaveRequests.routes');
 const dashboardRoutes = require('./modules/dashboard.routes');
 const profileRoutes = require('./modules/profile.routes');
 const employeeDocumentRoutes = require('./modules/employeeDocuments.routes');
+const feedRoutes = require('./modules/feed.routes');
 const companySettingsController = require('../controllers/companySettings/companySettings.controller');
 const { auth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
@@ -33,6 +34,7 @@ router.use('/contacts', auth, enforcePasswordChange, contactRoutes);
 router.use('/contact-action-logs', auth, enforcePasswordChange, contactActionLogRoutes);
 router.use('/vehicles', auth, enforcePasswordChange, vehicleRoutes);
 router.use('/requests', auth, enforcePasswordChange, requestRoutes);
+router.use('/feed', auth, enforcePasswordChange, feedRoutes);
 router.use(
   '/department-roles',
   auth,

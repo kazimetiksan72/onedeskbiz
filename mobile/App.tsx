@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import axios from 'axios';
 import Constants from 'expo-constants';
+import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
@@ -185,6 +186,17 @@ type VehicleItem = {
   status?: 'ACTIVE' | 'INACTIVE';
 };
 
+type FeedPostItem = {
+  _id: string;
+  title: string;
+  content: string;
+  image: {
+    mobileUrl: string;
+    webUrl: string;
+  };
+  createdAt: string;
+};
+
 type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE';
 
 const requestTypeOptions: Array<{ type: RequestType; badge: string; description: string }> = [
@@ -228,7 +240,7 @@ type ExpensePhoto = {
   type: string;
 };
 
-type EmployeeDocumentType = 'POPULATION_REGISTRY' | 'RESIDENCE_CERTIFICATE' | 'ID_CARD_FRONT' | 'ID_CARD_BACK';
+type EmployeeDocumentType = 'POPULATION_REGISTRY' | 'RESIDENCE_CERTIFICATE' | 'GRADUATION_CERTIFICATE' | 'HEALTH_REPORT' | 'ID_CARD_FRONT' | 'ID_CARD_BACK';
 
 type EmployeeDocumentItem = {
   _id: string;
@@ -245,6 +257,8 @@ type EmployeeDocumentItem = {
 const employeeDocumentTypes: Array<{ type: EmployeeDocumentType; title: string; description: string; captureMode: 'DOCUMENT' | 'ID_CARD' }> = [
   { type: 'POPULATION_REGISTRY', title: 'Nüfus Kayıt Örneği', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
   { type: 'RESIDENCE_CERTIFICATE', title: 'İkametgah Belgesi', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
+  { type: 'GRADUATION_CERTIFICATE', title: 'Mezuniyet Belgesi', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
+  { type: 'HEALTH_REPORT', title: 'Sağlık Raporu', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
   { type: 'ID_CARD_FRONT', title: 'TC Kimlik Ön Yüz', description: 'Kimliği çerçeveye ortalayarak çekin.', captureMode: 'ID_CARD' },
   { type: 'ID_CARD_BACK', title: 'TC Kimlik Arka Yüz', description: 'Kimliği çerçeveye ortalayarak çekin.', captureMode: 'ID_CARD' }
 ];
@@ -286,6 +300,8 @@ const oneSignalAppId = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() || '';
 let oneSignalInitialized = false;
 let oneSignalModuleLoadAttempted = false;
 let oneSignalModule: any = null;
+let documentScannerModuleLoadAttempted = false;
+let documentScannerModule: any = null;
 
 function getOneSignal() {
   if (!oneSignalAppId) return null;
@@ -310,6 +326,22 @@ function getOneSignal() {
   }
 
   return oneSignal;
+}
+
+function getDocumentScanner() {
+  if (Constants.appOwnership === 'expo') return null;
+
+  if (!documentScannerModuleLoadAttempted) {
+    documentScannerModuleLoadAttempted = true;
+    try {
+      documentScannerModule = require('react-native-document-scanner-plugin');
+    } catch (error) {
+      console.warn('Document scanner native module is not available in this runtime.', error);
+      documentScannerModule = null;
+    }
+  }
+
+  return documentScannerModule?.default || documentScannerModule;
 }
 
 async function identifyOneSignalUser(user: AuthUser) {
@@ -469,6 +501,8 @@ export default function App() {
   const [actionReturnMenu, setActionReturnMenu] = useState<MenuKey>('HOME');
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [feedPosts, setFeedPosts] = useState<FeedPostItem[]>([]);
+  const [feedLoading, setFeedLoading] = useState(false);
   const [employeeDocuments, setEmployeeDocuments] = useState<EmployeeDocumentItem[]>([]);
   const [employeeDocumentsLoading, setEmployeeDocumentsLoading] = useState(false);
   const [employeeDocumentUploadingType, setEmployeeDocumentUploadingType] = useState<EmployeeDocumentType | ''>('');
@@ -695,6 +729,22 @@ export default function App() {
     }
   };
 
+  const loadFeed = async () => {
+    if (!session?.accessToken) return;
+    setFeedLoading(true);
+    try {
+      const { data } = await api.get<FeedPostItem[]>('/feed', {
+        params: { limit: 20 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setFeedPosts(data || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Feed yüklenemedi.');
+    } finally {
+      setFeedLoading(false);
+    }
+  };
+
   const loadEmployeeDocuments = async () => {
     if (!session?.accessToken) return;
     setError('');
@@ -711,15 +761,19 @@ export default function App() {
     }
   };
 
-  const uploadEmployeeDocument = async (documentType: EmployeeDocumentType, asset: ImagePicker.ImagePickerAsset, source: 'MOBILE_SCAN' | 'MOBILE_CAMERA') => {
+  const uploadEmployeeDocumentFile = async (
+    documentType: EmployeeDocumentType,
+    file: { uri: string; name: string; type: string },
+    source: 'WEB_UPLOAD' | 'MOBILE_SCAN' | 'MOBILE_CAMERA'
+  ) => {
     if (!session?.accessToken) return;
     const formData = new FormData();
     formData.append('type', documentType);
     formData.append('source', source);
     formData.append('document', {
-      uri: asset.uri,
-      name: asset.fileName || `${documentType.toLowerCase()}-${Date.now()}.jpg`,
-      type: asset.mimeType || 'image/jpeg'
+      uri: file.uri,
+      name: file.name,
+      type: file.type
     } as any);
 
     setEmployeeDocumentUploadingType(documentType);
@@ -739,7 +793,67 @@ export default function App() {
     }
   };
 
+  const uploadEmployeeDocument = async (documentType: EmployeeDocumentType, asset: ImagePicker.ImagePickerAsset, source: 'MOBILE_SCAN' | 'MOBILE_CAMERA') => {
+    await uploadEmployeeDocumentFile(
+      documentType,
+      {
+        uri: asset.uri,
+        name: asset.fileName || `${documentType.toLowerCase()}-${Date.now()}.jpg`,
+        type: asset.mimeType || 'image/jpeg'
+      },
+      source
+    );
+  };
+
+  const pickEmployeeDocument = async (documentType: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: captureMode === 'ID_CARD' ? ['image/jpeg', 'image/png'] : ['application/pdf', 'image/jpeg', 'image/png'],
+      copyToCacheDirectory: true,
+      multiple: false
+    });
+
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    await uploadEmployeeDocumentFile(
+      documentType,
+      {
+        uri: asset.uri,
+        name: asset.name || `${documentType.toLowerCase()}-${Date.now()}`,
+        type: asset.mimeType || (captureMode === 'ID_CARD' ? 'image/jpeg' : 'application/pdf')
+      },
+      'WEB_UPLOAD'
+    );
+  };
+
   const scanEmployeeDocument = async (documentType: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => {
+    if (captureMode === 'DOCUMENT') {
+      const scanner = getDocumentScanner();
+
+      if (scanner?.scanDocument) {
+        try {
+          const result = await scanner.scanDocument({
+            croppedImageQuality: 92
+          });
+          const scannedImage = result?.scannedImages?.[0];
+          if (scannedImage) {
+            await uploadEmployeeDocument(
+              documentType,
+              {
+                uri: scannedImage,
+                fileName: `${documentType.toLowerCase()}-${Date.now()}.jpg`,
+                mimeType: 'image/jpeg'
+              } as ImagePicker.ImagePickerAsset,
+              'MOBILE_SCAN'
+            );
+          }
+          return;
+        } catch (scanError) {
+          console.warn('Native document scanner failed, falling back to camera.', scanError);
+        }
+      }
+    }
+
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
       setError('Kamera izni gerekli.');
@@ -888,6 +1002,7 @@ export default function App() {
     setSelectedActionLog(null);
     setActionReturnMenu('HOME');
     setRequests([]);
+    setFeedPosts([]);
     setEmployeeDocuments([]);
     setEmployeeDocumentUploadingType('');
     setApprovals([]);
@@ -900,6 +1015,35 @@ export default function App() {
     setEmail('mert@smallbiz.local');
     setPassword('App12345');
   };
+
+  useEffect(() => {
+    const interceptorId = api.interceptors.response.use(
+      (response) => response,
+      (requestError) => {
+        const status = requestError?.response?.status;
+        const message = String(requestError?.response?.data?.message || '').toLowerCase();
+        const requestUrl = String(requestError?.config?.url || '');
+        const isLoginRequest = requestUrl.includes('/auth/login');
+        const isTokenError =
+          status === 401 &&
+          !isLoginRequest &&
+          Boolean(session) &&
+          (message.includes('token') || message.includes('expired') || message.includes('invalid') || message.includes('unauthorized'));
+
+        if (isTokenError) {
+          signOut();
+          setError('Oturum süreniz doldu. Lütfen tekrar giriş yapın.');
+        }
+
+        return Promise.reject(requestError);
+      }
+    );
+
+    return () => {
+      api.interceptors.response.eject(interceptorId);
+    };
+    // Re-register when the auth session changes so the interceptor sees current state.
+  }, [session?.accessToken]);
 
   const handlePushPermissionRequest = async () => {
     setPushPermissionLoading(true);
@@ -946,6 +1090,10 @@ export default function App() {
 
     if (selectedMenu === 'HOME' && actionLogs.length === 0 && !actionLogsLoading) {
       loadActionLogs();
+    }
+
+    if (selectedMenu === 'HOME' && feedPosts.length === 0 && !feedLoading) {
+      loadFeed();
     }
 
     if (selectedMenu === 'CARD' && !cardData && !cardLoading) {
@@ -1074,6 +1222,8 @@ export default function App() {
               cardData={cardData}
               billingData={billingData}
               actionLogs={actionLogs}
+              feedPosts={feedPosts}
+              feedLoading={feedLoading}
               onNavigate={onSelectMenu}
               onOpenProfile={() => setProfileVisible(true)}
             />
@@ -1102,6 +1252,7 @@ export default function App() {
               items={employeeDocuments}
               uploadingType={employeeDocumentUploadingType}
               onScan={scanEmployeeDocument}
+              onPick={pickEmployeeDocument}
             />
           ) : null}
 
@@ -1266,7 +1417,7 @@ export default function App() {
 function titleForMenu(menu: MenuKey) {
   if (menu === 'HOME') return 'Ana Sayfa';
   if (menu === 'CARD') return 'Kartvizitim';
-  if (menu === 'DOCUMENTS') return 'Özlük Belgeleri';
+  if (menu === 'DOCUMENTS') return 'Özlük Belgelerim';
   if (menu === 'REQUESTS') return 'Taleplerim';
   if (menu === 'APPROVALS') return 'Onaylar';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
@@ -1332,7 +1483,7 @@ function DrawerMenu({
   const menuItems: Array<{ key: MenuKey; label: string; icon: string }> = [
     { key: 'HOME', label: 'Ana Sayfa', icon: '⌂' },
     { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
-    { key: 'DOCUMENTS', label: 'Özlük Belgeleri', icon: '□' },
+    { key: 'DOCUMENTS', label: 'Özlük Belgelerim', icon: '□' },
     { key: 'REQUESTS', label: 'Taleplerim', icon: '≡' },
     ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
     { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' },
@@ -1386,6 +1537,8 @@ function HomeView({
   cardData,
   billingData,
   actionLogs,
+  feedPosts,
+  feedLoading,
   onNavigate,
   onOpenProfile
 }: {
@@ -1393,6 +1546,8 @@ function HomeView({
   cardData: PublicCardResponse | null;
   billingData: CompanyBillingResponse | null;
   actionLogs: ContactActionLogItem[];
+  feedPosts: FeedPostItem[];
+  feedLoading: boolean;
   onNavigate: (menu: MenuKey) => void;
   onOpenProfile: () => void;
 }) {
@@ -1438,41 +1593,32 @@ function HomeView({
           onPress={() => onNavigate('BILLING')}
         />
         <QuickCard
-          label="Kişiler"
-          value="Müşteri bağlantıları"
-          accent="orange"
-          onPress={() => onNavigate('CONTACTS')}
-        />
-        <QuickCard
           label="Müşteriler"
           value="Firma listesi"
           accent="slate"
           onPress={() => onNavigate('CUSTOMERS')}
         />
+        <QuickCard
+          label="Aksiyonlarım"
+          value={latestAction ? `${formatActionContact(latestAction)} • ${translateContactAction(latestAction.actionType)}` : 'Henüz aksiyon yok'}
+          accent="orange"
+          onPress={() => onNavigate('ACTIONS')}
+        />
       </View>
 
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>Son Aksiyon</Text>
-          <Pressable onPress={() => onNavigate('CONTACTS')}>
-            <Text style={styles.refreshText}>Kişilerden Gör</Text>
-          </Pressable>
-        </View>
-        {latestAction ? (
-          <View style={styles.homeActionBlock}>
-            <View style={styles.actionLogIcon}>
-              <Text style={styles.actionLogIconText}>{actionInitial(latestAction.actionType)}</Text>
-            </View>
-            <View style={styles.actionLogTextBlock}>
-              <Text style={styles.actionLogTitle}>{formatActionContact(latestAction)}</Text>
-              <Text style={styles.actionLogSubtitle}>
-                {translateContactAction(latestAction.actionType)} • {new Date(latestAction.occurredAt).toLocaleString('tr-TR')}
-              </Text>
+      <View style={styles.feedSection}>
+        <Text style={styles.sectionTitle}>Feed</Text>
+        {feedLoading ? <ActivityIndicator color="#2563eb" /> : null}
+        {!feedLoading && feedPosts.length === 0 ? <Text style={styles.emptyText}>Henüz içerik yok.</Text> : null}
+        {feedPosts.map((item) => (
+          <View key={item._id} style={styles.feedCard}>
+            <Image source={{ uri: item.image.mobileUrl }} style={styles.feedImage} />
+            <View style={styles.feedBody}>
+              <Text style={styles.feedTitle}>{item.title}</Text>
+              <Text style={styles.feedContent}>{item.content}</Text>
             </View>
           </View>
-        ) : (
-          <Text style={styles.emptyText}>Henüz aksiyon kaydı yok.</Text>
-        )}
+        ))}
       </View>
     </>
   );
@@ -1517,7 +1663,6 @@ function InfoRow({ label, value }: { label: string; value?: string }) {
 function ProfileView({ user }: { user: AuthUser }) {
   return (
     <View style={styles.sectionCard}>
-      <Text style={styles.sectionTitle}>Öz Bilgiler</Text>
       <InfoRow label="Ad Soyad" value={`${user.firstName || ''} ${user.lastName || ''}`.trim()} />
       <InfoRow label="E-posta" value={user.workEmail || user.email} />
       <InfoRow label="Telefon" value={user.phone} />
@@ -1730,12 +1875,14 @@ function EmployeeDocumentsView({
   loading,
   items,
   uploadingType,
-  onScan
+  onScan,
+  onPick
 }: {
   loading: boolean;
   items: EmployeeDocumentItem[];
   uploadingType: EmployeeDocumentType | '';
   onScan: (type: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => void;
+  onPick: (type: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => void;
 }) {
   const latestByType = useMemo(() => {
     return items.reduce<Record<string, EmployeeDocumentItem>>((acc, item) => {
@@ -1749,10 +1896,7 @@ function EmployeeDocumentsView({
   }
 
   return (
-    <View style={styles.sectionCard}>
-      <Text style={styles.sectionTitle}>Özlük Belgeleri</Text>
-      <Text style={styles.infoLine}>Belgeleri kamera ile tarayın. Kimlik kartı için kartı çerçeveye ortalayarak çekin.</Text>
-
+    <View style={styles.documentList}>
       {employeeDocumentTypes.map((item) => {
         const latest = latestByType[item.type];
         const isUploading = uploadingType === item.type;
@@ -1760,24 +1904,17 @@ function EmployeeDocumentsView({
         return (
           <View key={item.type} style={styles.documentCard}>
             <View style={styles.documentHeaderRow}>
-              <View style={styles.documentIconFrame}>
-                <Text style={styles.documentIconText}>{item.captureMode === 'ID_CARD' ? 'ID' : 'PDF'}</Text>
-              </View>
               <View style={styles.documentTextBlock}>
                 <Text style={styles.customerName}>{item.title}</Text>
                 <Text style={styles.infoLine}>{item.description}</Text>
               </View>
             </View>
 
-            {item.captureMode === 'ID_CARD' ? (
-              <View style={styles.idCardGuide}>
-                <View style={styles.idCardGuideInner} />
-              </View>
-            ) : (
+            {item.captureMode === 'DOCUMENT' ? (
               <View style={styles.documentScanGuide}>
                 <Text style={styles.actionLogSubtitle}>Belgeyi iyi ışıkta, kenarları görünecek şekilde çekin.</Text>
               </View>
-            )}
+            ) : null}
 
             {latest ? (
               <Pressable style={styles.documentLatestBox} onPress={() => Linking.openURL(latest.url)}>
@@ -1789,9 +1926,14 @@ function EmployeeDocumentsView({
               <Text style={styles.actionLogSubtitle}>Henüz belge yüklenmedi.</Text>
             )}
 
-            <Pressable style={styles.secondaryButton} onPress={() => onScan(item.type, item.captureMode)} disabled={Boolean(uploadingType)}>
-              {isUploading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.secondaryButtonText}>{item.captureMode === 'ID_CARD' ? 'Kimlik Fotoğrafı Çek' : 'Belge Tara'}</Text>}
-            </Pressable>
+            <View style={styles.documentActionRow}>
+              <Pressable style={styles.documentActionButton} onPress={() => onScan(item.type, item.captureMode)} disabled={Boolean(uploadingType)}>
+                {isUploading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.secondaryButtonText}>{item.captureMode === 'ID_CARD' ? 'Kimlik Fotoğrafı Çek' : 'Belge Tara'}</Text>}
+              </Pressable>
+              <Pressable style={styles.documentActionButton} onPress={() => onPick(item.type, item.captureMode)} disabled={Boolean(uploadingType)}>
+                <Text style={styles.secondaryButtonText}>Belge Yükle</Text>
+              </Pressable>
+            </View>
           </View>
         );
       })}
@@ -2942,6 +3084,37 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.3
   },
+  feedSection: {
+    gap: 12
+  },
+  feedCard: {
+    overflow: 'hidden',
+    borderRadius: 26,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  feedImage: {
+    width: '100%',
+    height: 190,
+    backgroundColor: '#e2e8f0'
+  },
+  feedBody: {
+    padding: 16,
+    gap: 8
+  },
+  feedTitle: {
+    color: '#0f172a',
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: -0.4
+  },
+  feedContent: {
+    color: '#475569',
+    fontSize: 14,
+    lineHeight: 21,
+    fontWeight: '600'
+  },
   sectionCard: {
     backgroundColor: '#fff',
     borderRadius: 24,
@@ -3109,6 +3282,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#0f172a'
   },
+  documentList: {
+    gap: 12
+  },
   documentCard: {
     width: '100%',
     borderWidth: 1,
@@ -3119,22 +3295,7 @@ const styles = StyleSheet.create({
     gap: 12
   },
   documentHeaderRow: {
-    flexDirection: 'row',
-    gap: 12,
-    alignItems: 'center'
-  },
-  documentIconFrame: {
-    width: 46,
-    height: 46,
-    borderRadius: 16,
-    backgroundColor: '#dbeafe',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  documentIconText: {
-    color: '#1d4ed8',
-    fontWeight: '900',
-    fontSize: 12
+    gap: 4
   },
   documentTextBlock: {
     flex: 1
@@ -3147,23 +3308,6 @@ const styles = StyleSheet.create({
     padding: 12,
     backgroundColor: '#fff'
   },
-  idCardGuide: {
-    height: 116,
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#2563eb',
-    borderRadius: 22,
-    padding: 12,
-    backgroundColor: '#eff6ff',
-    justifyContent: 'center'
-  },
-  idCardGuideInner: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#93c5fd',
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.55)'
-  },
   documentLatestBox: {
     borderWidth: 1,
     borderColor: '#dbe3ef',
@@ -3171,6 +3315,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     padding: 12,
     gap: 4
+  },
+  documentActionRow: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  documentActionButton: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#d7e0ea',
+    borderRadius: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff'
   },
   customerItem: {
     backgroundColor: '#f8fafc',
