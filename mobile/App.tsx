@@ -739,6 +739,13 @@ export default function App() {
       });
       setFeedPosts(data || []);
     } catch (requestError: any) {
+      const status = requestError?.response?.status;
+      const message = String(requestError?.response?.data?.message || '').toLowerCase();
+      if (status === 404 || message.includes('route not found')) {
+        setFeedPosts([]);
+        return;
+      }
+
       setError(requestError?.response?.data?.message || 'Feed yüklenemedi.');
     } finally {
       setFeedLoading(false);

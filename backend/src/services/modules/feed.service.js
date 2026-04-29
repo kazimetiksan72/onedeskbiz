@@ -31,10 +31,23 @@ async function createImageVariants(file) {
   const mobileBlobName = `feed/mobile/${baseName}.jpg`;
   const webBlobName = `feed/web/${baseName}.jpg`;
 
-  const [mobileBuffer, webBuffer] = await Promise.all([
-    sharp(file.buffer).rotate().resize(900, 620, { fit: 'cover', position: 'centre' }).jpeg({ quality: 84 }).toBuffer(),
-    sharp(file.buffer).rotate().resize(1600, 720, { fit: 'cover', position: 'centre' }).jpeg({ quality: 86 }).toBuffer()
-  ]);
+  let mobileBuffer;
+  let webBuffer;
+
+  try {
+    [mobileBuffer, webBuffer] = await Promise.all([
+      sharp(file.buffer).rotate().resize(900, 620, { fit: 'cover', position: 'centre' }).jpeg({ quality: 84 }).toBuffer(),
+      sharp(file.buffer).rotate().resize(1600, 720, { fit: 'cover', position: 'centre' }).jpeg({ quality: 86 }).toBuffer()
+    ]);
+  } catch (error) {
+    logger.warn('Feed image processing failed', {
+      fileName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      error: logger.serializeError(error)
+    });
+    throw new ApiError(400, 'Feed görseli işlenemedi. Lütfen JPG, PNG veya WEBP formatında geçerli bir görsel yükleyin.');
+  }
 
   logger.info('Uploading feed image variants to Azure Blob Storage', {
     originalBlobName,

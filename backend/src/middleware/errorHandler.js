@@ -27,6 +27,14 @@ function errorHandler(err, req, res, next) {
     });
   }
 
+  if (err.name === 'MulterError') {
+    const message = err.code === 'LIMIT_FILE_SIZE'
+      ? 'Dosya boyutu çok büyük. Feed görselleri en fazla 15MB olmalıdır.'
+      : 'Dosya yükleme hatası.';
+
+    return res.status(400).json({ message });
+  }
+
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       message: 'Validation failed',

@@ -50,6 +50,20 @@ const memoryUpload = multer({
   }
 });
 
+const feedImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: Math.max(env.maxFileSizeMb, 15) * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!allowedMimeTypes.has(file.mimetype)) {
+      return cb(new ApiError(400, 'Only JPG, PNG, and WEBP files are allowed'));
+    }
+
+    return cb(null, true);
+  }
+});
+
 const documentMemoryUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -64,4 +78,4 @@ const documentMemoryUpload = multer({
   }
 });
 
-module.exports = { upload, memoryUpload, documentMemoryUpload, uploadPath };
+module.exports = { upload, memoryUpload, feedImageUpload, documentMemoryUpload, uploadPath };
