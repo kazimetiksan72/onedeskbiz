@@ -2,7 +2,7 @@ const { asyncHandler } = require('../../utils/asyncHandler');
 const service = require('../../services/modules/requests.service');
 
 const createRequest = asyncHandler(async (req, res) => {
-  const item = await service.createRequest(req.user, req.body);
+  const item = await service.createRequest(req.user, req.body, req.files || []);
   res.status(201).json(item);
 });
 

@@ -185,6 +185,13 @@ type VehicleItem = {
 };
 
 type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE';
+
+const requestTypeOptions: Array<{ type: RequestType; badge: string; description: string }> = [
+  { type: 'VEHICLE', badge: 'AR', description: 'Şirket aracı için tarih aralığı seçin' },
+  { type: 'LEAVE', badge: 'İZ', description: 'İzin için başlangıç ve bitiş seçin' },
+  { type: 'MATERIAL', badge: 'ML', description: 'İhtiyaç duyulan malzemeyi yazın' },
+  { type: 'EXPENSE', badge: 'MS', description: 'Harcama tutarı ve açıklamasını girin' }
+];
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
 type RequestItem = {
@@ -197,6 +204,12 @@ type RequestItem = {
   expenseAmount?: number;
   expenseCurrency?: string;
   expenseDescription?: string;
+  expenseAttachments?: Array<{
+    url: string;
+    fileName?: string;
+    mimeType?: string;
+    size?: number;
+  }>;
   createdAt: string;
   requesterUserId?: { firstName?: string; lastName?: string; workEmail?: string; department?: string } | string;
   vehicleId?: VehicleItem | null;
@@ -206,6 +219,12 @@ type RequestItem = {
     actedAt?: string;
     actorUserId?: { firstName?: string; lastName?: string; workEmail?: string } | string;
   } | null;
+};
+
+type ExpensePhoto = {
+  uri: string;
+  name: string;
+  type: string;
 };
 
 const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL'];
@@ -368,26 +387,32 @@ function mergeCardWithCompanyInfo(card: PublicCardResponse, company: CompanyBill
   };
 }
 
-function buildBillingShareText(billingData: CompanyBillingResponse) {
+function buildInvoiceShareText(billingData: CompanyBillingResponse) {
   const billing = billingData.billingInfo || {};
-  const lines = [
+  return [
     billing.legalCompanyName || billingData.companyName || '-',
     billing.taxNumber ? `Vergi No: ${billing.taxNumber}` : '',
     billing.taxOffice ? `Vergi Dairesi: ${billing.taxOffice}` : '',
     billing.address ? `Adres: ${billing.address}` : '',
     billingData.website ? `Web Sitesi: ${billingData.website}` : ''
-  ].filter(Boolean);
+  ].filter(Boolean).join('\n');
+}
 
-  const bankLines = (billing.bankAccounts || []).flatMap((account, index) => [
-    '',
+function buildBankShareText(billingData: CompanyBillingResponse) {
+  const bankAccounts = billingData.billingInfo?.bankAccounts || [];
+
+  if (bankAccounts.length === 0) {
+    return 'Banka bilgisi bulunamadı.';
+  }
+
+  return bankAccounts.flatMap((account, index) => [
     `Banka Bilgileri ${index + 1}`,
     account.bankName ? `Banka: ${account.bankName}` : '',
     account.branchName ? `Şube: ${account.branchName}` : '',
     account.iban ? `IBAN: ${account.iban}` : '',
-    account.swiftCode ? `SWIFT: ${account.swiftCode}` : ''
-  ]).filter((line) => line !== '');
-
-  return [...lines, ...bankLines].join('\n');
+    account.swiftCode ? `SWIFT: ${account.swiftCode}` : '',
+    ''
+  ]).filter((line, index, lines) => line !== '' || index !== lines.length - 1).join('\n');
 }
 
 export default function App() {
@@ -682,7 +707,13 @@ export default function App() {
 
   const createRequest = async (payload: any) => {
     if (!session?.accessToken) return;
-    await api.post('/requests', payload, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+    const isMultipart = payload && typeof payload.append === 'function';
+    await api.post('/requests', payload, {
+      headers: {
+        Authorization: `Bearer ${session.accessToken}`,
+        ...(isMultipart ? { 'Content-Type': 'multipart/form-data' } : {})
+      }
+    });
     setRequestFormVisible(false);
     await loadRequests();
   };
@@ -1518,11 +1549,19 @@ function BillingView({
   billingData: CompanyBillingResponse | null;
   onReload: () => void;
 }) {
-  const shareBillingInfo = async () => {
+  const shareInvoiceInfo = async () => {
     if (!billingData) return;
     await Share.share({
       title: 'Fatura Bilgileri',
-      message: buildBillingShareText(billingData)
+      message: buildInvoiceShareText(billingData)
+    });
+  };
+
+  const shareBankInfo = async () => {
+    if (!billingData) return;
+    await Share.share({
+      title: 'Banka Bilgileri',
+      message: buildBankShareText(billingData)
     });
   };
 
@@ -1548,8 +1587,8 @@ function BillingView({
           <Text style={styles.cardKicker}>FATURA</Text>
           <Text style={styles.sectionTitle}>Fatura Bilgileri</Text>
         </View>
-        <Pressable style={styles.billingShareButton} onPress={shareBillingInfo}>
-          <Text style={styles.billingShareButtonText}>Paylaş</Text>
+        <Pressable style={styles.billingShareButton} onPress={shareInvoiceInfo}>
+          <Text style={styles.billingShareButtonText}>Fatura Paylaş</Text>
         </Pressable>
       </View>
 
@@ -1560,7 +1599,12 @@ function BillingView({
         <Text style={styles.billingLine}>{billingData.billingInfo?.address || '-'}</Text>
       </View>
 
-      <Text style={styles.billingSectionTitle}>Banka Bilgileri</Text>
+      <View style={styles.billingSectionHeaderRow}>
+        <Text style={styles.billingSectionTitle}>Banka Bilgileri</Text>
+        <Pressable style={styles.billingShareButton} onPress={shareBankInfo}>
+          <Text style={styles.billingShareButtonText}>Banka Paylaş</Text>
+        </Pressable>
+      </View>
       {(billingData.billingInfo?.bankAccounts || []).map((account, index) => (
         <View key={`${account.iban || 'bank'}-${index}`} style={styles.billingBlock}>
           <Text style={styles.billingLine}>Bank: {account.bankName || '-'}</Text>
@@ -1663,6 +1707,15 @@ function RequestRow({ item }: { item: RequestItem }) {
       {item.vehicleId ? <Text style={styles.infoLine}>{item.vehicleId.plate} - {item.vehicleId.brand} {item.vehicleId.model}</Text> : null}
       {item.materialText ? <Text style={styles.infoLine}>{item.materialText}</Text> : null}
       {item.type === 'EXPENSE' ? <Text style={styles.infoLine}>{formatMoney(item.expenseAmount, item.expenseCurrency)} • {item.expenseDescription || '-'}</Text> : null}
+      {item.type === 'EXPENSE' && item.expenseAttachments?.length ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.expenseAttachmentList}>
+          {item.expenseAttachments.map((attachment, index) => (
+            <Pressable key={`${attachment.url}-${index}`} onPress={() => Linking.openURL(attachment.url)}>
+              <Image source={{ uri: attachment.url }} style={styles.expenseAttachmentThumb} />
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
       {item.startAt ? <Text style={styles.infoLine}>{formatDateTime(item.startAt)} - {item.endAt ? formatDateTime(item.endAt) : '-'}</Text> : null}
       <Text style={styles.actionLogSubtitle}>Oluşturma: {formatDateTime(item.createdAt)}</Text>
       {item.approvalAction?.action ? (
@@ -1690,22 +1743,87 @@ function RequestForm({
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCurrency, setExpenseCurrency] = useState('TRY');
   const [expenseDescription, setExpenseDescription] = useState('');
+  const [expensePhotos, setExpensePhotos] = useState<ExpensePhoto[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const addExpenseAsset = (asset: ImagePicker.ImagePickerAsset) => {
+    setExpensePhotos((current) => {
+      if (current.length >= 5) return current;
+      return [
+        ...current,
+        {
+          uri: asset.uri,
+          name: asset.fileName || `expense-${Date.now()}.jpg`,
+          type: asset.mimeType || 'image/jpeg'
+        }
+      ].slice(0, 5);
+    });
+  };
+
+  const takeExpensePhoto = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: false,
+      quality: 0.82
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      addExpenseAsset(result.assets[0]);
+    }
+  };
+
+  const pickExpensePhotos = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsMultipleSelection: true,
+      selectionLimit: Math.max(1, 5 - expensePhotos.length),
+      quality: 0.82
+    });
+
+    if (!result.canceled) {
+      result.assets.forEach(addExpenseAsset);
+    }
+  };
+
+  const removeExpensePhoto = (index: number) => {
+    setExpensePhotos((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
 
   const submit = async () => {
     setSaving(true);
     try {
+      if (type === 'EXPENSE') {
+        const formData = new FormData();
+        formData.append('type', type);
+        formData.append('expenseAmount', String(Number(expenseAmount)));
+        formData.append('expenseCurrency', expenseCurrency);
+        formData.append('expenseDescription', expenseDescription);
+        expensePhotos.forEach((photo) => {
+          formData.append('expensePhotos', {
+            uri: photo.uri,
+            name: photo.name,
+            type: photo.type
+          } as any);
+        });
+        await onSubmit(formData);
+        return;
+      }
+
       const payload =
         type === 'MATERIAL'
           ? { type, materialText }
-          : type === 'EXPENSE'
-            ? { type, expenseAmount: Number(expenseAmount), expenseCurrency, expenseDescription }
-            : {
-              type,
-              startAt: startAt.toISOString(),
-              endAt: endAt.toISOString(),
-              ...(type === 'VEHICLE' ? { vehicleId } : {})
-            };
+          : {
+            type,
+            startAt: startAt.toISOString(),
+            endAt: endAt.toISOString(),
+            ...(type === 'VEHICLE' ? { vehicleId } : {})
+          };
       await onSubmit(payload);
     } finally {
       setSaving(false);
@@ -1714,10 +1832,18 @@ function RequestForm({
 
   return (
     <ScrollView contentContainerStyle={styles.presentationContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.segmentedControl}>
-        {(['VEHICLE', 'LEAVE', 'MATERIAL', 'EXPENSE'] as RequestType[]).map((item) => (
-          <Pressable key={item} style={[styles.segmentItem, type === item ? styles.segmentItemActive : null]} onPress={() => setType(item)}>
-            <Text style={[styles.segmentText, type === item ? styles.segmentTextActive : null]}>{requestTypeLabel(item)}</Text>
+      <View style={styles.requestTypeGrid}>
+        {requestTypeOptions.map((item) => (
+          <Pressable
+            key={item.type}
+            style={[styles.requestTypeCard, type === item.type ? styles.requestTypeCardActive : null]}
+            onPress={() => setType(item.type)}
+          >
+            <View style={[styles.requestTypeBadge, type === item.type ? styles.requestTypeBadgeActive : null]}>
+              <Text style={[styles.requestTypeBadgeText, type === item.type ? styles.requestTypeBadgeTextActive : null]}>{item.badge}</Text>
+            </View>
+            <Text style={[styles.requestTypeTitle, type === item.type ? styles.requestTypeTitleActive : null]}>{requestTypeLabel(item.type)}</Text>
+            <Text style={styles.requestTypeDescription}>{item.description}</Text>
           </Pressable>
         ))}
       </View>
@@ -1780,6 +1906,28 @@ function RequestForm({
           <TextInput style={styles.input} placeholder="Tutar" value={expenseAmount} onChangeText={setExpenseAmount} keyboardType="decimal-pad" />
           <TextInput style={styles.input} placeholder="Para birimi" value={expenseCurrency} onChangeText={(value) => setExpenseCurrency(value.toUpperCase().slice(0, 3))} autoCapitalize="characters" />
           <TextInput style={[styles.input, styles.noteInput]} placeholder="Masraf açıklaması" value={expenseDescription} onChangeText={setExpenseDescription} multiline />
+          <View style={styles.expensePhotoActions}>
+            <Pressable style={styles.secondaryButton} onPress={takeExpensePhoto}>
+              <Text style={styles.secondaryButtonText}>Fotoğraf Çek</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={pickExpensePhotos}>
+              <Text style={styles.secondaryButtonText}>Galeriden Seç</Text>
+            </Pressable>
+          </View>
+          {expensePhotos.length ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.expensePhotoPreviewList}>
+              {expensePhotos.map((photo, index) => (
+                <View key={`${photo.uri}-${index}`} style={styles.expensePhotoPreviewItem}>
+                  <Image source={{ uri: photo.uri }} style={styles.expensePhotoPreview} />
+                  <Pressable style={styles.expensePhotoRemoveButton} onPress={() => removeExpensePhoto(index)}>
+                    <Text style={styles.expensePhotoRemoveText}>Sil</Text>
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
+          ) : (
+            <Text style={styles.actionLogSubtitle}>Fiş veya belge fotoğrafı ekleyebilirsiniz. En fazla 5 fotoğraf.</Text>
+          )}
         </View>
       )}
 
@@ -2687,6 +2835,13 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 14
   },
+  billingSectionHeaderRow: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 14
+  },
   billingShareButton: {
     paddingHorizontal: 13,
     paddingVertical: 9,
@@ -2756,6 +2911,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#fee2e2',
     color: '#991b1b'
   },
+  expenseAttachmentList: {
+    gap: 8,
+    paddingVertical: 4
+  },
+  expenseAttachmentThumb: {
+    width: 76,
+    height: 76,
+    borderRadius: 16,
+    backgroundColor: '#e2e8f0',
+    borderWidth: 1,
+    borderColor: '#dbe3ef'
+  },
   requestActions: {
     flexDirection: 'row',
     gap: 10,
@@ -2779,29 +2946,86 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '900'
   },
-  segmentedControl: {
+  requestTypeGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10
+  },
+  requestTypeCard: {
+    width: '48%',
+    minHeight: 142,
+    borderWidth: 1,
+    borderColor: '#dbe3ef',
+    borderRadius: 22,
+    padding: 14,
     gap: 8,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 18,
-    padding: 5
-  },
-  segmentItem: {
-    flex: 1,
-    borderRadius: 14,
-    paddingVertical: 10,
-    alignItems: 'center'
-  },
-  segmentItemActive: {
     backgroundColor: '#fff'
   },
-  segmentText: {
-    color: '#64748b',
-    fontSize: 12,
+  requestTypeCardActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff'
+  },
+  requestTypeBadge: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: '#e2e8f0',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  requestTypeBadgeActive: {
+    backgroundColor: '#1d4ed8'
+  },
+  requestTypeBadgeText: {
+    color: '#475569',
+    fontSize: 13,
     fontWeight: '900'
   },
-  segmentTextActive: {
+  requestTypeBadgeTextActive: {
+    color: '#fff'
+  },
+  requestTypeTitle: {
+    color: '#0f172a',
+    fontSize: 15,
+    fontWeight: '900'
+  },
+  requestTypeTitleActive: {
     color: '#1d4ed8'
+  },
+  requestTypeDescription: {
+    color: '#64748b',
+    fontSize: 12,
+    lineHeight: 17,
+    fontWeight: '600'
+  },
+  expensePhotoActions: {
+    flexDirection: 'row',
+    gap: 10
+  },
+  expensePhotoPreviewList: {
+    gap: 10,
+    paddingVertical: 4
+  },
+  expensePhotoPreviewItem: {
+    width: 104,
+    gap: 6
+  },
+  expensePhotoPreview: {
+    width: 104,
+    height: 104,
+    borderRadius: 18,
+    backgroundColor: '#e2e8f0'
+  },
+  expensePhotoRemoveButton: {
+    alignItems: 'center',
+    borderRadius: 999,
+    paddingVertical: 7,
+    backgroundColor: '#fee2e2'
+  },
+  expensePhotoRemoveText: {
+    color: '#991b1b',
+    fontSize: 12,
+    fontWeight: '900'
   },
   vehicleChoice: {
     borderWidth: 1,

@@ -1,7 +1,11 @@
+const path = require('path');
+const { BlobServiceClient } = require('@azure/storage-blob');
 const { DepartmentRole, PERMISSIONS } = require('../../models/DepartmentRole');
 const { Request, REQUEST_STATUS, REQUEST_TYPES } = require('../../models/Request');
 const { Vehicle } = require('../../models/Vehicle');
+const env = require('../../config/env');
 const { ApiError } = require('../../utils/apiError');
+const { logger } = require('../../utils/logger');
 const { getPagination } = require('../../utils/pagination');
 const { ROLES } = require('../../constants/roles');
 
@@ -19,7 +23,60 @@ function ensureValidDateRange(startAt, endAt) {
   }
 }
 
-async function createRequest(user, payload) {
+function getBlobExtension(file) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (ext) return ext;
+
+  if (file.mimetype === 'image/png') return '.png';
+  if (file.mimetype === 'image/webp') return '.webp';
+  return '.jpg';
+}
+
+async function uploadExpenseAttachments(userId, files = []) {
+  if (!files.length) return [];
+
+  if (!env.azureStorage.connectionString) {
+    throw new ApiError(500, 'Azure Storage is not configured');
+  }
+
+  const blobServiceClient = BlobServiceClient.fromConnectionString(env.azureStorage.connectionString);
+  const containerClient = blobServiceClient.getContainerClient(env.azureStorage.containerName);
+  await containerClient.createIfNotExists({ access: 'blob' });
+
+  const uploaded = [];
+  for (const file of files) {
+    const extension = getBlobExtension(file);
+    const fileName = `expense-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+    const blobName = `expenses/${userId}/${fileName}`;
+    const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+    logger.info('Uploading expense attachment to Azure Blob Storage', {
+      userId: userId.toString(),
+      containerName: env.azureStorage.containerName,
+      blobName,
+      mimeType: file.mimetype,
+      size: file.size
+    });
+
+    await blockBlobClient.uploadData(file.buffer, {
+      blobHTTPHeaders: {
+        blobContentType: file.mimetype,
+        blobCacheControl: 'public, max-age=31536000'
+      }
+    });
+
+    uploaded.push({
+      url: blockBlobClient.url,
+      fileName,
+      mimeType: file.mimetype,
+      size: file.size
+    });
+  }
+
+  return uploaded;
+}
+
+async function createRequest(user, payload, files = []) {
   ensureValidDateRange(payload.startAt, payload.endAt);
 
   if (payload.type === REQUEST_TYPES.VEHICLE) {
@@ -28,6 +85,10 @@ async function createRequest(user, payload) {
       throw new ApiError(404, 'Araç bulunamadı.');
     }
   }
+
+  const expenseAttachments = payload.type === REQUEST_TYPES.EXPENSE
+    ? await uploadExpenseAttachments(user._id, files)
+    : [];
 
   return Request.create({
     requesterUserId: user._id,
@@ -39,7 +100,8 @@ async function createRequest(user, payload) {
     materialText: payload.type === REQUEST_TYPES.MATERIAL ? payload.materialText : '',
     expenseAmount: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseAmount : undefined,
     expenseCurrency: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseCurrency || 'TRY' : undefined,
-    expenseDescription: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseDescription : ''
+    expenseDescription: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseDescription : '',
+    expenseAttachments
   });
 }
 

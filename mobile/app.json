@@ -14,10 +14,12 @@
       "bundleIdentifier": "com.pikselmutfak.onedesk",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Profil fotoğrafınızı çekmek için kamera erişimi gerekiyor.",
+        "NSCameraUsageDescription": "Profil ve masraf belgesi fotoğrafı çekmek için kamera erişimi gerekiyor.",
+        "NSPhotoLibraryUsageDescription": "Masraf belgesi fotoğraflarını seçmek için fotoğraf arşivi erişimi gerekiyor.",
         "UIBackgroundModes": [
           "remote-notification"
-        ]
+        ],
+        "NSLocationWhenInUseUsageDescription": "Konum bilgisi, yalnızca bildirim ve uygulama özellikleri için gerekli olduğunda kullanılır."
       },
       "icon": "./assets/icon.png"
     },
