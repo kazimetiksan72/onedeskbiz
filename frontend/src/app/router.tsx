@@ -20,6 +20,7 @@ import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequests
 import { VehicleRequestsPage } from '../features/requests/pages/VehicleRequestsPage';
 import { MaterialRequestsPage } from '../features/requests/pages/MaterialRequestsPage';
 import { ExpenseRequestsPage } from '../features/requests/pages/ExpenseRequestsPage';
+import { EmployeeDocumentsPage } from '../features/employeeDocuments/pages/EmployeeDocumentsPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
 
 export const router = createBrowserRouter([
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
             element: <EmployeeRoute />,
             children: [
               { path: '/leave-requests', element: <LeaveRequestsPage /> },
+              { path: '/employee-documents', element: <EmployeeDocumentsPage /> },
               { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
               { path: '/expense-requests', element: <ExpenseRequestsPage /> },

@@ -61,7 +61,7 @@ module.exports = {
   },
   bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
   uploadDir: process.env.UPLOAD_DIR || 'uploads',
-  maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 2),
+  maxFileSizeMb: Number(process.env.MAX_FILE_SIZE_MB || 10),
   defaultEmployeePassword: process.env.DEFAULT_EMPLOYEE_PASSWORD || 'App12345',
   azureStorage: {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',

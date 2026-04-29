@@ -20,6 +20,7 @@ const storage = multer.diskStorage({
 });
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const allowedDocumentMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
 
 const upload = multer({
   storage,
@@ -49,4 +50,18 @@ const memoryUpload = multer({
   }
 });
 
-module.exports = { upload, memoryUpload, uploadPath };
+const documentMemoryUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: env.maxFileSizeMb * 1024 * 1024
+  },
+  fileFilter: (req, file, cb) => {
+    if (!allowedDocumentMimeTypes.has(file.mimetype)) {
+      return cb(new ApiError(400, 'Only PDF, JPG, PNG, and WEBP files are allowed'));
+    }
+
+    return cb(null, true);
+  }
+});
+
+module.exports = { upload, memoryUpload, documentMemoryUpload, uploadPath };

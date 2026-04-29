@@ -14,7 +14,7 @@
       "bundleIdentifier": "com.pikselmutfak.onedesk",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Profil ve masraf belgesi fotoğrafı çekmek için kamera erişimi gerekiyor.",
+        "NSCameraUsageDescription": "Profil fotoğrafı, masraf belgesi ve özlük belgelerini çekmek için kamera erişimi gerekiyor.",
         "NSPhotoLibraryUsageDescription": "Masraf belgesi fotoğraflarını seçmek için fotoğraf arşivi erişimi gerekiyor.",
         "UIBackgroundModes": [
           "remote-notification"

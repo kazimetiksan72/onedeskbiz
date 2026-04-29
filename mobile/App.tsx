@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import QRCode from 'react-native-qrcode-svg';
 import {
+  ActionSheetIOS,
   ActivityIndicator,
   Animated,
   Image,
@@ -27,7 +28,7 @@ import { StatusBar } from 'expo-status-bar';
 declare const require: (moduleName: string) => any;
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'HOME' | 'CARD' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
+type MenuKey = 'HOME' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
 
 type AuthUser = {
   _id: string;
@@ -226,6 +227,27 @@ type ExpensePhoto = {
   name: string;
   type: string;
 };
+
+type EmployeeDocumentType = 'POPULATION_REGISTRY' | 'RESIDENCE_CERTIFICATE' | 'ID_CARD_FRONT' | 'ID_CARD_BACK';
+
+type EmployeeDocumentItem = {
+  _id: string;
+  type: EmployeeDocumentType;
+  url: string;
+  fileName?: string;
+  originalName?: string;
+  mimeType?: string;
+  size?: number;
+  source?: 'WEB_UPLOAD' | 'MOBILE_SCAN' | 'MOBILE_CAMERA';
+  createdAt: string;
+};
+
+const employeeDocumentTypes: Array<{ type: EmployeeDocumentType; title: string; description: string; captureMode: 'DOCUMENT' | 'ID_CARD' }> = [
+  { type: 'POPULATION_REGISTRY', title: 'Nüfus Kayıt Örneği', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
+  { type: 'RESIDENCE_CERTIFICATE', title: 'İkametgah Belgesi', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
+  { type: 'ID_CARD_FRONT', title: 'TC Kimlik Ön Yüz', description: 'Kimliği çerçeveye ortalayarak çekin.', captureMode: 'ID_CARD' },
+  { type: 'ID_CARD_BACK', title: 'TC Kimlik Arka Yüz', description: 'Kimliği çerçeveye ortalayarak çekin.', captureMode: 'ID_CARD' }
+];
 
 const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL'];
 
@@ -447,6 +469,9 @@ export default function App() {
   const [actionReturnMenu, setActionReturnMenu] = useState<MenuKey>('HOME');
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [employeeDocuments, setEmployeeDocuments] = useState<EmployeeDocumentItem[]>([]);
+  const [employeeDocumentsLoading, setEmployeeDocumentsLoading] = useState(false);
+  const [employeeDocumentUploadingType, setEmployeeDocumentUploadingType] = useState<EmployeeDocumentType | ''>('');
   const [approvals, setApprovals] = useState<RequestItem[]>([]);
   const [approvalsLoading, setApprovalsLoading] = useState(false);
   const [vehicles, setVehicles] = useState<VehicleItem[]>([]);
@@ -455,12 +480,13 @@ export default function App() {
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const canApproveRequests = userCanApproveRequests(session?.user);
   const isTabRoot =
-    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
+    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
     !selectedCustomer &&
     !selectedContact &&
     !selectedActionLog;
   const isRefreshing =
     (selectedMenu === 'REQUESTS' && requestsLoading) ||
+    (selectedMenu === 'DOCUMENTS' && employeeDocumentsLoading) ||
     (selectedMenu === 'CONTACTS' && contactsLoading) ||
     (selectedMenu === 'CUSTOMERS' && customersLoading);
 
@@ -474,6 +500,9 @@ export default function App() {
     }
     if (selectedMenu === 'CUSTOMERS') {
       loadCustomers();
+    }
+    if (selectedMenu === 'DOCUMENTS') {
+      loadEmployeeDocuments();
     }
   };
 
@@ -666,6 +695,69 @@ export default function App() {
     }
   };
 
+  const loadEmployeeDocuments = async () => {
+    if (!session?.accessToken) return;
+    setError('');
+    setEmployeeDocumentsLoading(true);
+    try {
+      const { data } = await api.get<EmployeeDocumentItem[]>('/employee-documents/mine', {
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setEmployeeDocuments(data || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Özlük belgeleri yüklenemedi.');
+    } finally {
+      setEmployeeDocumentsLoading(false);
+    }
+  };
+
+  const uploadEmployeeDocument = async (documentType: EmployeeDocumentType, asset: ImagePicker.ImagePickerAsset, source: 'MOBILE_SCAN' | 'MOBILE_CAMERA') => {
+    if (!session?.accessToken) return;
+    const formData = new FormData();
+    formData.append('type', documentType);
+    formData.append('source', source);
+    formData.append('document', {
+      uri: asset.uri,
+      name: asset.fileName || `${documentType.toLowerCase()}-${Date.now()}.jpg`,
+      type: asset.mimeType || 'image/jpeg'
+    } as any);
+
+    setEmployeeDocumentUploadingType(documentType);
+    setError('');
+    try {
+      await api.post('/employee-documents/mine', formData, {
+        headers: {
+          Authorization: `Bearer ${session.accessToken}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      await loadEmployeeDocuments();
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Belge yüklenemedi.');
+    } finally {
+      setEmployeeDocumentUploadingType('');
+    }
+  };
+
+  const scanEmployeeDocument = async (documentType: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      setError('Kamera izni gerekli.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: captureMode === 'ID_CARD' ? [16, 10] : [3, 4],
+      quality: 0.9
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      await uploadEmployeeDocument(documentType, result.assets[0], captureMode === 'ID_CARD' ? 'MOBILE_CAMERA' : 'MOBILE_SCAN');
+    }
+  };
+
   const loadApprovals = async () => {
     if (!session?.accessToken) return;
     setError('');
@@ -796,6 +888,8 @@ export default function App() {
     setSelectedActionLog(null);
     setActionReturnMenu('HOME');
     setRequests([]);
+    setEmployeeDocuments([]);
+    setEmployeeDocumentUploadingType('');
     setApprovals([]);
     setVehicles([]);
     setRequestFormVisible(false);
@@ -882,6 +976,10 @@ export default function App() {
       loadRequests();
     }
 
+    if (selectedMenu === 'DOCUMENTS' && employeeDocuments.length === 0 && !employeeDocumentsLoading) {
+      loadEmployeeDocuments();
+    }
+
     if (canApproveRequests && selectedMenu === 'APPROVALS' && approvals.length === 0 && !approvalsLoading) {
       loadApprovals();
     }
@@ -965,7 +1063,7 @@ export default function App() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={refreshCurrentScreen}
-              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
+              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
               tintColor="#2563eb"
             />
           }
@@ -995,6 +1093,15 @@ export default function App() {
               loading={billingLoading}
               billingData={billingData}
               onReload={loadBilling}
+            />
+          ) : null}
+
+          {selectedMenu === 'DOCUMENTS' ? (
+            <EmployeeDocumentsView
+              loading={employeeDocumentsLoading}
+              items={employeeDocuments}
+              uploadingType={employeeDocumentUploadingType}
+              onScan={scanEmployeeDocument}
             />
           ) : null}
 
@@ -1159,6 +1266,7 @@ export default function App() {
 function titleForMenu(menu: MenuKey) {
   if (menu === 'HOME') return 'Ana Sayfa';
   if (menu === 'CARD') return 'Kartvizitim';
+  if (menu === 'DOCUMENTS') return 'Özlük Belgeleri';
   if (menu === 'REQUESTS') return 'Taleplerim';
   if (menu === 'APPROVALS') return 'Onaylar';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
@@ -1224,6 +1332,7 @@ function DrawerMenu({
   const menuItems: Array<{ key: MenuKey; label: string; icon: string }> = [
     { key: 'HOME', label: 'Ana Sayfa', icon: '⌂' },
     { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
+    { key: 'DOCUMENTS', label: 'Özlük Belgeleri', icon: '□' },
     { key: 'REQUESTS', label: 'Taleplerim', icon: '≡' },
     ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
     { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' },
@@ -1617,6 +1726,79 @@ function BillingView({
   );
 }
 
+function EmployeeDocumentsView({
+  loading,
+  items,
+  uploadingType,
+  onScan
+}: {
+  loading: boolean;
+  items: EmployeeDocumentItem[];
+  uploadingType: EmployeeDocumentType | '';
+  onScan: (type: EmployeeDocumentType, captureMode: 'DOCUMENT' | 'ID_CARD') => void;
+}) {
+  const latestByType = useMemo(() => {
+    return items.reduce<Record<string, EmployeeDocumentItem>>((acc, item) => {
+      if (!acc[item.type]) acc[item.type] = item;
+      return acc;
+    }, {});
+  }, [items]);
+
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <Text style={styles.sectionTitle}>Özlük Belgeleri</Text>
+      <Text style={styles.infoLine}>Belgeleri kamera ile tarayın. Kimlik kartı için kartı çerçeveye ortalayarak çekin.</Text>
+
+      {employeeDocumentTypes.map((item) => {
+        const latest = latestByType[item.type];
+        const isUploading = uploadingType === item.type;
+
+        return (
+          <View key={item.type} style={styles.documentCard}>
+            <View style={styles.documentHeaderRow}>
+              <View style={styles.documentIconFrame}>
+                <Text style={styles.documentIconText}>{item.captureMode === 'ID_CARD' ? 'ID' : 'PDF'}</Text>
+              </View>
+              <View style={styles.documentTextBlock}>
+                <Text style={styles.customerName}>{item.title}</Text>
+                <Text style={styles.infoLine}>{item.description}</Text>
+              </View>
+            </View>
+
+            {item.captureMode === 'ID_CARD' ? (
+              <View style={styles.idCardGuide}>
+                <View style={styles.idCardGuideInner} />
+              </View>
+            ) : (
+              <View style={styles.documentScanGuide}>
+                <Text style={styles.actionLogSubtitle}>Belgeyi iyi ışıkta, kenarları görünecek şekilde çekin.</Text>
+              </View>
+            )}
+
+            {latest ? (
+              <Pressable style={styles.documentLatestBox} onPress={() => Linking.openURL(latest.url)}>
+                <Text style={styles.infoLabel}>Son yüklenen</Text>
+                <Text style={styles.infoLine}>{new Date(latest.createdAt).toLocaleString('tr-TR')}</Text>
+                <Text style={styles.refreshText}>Belgeyi Aç</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.actionLogSubtitle}>Henüz belge yüklenmedi.</Text>
+            )}
+
+            <Pressable style={styles.secondaryButton} onPress={() => onScan(item.type, item.captureMode)} disabled={Boolean(uploadingType)}>
+              {isUploading ? <ActivityIndicator color="#0f172a" /> : <Text style={styles.secondaryButtonText}>{item.captureMode === 'ID_CARD' ? 'Kimlik Fotoğrafı Çek' : 'Belge Tara'}</Text>}
+            </Pressable>
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
 function RequestsView({
   loading,
   items,
@@ -1744,6 +1926,7 @@ function RequestForm({
   const [expenseCurrency, setExpenseCurrency] = useState('TRY');
   const [expenseDescription, setExpenseDescription] = useState('');
   const [expensePhotos, setExpensePhotos] = useState<ExpensePhoto[]>([]);
+  const [photoSourceVisible, setPhotoSourceVisible] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const addExpenseAsset = (asset: ImagePicker.ImagePickerAsset) => {
@@ -1793,6 +1976,42 @@ function RequestForm({
 
   const removeExpensePhoto = (index: number) => {
     setExpensePhotos((current) => current.filter((_, itemIndex) => itemIndex !== index));
+  };
+
+  const openExpensePhotoSourcePicker = () => {
+    if (expensePhotos.length >= 5) return;
+
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: ['Vazgeç', 'Kamera', 'Fotoğraflar'],
+          cancelButtonIndex: 0,
+          title: 'Fotoğraf kaynağı seçin'
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 1) {
+            takeExpensePhoto();
+          }
+
+          if (buttonIndex === 2) {
+            pickExpensePhotos();
+          }
+        }
+      );
+      return;
+    }
+
+    setPhotoSourceVisible(true);
+  };
+
+  const selectExpensePhotoSource = async (source: 'CAMERA' | 'LIBRARY') => {
+    setPhotoSourceVisible(false);
+    if (source === 'CAMERA') {
+      await takeExpensePhoto();
+      return;
+    }
+
+    await pickExpensePhotos();
   };
 
   const submit = async () => {
@@ -1907,11 +2126,12 @@ function RequestForm({
           <TextInput style={styles.input} placeholder="Para birimi" value={expenseCurrency} onChangeText={(value) => setExpenseCurrency(value.toUpperCase().slice(0, 3))} autoCapitalize="characters" />
           <TextInput style={[styles.input, styles.noteInput]} placeholder="Masraf açıklaması" value={expenseDescription} onChangeText={setExpenseDescription} multiline />
           <View style={styles.expensePhotoActions}>
-            <Pressable style={styles.secondaryButton} onPress={takeExpensePhoto}>
-              <Text style={styles.secondaryButtonText}>Fotoğraf Çek</Text>
-            </Pressable>
-            <Pressable style={styles.secondaryButton} onPress={pickExpensePhotos}>
-              <Text style={styles.secondaryButtonText}>Galeriden Seç</Text>
+            <Pressable
+              style={[styles.secondaryButton, expensePhotos.length >= 5 ? styles.disabledActionButton : null]}
+              onPress={openExpensePhotoSourcePicker}
+              disabled={expensePhotos.length >= 5}
+            >
+              <Text style={styles.secondaryButtonText}>Fotoğraf Ekle</Text>
             </Pressable>
           </View>
           {expensePhotos.length ? (
@@ -1930,6 +2150,25 @@ function RequestForm({
           )}
         </View>
       )}
+
+      <Modal visible={photoSourceVisible} transparent animationType="fade" onRequestClose={() => setPhotoSourceVisible(false)}>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.photoSourceSheet}>
+            <Text style={styles.sectionTitle}>Fotoğraf Kaynağı</Text>
+            <Pressable style={styles.photoSourceOption} onPress={() => selectExpensePhotoSource('CAMERA')}>
+              <Text style={styles.customerName}>Kamera</Text>
+              <Text style={styles.infoLine}>Yeni belge fotoğrafı çek</Text>
+            </Pressable>
+            <Pressable style={styles.photoSourceOption} onPress={() => selectExpensePhotoSource('LIBRARY')}>
+              <Text style={styles.customerName}>Fotoğraflar</Text>
+              <Text style={styles.infoLine}>Cihazdaki fotoğraflardan seç</Text>
+            </Pressable>
+            <Pressable style={styles.secondaryButton} onPress={() => setPhotoSourceVisible(false)}>
+              <Text style={styles.secondaryButtonText}>Vazgeç</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
 
       <Pressable style={styles.primaryButton} onPress={submit} disabled={saving}>
         {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Onaya Gönder</Text>}
@@ -2870,6 +3109,69 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#0f172a'
   },
+  documentCard: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 20,
+    backgroundColor: '#f8fafc',
+    padding: 14,
+    gap: 12
+  },
+  documentHeaderRow: {
+    flexDirection: 'row',
+    gap: 12,
+    alignItems: 'center'
+  },
+  documentIconFrame: {
+    width: 46,
+    height: 46,
+    borderRadius: 16,
+    backgroundColor: '#dbeafe',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  documentIconText: {
+    color: '#1d4ed8',
+    fontWeight: '900',
+    fontSize: 12
+  },
+  documentTextBlock: {
+    flex: 1
+  },
+  documentScanGuide: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: '#cbd5e1',
+    borderRadius: 16,
+    padding: 12,
+    backgroundColor: '#fff'
+  },
+  idCardGuide: {
+    height: 116,
+    borderWidth: 2,
+    borderStyle: 'dashed',
+    borderColor: '#2563eb',
+    borderRadius: 22,
+    padding: 12,
+    backgroundColor: '#eff6ff',
+    justifyContent: 'center'
+  },
+  idCardGuideInner: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#93c5fd',
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.55)'
+  },
+  documentLatestBox: {
+    borderWidth: 1,
+    borderColor: '#dbe3ef',
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    padding: 12,
+    gap: 4
+  },
   customerItem: {
     backgroundColor: '#f8fafc',
     borderWidth: 1,
@@ -2999,8 +3301,32 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   expensePhotoActions: {
-    flexDirection: 'row',
-    gap: 10
+    alignItems: 'flex-start'
+  },
+  photoSourceSheet: {
+    width: '88%',
+    maxWidth: 420,
+    borderRadius: 26,
+    backgroundColor: '#fff',
+    padding: 18,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0'
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20
+  },
+  photoSourceOption: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 18,
+    padding: 14,
+    gap: 4,
+    backgroundColor: '#f8fafc'
   },
   expensePhotoPreviewList: {
     gap: 10,

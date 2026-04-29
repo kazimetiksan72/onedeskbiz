@@ -12,6 +12,7 @@ const digitalCardRoutes = require('./modules/digitalCards.routes');
 const leaveRequestRoutes = require('./modules/leaveRequests.routes');
 const dashboardRoutes = require('./modules/dashboard.routes');
 const profileRoutes = require('./modules/profile.routes');
+const employeeDocumentRoutes = require('./modules/employeeDocuments.routes');
 const companySettingsController = require('../controllers/companySettings/companySettings.controller');
 const { auth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
@@ -25,6 +26,7 @@ router.use('/digital-cards', digitalCardRoutes);
 router.get('/company-settings/public-billing', companySettingsController.getPublicBillingInfo);
 
 router.use('/employees', auth, enforcePasswordChange, employeeRoutes);
+router.use('/employee-documents', auth, enforcePasswordChange, employeeDocumentRoutes);
 router.use('/profile', auth, enforcePasswordChange, profileRoutes);
 router.use('/customers', auth, enforcePasswordChange, customerRoutes);
 router.use('/contacts', auth, enforcePasswordChange, contactRoutes);
