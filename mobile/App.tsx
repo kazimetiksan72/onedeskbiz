@@ -1143,37 +1143,52 @@ export default function App() {
 
   if (!session) {
     return (
-      <SafeAreaView style={styles.container}>
-        <StatusBar style="dark" />
+      <SafeAreaView style={styles.loginScreen}>
+        <StatusBar style="light" />
         <KeyboardAvoidingView
-          style={styles.loginKeyboardView}
+          style={styles.loginKAV}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={Platform.OS === 'ios' ? 28 : 0}
+          keyboardVerticalOffset={0}
         >
-          <View style={styles.card}>
-            <Text style={styles.title}>OneDesk</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              value={email}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              onChangeText={setEmail}
-            />
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              value={password}
-              secureTextEntry
-              onChangeText={setPassword}
-            />
-            <Pressable style={styles.primaryButton} onPress={login} disabled={isLoading}>
+          <View style={styles.loginTop}>
+            <View style={styles.loginLogoMark}>
+              <Text style={styles.loginLogoText}>O</Text>
+            </View>
+            <Text style={styles.loginBrandName}>OneDesk</Text>
+            <Text style={styles.loginBrandSub}>Çalışan Platformu</Text>
+          </View>
+          <View style={styles.loginCard}>
+            <Text style={styles.loginCardHeading}>Giriş Yap</Text>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>E-posta</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="ornek@sirket.com"
+                placeholderTextColor="#94a3b8"
+                value={email}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                onChangeText={setEmail}
+              />
+            </View>
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Şifre</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="••••••••"
+                placeholderTextColor="#94a3b8"
+                value={password}
+                secureTextEntry
+                onChangeText={setPassword}
+              />
+            </View>
+            <Pressable style={[styles.primaryButton, styles.loginButton]} onPress={login} disabled={isLoading}>
               {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Giriş Yap</Text>}
             </Pressable>
-            <Text style={styles.hint}>
-              API: {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api'}
-            </Text>
             {error ? <Text style={styles.error}>{error}</Text> : null}
+            <Text style={styles.loginApiHint}>
+              {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api'}
+            </Text>
           </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
@@ -1212,6 +1227,7 @@ export default function App() {
         />
 
         <ScrollView
+          style={styles.scrollArea}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -1487,6 +1503,21 @@ function DrawerMenu({
   onSelect: (menu: MenuKey) => void;
   onSignOut: () => void;
 }) {
+  const slideAnim = useRef(new Animated.Value(-340)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 70,
+        friction: 12
+      }).start();
+    } else {
+      slideAnim.setValue(-340);
+    }
+  }, [visible]);
+
   const menuItems: Array<{ key: MenuKey; label: string; icon: string }> = [
     { key: 'HOME', label: 'Ana Sayfa', icon: '⌂' },
     { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
@@ -1503,7 +1534,7 @@ function DrawerMenu({
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={styles.drawerOverlay}>
         <Pressable style={styles.drawerDismissArea} onPress={onClose} />
-        <View style={styles.drawerPanel}>
+        <Animated.View style={[styles.drawerPanel, { transform: [{ translateX: slideAnim }] }]}>
           <View>
             <View style={styles.drawerHeader}>
               <Text style={styles.drawerBrand}>OneDesk</Text>
@@ -1533,7 +1564,7 @@ function DrawerMenu({
           <Pressable style={styles.drawerSignOutButton} onPress={onSignOut}>
             <Text style={styles.drawerSignOutText}>Çıkış Yap</Text>
           </Pressable>
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );
@@ -1567,6 +1598,7 @@ function HomeView({
     <>
       <View style={styles.heroCard}>
         <View style={styles.heroPattern} />
+        <View style={styles.heroPattern2} />
         <Pressable style={styles.heroSettingsButton} onPress={onOpenProfile}>
           <Text style={styles.heroSettingsText}>Profilim</Text>
         </Pressable>
@@ -2729,20 +2761,21 @@ const styles = StyleSheet.create({
   },
   appContainer: {
     flex: 1,
-    backgroundColor: '#eef2f7'
+    backgroundColor: '#ffffff'
   },
   appShell: {
     flex: 1,
-    backgroundColor: '#eef2f7'
+    backgroundColor: '#ffffff'
   },
   presentationContainer: {
     flex: 1,
-    backgroundColor: '#eef2f7'
+    backgroundColor: '#f1f5f9'
   },
   presentationHeader: {
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 14,
+    backgroundColor: '#ffffff',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -2799,8 +2832,8 @@ const styles = StyleSheet.create({
   appHeader: {
     paddingHorizontal: 18,
     paddingTop: 10,
-    paddingBottom: 16,
-    backgroundColor: '#eef2f7'
+    paddingBottom: 14,
+    backgroundColor: '#ffffff'
   },
   headerTopRow: {
     flexDirection: 'row',
@@ -2823,12 +2856,10 @@ const styles = StyleSheet.create({
   headerIconButton: {
     width: 44,
     height: 44,
-    borderRadius: 16,
-    backgroundColor: '#fff',
+    borderRadius: 14,
+    backgroundColor: '#f1f5f9',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#dde5ef'
+    justifyContent: 'center'
   },
   headerIconText: {
     color: '#0f172a',
@@ -2850,17 +2881,17 @@ const styles = StyleSheet.create({
     flex: 1
   },
   headerKicker: {
-    color: '#64748b',
-    fontSize: 12,
+    color: '#94a3b8',
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
     textTransform: 'uppercase'
   },
   headerTitle: {
     color: '#0f172a',
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: -0.5
+    letterSpacing: -0.4
   },
   headerSignOutButton: {
     paddingHorizontal: 12,
@@ -2884,21 +2915,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 14
   },
+  scrollArea: {
+    backgroundColor: '#f1f5f9'
+  },
   contentContainer: {
-    paddingHorizontal: 18,
-    paddingBottom: 30,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 32,
     gap: 14
   },
   card: {
     backgroundColor: '#ffffff',
-    borderRadius: 28,
-    padding: 22,
+    borderRadius: 24,
+    padding: 20,
     gap: 14,
     shadowColor: '#0f172a',
-    shadowOffset: { width: 0, height: 18 },
-    shadowOpacity: 0.12,
-    shadowRadius: 30,
-    elevation: 4
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.09,
+    shadowRadius: 14,
+    elevation: 3
   },
   title: {
     fontSize: 34,
@@ -2911,12 +2946,12 @@ const styles = StyleSheet.create({
     color: '#64748b'
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#d7e0ea',
-    borderRadius: 16,
-    paddingHorizontal: 15,
+    borderWidth: 1.5,
+    borderColor: '#e2e8f0',
+    borderRadius: 14,
+    paddingHorizontal: 16,
     paddingVertical: 14,
-    backgroundColor: '#fff',
+    backgroundColor: '#f8fafc',
     color: '#0f172a',
     fontSize: 15,
     fontWeight: '600'
@@ -2924,14 +2959,14 @@ const styles = StyleSheet.create({
   primaryButton: {
     backgroundColor: '#1d4ed8',
     borderRadius: 16,
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#1d4ed8',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.18,
-    shadowRadius: 18,
-    elevation: 3
+    shadowColor: '#1e40af',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 4
   },
   buttonText: {
     color: '#fff',
@@ -2963,37 +2998,47 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   heroCard: {
-    minHeight: 166,
+    minHeight: 178,
     borderRadius: 32,
     overflow: 'hidden',
-    backgroundColor: '#12213f',
+    backgroundColor: '#0f172a',
     shadowColor: '#0f172a',
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.18,
-    shadowRadius: 30,
-    elevation: 5
+    shadowOpacity: 0.22,
+    shadowRadius: 32,
+    elevation: 6
   },
   heroPattern: {
     position: 'absolute',
-    right: -60,
-    top: -80,
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    backgroundColor: '#2f6fed',
-    opacity: 0.52
+    right: -50,
+    top: -70,
+    width: 230,
+    height: 230,
+    borderRadius: 115,
+    backgroundColor: '#2563eb',
+    opacity: 0.48
+  },
+  heroPattern2: {
+    position: 'absolute',
+    left: -50,
+    bottom: -70,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#1e40af',
+    opacity: 0.32
   },
   heroSettingsButton: {
     position: 'absolute',
     top: 16,
     right: 16,
     zIndex: 2,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 999,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
+    backgroundColor: 'rgba(255, 255, 255, 0.14)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.26)'
+    borderColor: 'rgba(255, 255, 255, 0.22)'
   },
   heroSettingsText: {
     color: '#fff',
@@ -3053,13 +3098,16 @@ const styles = StyleSheet.create({
   },
   quickCard: {
     width: '48%',
-    minHeight: 108,
-    borderRadius: 24,
-    backgroundColor: '#fff',
+    minHeight: 116,
+    borderRadius: 20,
+    backgroundColor: '#ffffff',
     padding: 16,
     justifyContent: 'space-between',
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3
   },
   quickAccent: {
     width: 34,
@@ -3096,10 +3144,13 @@ const styles = StyleSheet.create({
   },
   feedCard: {
     overflow: 'hidden',
-    borderRadius: 26,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
+    borderRadius: 22,
+    backgroundColor: '#ffffff',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3
   },
   feedImage: {
     width: '100%',
@@ -3123,12 +3174,15 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   sectionCard: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     padding: 18,
     gap: 12,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3
   },
   sectionTitle: {
     fontSize: 20,
@@ -3294,12 +3348,15 @@ const styles = StyleSheet.create({
   },
   documentCard: {
     width: '100%',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 20,
-    backgroundColor: '#f8fafc',
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
     padding: 14,
-    gap: 12
+    gap: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2
   },
   documentHeaderRow: {
     gap: 4
@@ -3339,12 +3396,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff'
   },
   customerItem: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
-    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
     padding: 14,
-    gap: 4
+    gap: 4,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2
   },
   customerName: {
     fontSize: 16,
@@ -3352,12 +3412,15 @@ const styles = StyleSheet.create({
     color: '#0f172a'
   },
   requestItem: {
-    backgroundColor: '#f8fafc',
-    borderWidth: 1,
-    borderColor: '#e2e8f0',
+    backgroundColor: '#ffffff',
     borderRadius: 18,
     padding: 14,
-    gap: 7
+    gap: 7,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 2
   },
   requestStatus: {
     overflow: 'hidden',
@@ -3562,13 +3625,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc'
   },
   contactsCard: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     paddingVertical: 16,
     paddingHorizontal: 16,
     gap: 10,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3
   },
   contactGroup: {
     gap: 5
@@ -3620,12 +3686,15 @@ const styles = StyleSheet.create({
     fontWeight: '600'
   },
   contactDetailCard: {
-    backgroundColor: '#fff',
-    borderRadius: 28,
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
     padding: 18,
     gap: 18,
-    borderWidth: 1,
-    borderColor: '#e2e8f0'
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3
   },
   backButton: {
     alignSelf: 'flex-start',
@@ -3712,9 +3781,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#f8fafc',
-    borderRadius: 18,
-    padding: 12
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 12,
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2
   },
   actionLogRow: {
     minHeight: 74,
@@ -3792,25 +3866,25 @@ const styles = StyleSheet.create({
   },
   drawerPanel: {
     width: '78%',
-    maxWidth: 330,
+    maxWidth: 320,
     height: '100%',
-    backgroundColor: '#eef2f7',
-    paddingHorizontal: 18,
-    paddingTop: 58,
+    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingTop: 54,
     paddingBottom: 24,
     justifyContent: 'space-between',
     shadowColor: '#0f172a',
-    shadowOffset: { width: 16, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 28,
-    elevation: 12
+    shadowOffset: { width: 24, height: 0 },
+    shadowOpacity: 0.28,
+    shadowRadius: 36,
+    elevation: 16
   },
   drawerHeader: {
-    borderRadius: 28,
-    backgroundColor: '#12213f',
-    padding: 18,
+    borderRadius: 24,
+    backgroundColor: '#0f172a',
+    padding: 20,
     gap: 5,
-    marginBottom: 16
+    marginBottom: 14
   },
   drawerBrand: {
     color: '#93c5fd',
@@ -3841,7 +3915,12 @@ const styles = StyleSheet.create({
     borderRadius: 18
   },
   drawerItemActive: {
-    backgroundColor: '#fff'
+    backgroundColor: '#fff',
+    shadowColor: '#0f172a',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.07,
+    shadowRadius: 8,
+    elevation: 1
   },
   drawerItemIcon: {
     width: 36,
@@ -3871,17 +3950,97 @@ const styles = StyleSheet.create({
     color: '#0f172a'
   },
   drawerSignOutButton: {
-    borderRadius: 18,
-    backgroundColor: '#fee2e2',
-    borderWidth: 1,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    borderWidth: 1.5,
     borderColor: '#fecaca',
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center'
   },
   drawerSignOutText: {
-    color: '#b91c1c',
+    color: '#dc2626',
     fontSize: 15,
-    fontWeight: '900'
+    fontWeight: '800'
+  },
+  loginScreen: {
+    flex: 1,
+    backgroundColor: '#0f172a'
+  },
+  loginKAV: {
+    flex: 1
+  },
+  loginTop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 32
+  },
+  loginLogoMark: {
+    width: 84,
+    height: 84,
+    borderRadius: 28,
+    backgroundColor: '#1d4ed8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 6,
+    shadowColor: '#1d4ed8',
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.55,
+    shadowRadius: 22,
+    elevation: 8
+  },
+  loginLogoText: {
+    color: '#ffffff',
+    fontSize: 42,
+    fontWeight: '900',
+    letterSpacing: -1
+  },
+  loginBrandName: {
+    color: '#ffffff',
+    fontSize: 34,
+    fontWeight: '900',
+    letterSpacing: -1
+  },
+  loginBrandSub: {
+    color: '#475569',
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0.2
+  },
+  loginCard: {
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 36,
+    borderTopRightRadius: 36,
+    paddingHorizontal: 28,
+    paddingTop: 36,
+    paddingBottom: 40,
+    gap: 14
+  },
+  loginCardHeading: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#0f172a',
+    letterSpacing: -0.5,
+    marginBottom: 4
+  },
+  inputGroup: {
+    gap: 7
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#475569',
+    letterSpacing: 0.2
+  },
+  loginButton: {
+    marginTop: 4
+  },
+  loginApiHint: {
+    fontSize: 11,
+    color: '#94a3b8',
+    textAlign: 'center',
+    fontWeight: '500'
   }
 });
