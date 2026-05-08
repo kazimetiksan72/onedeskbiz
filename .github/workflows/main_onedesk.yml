@@ -54,12 +54,13 @@ jobs:
           fs.writeFileSync('deploy-package/package.json', `${JSON.stringify(deployPackage, null, 2)}\n`);
           NODE
           npm install --prefix deploy-package --omit=dev --include=optional --package-lock=false
+          (cd deploy-package && zip -r ../deploy-package.zip .)
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: deploy-package
+          path: deploy-package.zip
 
   deploy:
     runs-on: ubuntu-latest
@@ -87,4 +88,4 @@ jobs:
         with:
           app-name: 'onedesk'
           slot-name: 'Production'
-          package: .
+          package: deploy-package.zip
