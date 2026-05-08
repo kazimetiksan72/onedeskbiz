@@ -1,13 +1,19 @@
 const path = require('path');
 const { BlobServiceClient } = require('@azure/storage-blob');
 const { DepartmentRole, PERMISSIONS } = require('../../models/DepartmentRole');
+const { DepartmentRoleAssignment } = require('../../models/DepartmentRoleAssignment');
 const { Request, REQUEST_STATUS, REQUEST_TYPES } = require('../../models/Request');
+const { User } = require('../../models/User');
 const { Vehicle } = require('../../models/Vehicle');
 const env = require('../../config/env');
 const { ApiError } = require('../../utils/apiError');
 const { logger } = require('../../utils/logger');
 const { getPagination } = require('../../utils/pagination');
 const { ROLES } = require('../../constants/roles');
+const {
+  sendRequestApprovedNotification,
+  sendRequestCreatedNotification
+} = require('../notifications/oneSignal.service');
 
 const permissionByRequestType = {
   [REQUEST_TYPES.VEHICLE]: PERMISSIONS.VEHICLE_APPROVAL,
@@ -90,7 +96,7 @@ async function createRequest(user, payload, files = []) {
     ? await uploadExpenseAttachments(user._id, files)
     : [];
 
-  return Request.create({
+  const request = await Request.create({
     requesterUserId: user._id,
     requesterDepartment: user.department || '',
     type: payload.type,
@@ -105,6 +111,16 @@ async function createRequest(user, payload, files = []) {
     expenseDescription: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseDescription : '',
     expenseAttachments
   });
+
+  const approverUserIds = await findApproverUserIdsForRequest(request, user._id);
+  await sendRequestCreatedNotification({
+    requestId: request._id,
+    approverUserIds,
+    requesterName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+    requestType: request.type
+  });
+
+  return request;
 }
 
 async function listMyRequests(user, { page, limit }) {
@@ -138,6 +154,61 @@ async function getApprovalPermissions(user) {
     : await DepartmentRole.findById(roleId).select('permissions').lean();
 
   return role?.permissions || [];
+}
+
+async function findApproverUserIdsForRequest(request, requesterUserId) {
+  const requiredPermission = permissionByRequestType[request.type];
+  if (!requiredPermission) return [];
+
+  const [adminUsers, departmentRoles] = await Promise.all([
+    User.find({
+      role: ROLES.ADMIN,
+      isActive: true,
+      _id: { $ne: requesterUserId }
+    }).select('_id').lean(),
+    DepartmentRole.find({
+      department: request.requesterDepartment || '',
+      permissions: requiredPermission
+    }).select('_id').lean()
+  ]);
+
+  const departmentRoleIds = departmentRoles.map((role) => role._id);
+  const [roleAssignments, legacyRoleUsers] = departmentRoleIds.length > 0
+    ? await Promise.all([
+      DepartmentRoleAssignment.find({ departmentRoleId: { $in: departmentRoleIds } })
+        .populate('userId', '_id isActive role department')
+        .lean(),
+      User.collection
+        .find(
+          {
+            departmentRoleId: { $in: departmentRoleIds },
+            isActive: true,
+            department: request.requesterDepartment || '',
+            _id: { $ne: requesterUserId }
+          },
+          { projection: { _id: 1 } }
+        )
+        .toArray()
+    ])
+    : [[], []];
+
+  const departmentApproverIds = roleAssignments
+    .map((assignment) => assignment.userId)
+    .filter((assignedUser) => (
+      assignedUser
+      && assignedUser.isActive
+      && String(assignedUser._id) !== String(requesterUserId)
+      && assignedUser.department === (request.requesterDepartment || '')
+    ))
+    .map((assignedUser) => assignedUser._id);
+
+  return [
+    ...new Set([
+      ...adminUsers.map((admin) => String(admin._id)),
+      ...departmentApproverIds.map((approverId) => String(approverId)),
+      ...legacyRoleUsers.map((legacyUser) => String(legacyUser._id))
+    ])
+  ];
 }
 
 async function listApprovals(user, { page, limit, status = REQUEST_STATUS.PENDING }) {
@@ -202,11 +273,22 @@ async function actOnRequest(user, id, action, note) {
   };
 
   await request.save();
-  return Request.findById(request._id)
+  const populatedRequest = await Request.findById(request._id)
     .populate('requesterUserId', 'firstName lastName workEmail department')
     .populate('vehicleId')
     .populate('approvalAction.actorUserId', 'firstName lastName workEmail')
     .lean();
+
+  if (action === 'APPROVE') {
+    await sendRequestApprovedNotification({
+      requestId: populatedRequest._id,
+      requesterUserId: populatedRequest.requesterUserId?._id || request.requesterUserId,
+      requestType: populatedRequest.type,
+      approverName: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+    });
+  }
+
+  return populatedRequest;
 }
 
 module.exports = {

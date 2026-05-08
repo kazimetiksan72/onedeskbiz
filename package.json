@@ -13,7 +13,7 @@
     "dev:all": "concurrently -n backend,frontend,mobile -c blue,green,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run start --workspace=mobile\"",
     "build": "npm run build --workspace=frontend",
     "start": "npm run start --workspace=backend",
-    "start:azure": "npm run build && npm run start",
+    "start:azure": "npm run start",
     "seed": "npm run seed --workspace=backend"
   },
   "overrides": {
