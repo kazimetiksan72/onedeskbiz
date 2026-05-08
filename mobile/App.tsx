@@ -333,7 +333,11 @@ const api = axios.create({
   timeout: 15000
 });
 
-const oneSignalAppId = process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID?.trim() || '';
+const oneSignalAppId = (
+  process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID
+  || Constants.expoConfig?.extra?.oneSignalAppId
+  || ''
+).trim();
 let oneSignalInitialized = false;
 let oneSignalModuleLoadAttempted = false;
 let oneSignalModule: any = null;

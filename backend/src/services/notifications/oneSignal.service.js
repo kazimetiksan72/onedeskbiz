@@ -5,12 +5,21 @@ function isConfigured() {
   return Boolean(env.oneSignal.appId && env.oneSignal.apiKey);
 }
 
+function getMissingConfigKeys() {
+  return [
+    env.oneSignal.appId ? null : 'ONESIGNAL_APP_ID',
+    env.oneSignal.apiKey ? null : 'ONESIGNAL_REST_API_KEY'
+  ].filter(Boolean);
+}
+
 async function sendPushToExternalUsers(externalUserIds, { heading, content, data = {} }) {
   const userIds = [...new Set(externalUserIds.filter(Boolean).map((id) => String(id)))];
 
   if (userIds.length === 0 || !isConfigured()) {
     if (!isConfigured()) {
-      logger.warn('OneSignal notification skipped because configuration is missing');
+      logger.warn('OneSignal notification skipped because configuration is missing', {
+        missingConfigKeys: getMissingConfigKeys()
+      });
     }
     return null;
   }
