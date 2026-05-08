@@ -30,20 +30,36 @@ jobs:
       - name: Test
         run: npm run test --if-present
 
+      - name: Prepare deployment package
+        run: |
+          rm -rf deploy-package
+          mkdir -p deploy-package/backend deploy-package/frontend
+          cp -R backend/src backend/package.json deploy-package/backend/
+          cp -R frontend/dist deploy-package/frontend/dist
+          node <<'NODE'
+          const fs = require('fs');
+          const backendPackage = require('./backend/package.json');
+
+          const deployPackage = {
+            name: 'onedesk-deploy',
+            private: true,
+            version: '1.0.0',
+            scripts: {
+              start: 'cd backend && node src/server.js',
+              'start:azure': 'npm run start'
+            },
+            dependencies: backendPackage.dependencies
+          };
+
+          fs.writeFileSync('deploy-package/package.json', `${JSON.stringify(deployPackage, null, 2)}\n`);
+          NODE
+          npm install --prefix deploy-package --omit=dev --include=optional --package-lock=false
+
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: |
-            package.json
-            package-lock.json
-            backend/**
-            frontend/dist/**
-            !**/node_modules/**
-            !mobile/**
-            !frontend/src/**
-            !frontend/node_modules/**
-            !backend/node_modules/**
+          path: deploy-package
 
   deploy:
     runs-on: ubuntu-latest
