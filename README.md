@@ -1,4 +1,4 @@
-# SmallBiz Management Platform (MVP)
+# OneDesk Management Platform (MVP)
 
 Küçük işletmeler (10-15 çalışan) için üretim kalitesinde MVP:
 - Employee Directory
@@ -100,6 +100,6 @@ Bu komut:
 - Public digital card: `/card/:userId`
 
 ## Seed Hesapları
-- Admin: `admin@smallbiz.local` / `Admin1234!`
-- Employee 1: `mert@smallbiz.local` / `Employee1234!`
-- Employee 2: `selin@smallbiz.local` / `Employee1234!`
+- Admin: `admin@onedesk.local` / `App12345`
+- Employee 1: `mert@onedesk.local` / `App12345`
+- Employee 2: `selin@onedesk.local` / `App12345`

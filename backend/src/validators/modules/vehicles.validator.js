@@ -6,6 +6,7 @@ const vehicleBody = z.object({
   model: z.string().min(1),
   modelYear: z.coerce.number().int().min(1900).max(2100),
   kilometer: z.coerce.number().int().min(0),
+  lastInspectionDate: z.string().datetime().optional().nullable().or(z.literal('')),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional()
 });
 

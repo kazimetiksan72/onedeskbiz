@@ -1,4 +1,11 @@
+const path = require('path');
+const { BlobServiceClient } = require('@azure/storage-blob');
 const { CompanySettings } = require('../../models/CompanySettings');
+const env = require('../../config/env');
+const { ApiError } = require('../../utils/apiError');
+const { logger } = require('../../utils/logger');
+
+const COMPANY_CONTAINER_NAME = 'company';
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
@@ -105,4 +112,167 @@ async function upsertCompanySettings(payload) {
   }).lean();
 }
 
-module.exports = { getCompanySettings, getPublicBillingInfo, upsertCompanySettings };
+function getLogoExtension(file) {
+  const ext = path.extname(file.originalname || '').toLowerCase();
+  if (ext) return ext;
+  if (file.mimetype === 'image/png') return '.png';
+  if (file.mimetype === 'image/webp') return '.webp';
+  return '.jpg';
+}
+
+function getReferenceName(file) {
+  const parsed = path.parse(file.originalname || '');
+  return (parsed.name || 'Referans').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+async function getCompanyContainerClient() {
+  if (!env.azureStorage.connectionString) {
+    throw new ApiError(500, 'Azure Storage is not configured');
+  }
+
+  const blobServiceClient = BlobServiceClient.fromConnectionString(env.azureStorage.connectionString);
+  const containerClient = blobServiceClient.getContainerClient(COMPANY_CONTAINER_NAME);
+  await containerClient.createIfNotExists({ access: 'blob' });
+  return containerClient;
+}
+
+async function uploadCompanyImage(file, folder, filePrefix) {
+  const containerClient = await getCompanyContainerClient();
+  const extension = getLogoExtension(file);
+  const blobName = `${folder}/${filePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}${extension}`;
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  logger.info('Uploading company image to Azure Blob Storage', {
+    containerName: COMPANY_CONTAINER_NAME,
+    blobName,
+    mimeType: file.mimetype,
+    size: file.size
+  });
+
+  await blockBlobClient.uploadData(file.buffer, {
+    blobHTTPHeaders: {
+      blobContentType: file.mimetype,
+      blobCacheControl: 'public, max-age=31536000'
+    }
+  });
+
+  return { url: blockBlobClient.url, blobName };
+}
+
+async function uploadCompanyFile(file, folder, filePrefix, contentType) {
+  const containerClient = await getCompanyContainerClient();
+  const ext = path.extname(file.originalname || '').toLowerCase() || '.html';
+  const blobName = `${folder}/${filePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
+  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
+
+  logger.info('Uploading company file to Azure Blob Storage', {
+    containerName: COMPANY_CONTAINER_NAME,
+    blobName,
+    mimeType: contentType || file.mimetype,
+    size: file.size
+  });
+
+  await blockBlobClient.uploadData(file.buffer, {
+    blobHTTPHeaders: {
+      blobContentType: contentType || file.mimetype,
+      blobCacheControl: 'no-cache'
+    }
+  });
+
+  return { url: blockBlobClient.url, blobName };
+}
+
+async function uploadCompanyLogo(file) {
+  if (!file) throw new ApiError(400, 'Logo dosyası zorunludur.');
+
+  const uploadedLogo = await uploadCompanyImage(file, 'logos', 'company-logo');
+
+  return CompanySettings.findOneAndUpdate(
+    {},
+    { $set: { logoUrl: uploadedLogo.url } },
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+}
+
+async function uploadQuoteTemplate(file) {
+  if (!file) throw new ApiError(400, 'Teklif HTML şablonu zorunludur.');
+
+  const html = file.buffer.toString('utf8');
+  if (!html.includes('const CONFIG')) {
+    throw new ApiError(400, 'HTML şablonunda const CONFIG bloğu bulunmalıdır.');
+  }
+
+  const settings = await CompanySettings.findOne().lean();
+  if (settings?.quoteTemplate?.blobName) {
+    const containerClient = await getCompanyContainerClient();
+    await containerClient.getBlockBlobClient(settings.quoteTemplate.blobName).deleteIfExists();
+  }
+
+  const uploadedTemplate = await uploadCompanyFile(file, 'quote-templates', 'quote-template', 'text/html; charset=utf-8');
+
+  return CompanySettings.findOneAndUpdate(
+    {},
+    {
+      $set: {
+        quoteTemplate: {
+          fileName: file.originalname || 'quote-template.html',
+          htmlUrl: uploadedTemplate.url,
+          blobName: uploadedTemplate.blobName,
+          uploadedAt: new Date()
+        }
+      }
+    },
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+}
+
+async function uploadCompanyReferences(files = []) {
+  if (!Array.isArray(files) || files.length === 0) {
+    throw new ApiError(400, 'En az bir referans logosu seçilmelidir.');
+  }
+
+  const uploadedReferences = await Promise.all(
+    files.map(async (file) => {
+      const uploadedLogo = await uploadCompanyImage(file, 'references', 'reference-logo');
+      return {
+        name: getReferenceName(file),
+        logoUrl: uploadedLogo.url,
+        blobName: uploadedLogo.blobName
+      };
+    })
+  );
+
+  return CompanySettings.findOneAndUpdate(
+    {},
+    { $push: { companyReferences: { $each: uploadedReferences } } },
+    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
+  ).lean();
+}
+
+async function deleteCompanyReference(referenceId) {
+  const settings = await CompanySettings.findOne();
+  if (!settings) throw new ApiError(404, 'Şirket ayarları bulunamadı.');
+
+  const reference = settings.companyReferences.id(referenceId);
+  if (!reference) throw new ApiError(404, 'Referans bulunamadı.');
+
+  if (reference.blobName) {
+    const containerClient = await getCompanyContainerClient();
+    const blockBlobClient = containerClient.getBlockBlobClient(reference.blobName);
+    await blockBlobClient.deleteIfExists();
+  }
+
+  reference.deleteOne();
+  await settings.save();
+  return settings.toObject();
+}
+
+module.exports = {
+  getCompanySettings,
+  getPublicBillingInfo,
+  upsertCompanySettings,
+  uploadCompanyLogo,
+  uploadQuoteTemplate,
+  uploadCompanyReferences,
+  deleteCompanyReference
+};

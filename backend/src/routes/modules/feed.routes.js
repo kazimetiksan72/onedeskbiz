@@ -8,6 +8,7 @@ const router = express.Router();
 
 router.get('/', controller.listPublished);
 router.get('/admin', requireRole(ROLES.ADMIN), controller.listAdmin);
+router.get('/:id', controller.getPublished);
 router.post('/', requireRole(ROLES.ADMIN), feedImageUpload.single('image'), controller.createPost);
 router.delete('/:id', requireRole(ROLES.ADMIN), controller.deletePost);
 

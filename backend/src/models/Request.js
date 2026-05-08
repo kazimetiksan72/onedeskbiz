@@ -47,6 +47,12 @@ const requestSchema = new mongoose.Schema(
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', default: null },
     startAt: { type: Date, default: null, index: true },
     endAt: { type: Date, default: null, index: true },
+    leaveType: {
+      type: String,
+      enum: ['ANNUAL', 'SICK', 'UNPAID', 'OTHER'],
+      default: null
+    },
+    reason: { type: String, trim: true },
     materialText: { type: String, trim: true },
     expenseAmount: { type: Number, min: 0 },
     expenseCurrency: { type: String, trim: true, uppercase: true, default: 'TRY' },

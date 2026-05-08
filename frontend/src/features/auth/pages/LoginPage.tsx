@@ -9,7 +9,7 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
   const navigate = useNavigate();
   const { setAuth, accessToken, user } = useAuthStore();
 
-  const defaultEmail = mode === 'admin' ? 'admin@smallbiz.local' : 'mert@smallbiz.local';
+  const defaultEmail = mode === 'admin' ? 'admin@onedesk.local' : 'mert@onedesk.local';
   const defaultPassword = mode === 'admin' ? 'App12345' : 'App12345';
 
   const [email, setEmail] = useState(defaultEmail);
@@ -82,9 +82,9 @@ export function LoginPage({ mode = 'employee' }: { mode?: LoginMode }) {
         </button>
 
         <p className="mt-4 text-xs text-slate-500">
-          Admin: admin@smallbiz.local / App12345
+          Admin: admin@onedesk.local / App12345
           <br />
-          Personel: mert@smallbiz.local / App12345
+          Personel: mert@onedesk.local / App12345
         </p>
       </form>
     </div>

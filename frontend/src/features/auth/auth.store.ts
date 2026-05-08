@@ -19,6 +19,6 @@ export const useAuthStore = create<AuthState>()(
       setAuth: ({ accessToken, refreshToken, user }) => set({ accessToken, refreshToken, user }),
       clearAuth: () => set({ accessToken: null, refreshToken: null, user: null })
     }),
-    { name: 'smallbiz-auth' }
+    { name: 'onedesk-auth' }
   )
 );

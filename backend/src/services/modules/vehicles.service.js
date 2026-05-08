@@ -3,10 +3,16 @@ const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
 
 function normalizeVehiclePayload(payload) {
-  return {
+  const normalized = {
     ...payload,
     plate: payload.plate?.trim().toUpperCase()
   };
+
+  if (Object.prototype.hasOwnProperty.call(payload, 'lastInspectionDate')) {
+    normalized.lastInspectionDate = payload.lastInspectionDate || null;
+  }
+
+  return normalized;
 }
 
 async function createVehicle(payload) {

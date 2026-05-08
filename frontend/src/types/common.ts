@@ -13,4 +13,11 @@ export interface CurrentUser {
   role: Role;
   isActive: boolean;
   mustChangePassword?: boolean;
+  department?: string;
+  departmentRoleId?: {
+    _id: string;
+    department: string;
+    name: string;
+    permissions: string[];
+  } | null;
 }

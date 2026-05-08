@@ -24,6 +24,7 @@ const upsertCompanySettingsSchema = z.object({
   body: z.object({
     companyName: z.string().optional(),
     website: z.string().optional(),
+    logoUrl: z.string().url().optional().or(z.literal('')),
     timezone: z.string().optional(),
     departments: z.array(z.string().min(1)).max(100).optional(),
     billingInfo: billingInfoSchema.optional()

@@ -14,6 +14,8 @@ const dashboardRoutes = require('./modules/dashboard.routes');
 const profileRoutes = require('./modules/profile.routes');
 const employeeDocumentRoutes = require('./modules/employeeDocuments.routes');
 const feedRoutes = require('./modules/feed.routes');
+const quoteRoutes = require('./modules/quotes.routes');
+const taskRoutes = require('./modules/tasks.routes');
 const companySettingsController = require('../controllers/companySettings/companySettings.controller');
 const { auth } = require('../middleware/auth');
 const { requireRole } = require('../middleware/requireRole');
@@ -34,6 +36,7 @@ router.use('/contacts', auth, enforcePasswordChange, contactRoutes);
 router.use('/contact-action-logs', auth, enforcePasswordChange, contactActionLogRoutes);
 router.use('/vehicles', auth, enforcePasswordChange, vehicleRoutes);
 router.use('/requests', auth, enforcePasswordChange, requestRoutes);
+router.use('/tasks', auth, enforcePasswordChange, taskRoutes);
 router.use('/feed', auth, enforcePasswordChange, feedRoutes);
 router.use(
   '/department-roles',
@@ -51,5 +54,6 @@ router.use(
 );
 router.use('/leave-requests', auth, enforcePasswordChange, leaveRequestRoutes);
 router.use('/dashboard', auth, enforcePasswordChange, dashboardRoutes);
+router.use('/quotes', auth, enforcePasswordChange, quoteRoutes);
 
 module.exports = router;

@@ -19,7 +19,8 @@ const permissions: Array<{ value: RolePermission; label: string }> = [
   { value: 'VEHICLE_APPROVAL', label: 'Araç onay' },
   { value: 'LEAVE_APPROVAL', label: 'İzin onay' },
   { value: 'MATERIAL_APPROVAL', label: 'Malzeme onay' },
-  { value: 'EXPENSE_APPROVAL', label: 'Masraf onay' }
+  { value: 'EXPENSE_APPROVAL', label: 'Masraf onay' },
+  { value: 'TASK_ASSIGNMENT', label: 'Görev atama' }
 ];
 
 const initialForm = { department: '', name: '', permissions: [] as RolePermission[] };

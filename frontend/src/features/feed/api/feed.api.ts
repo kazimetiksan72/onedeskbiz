@@ -6,6 +6,11 @@ export async function getFeedPosts() {
   return data;
 }
 
+export async function getFeedPost(id: string) {
+  const { data } = await api.get<FeedPost>(`/feed/${id}`);
+  return data;
+}
+
 export async function getAdminFeedPosts() {
   const { data } = await api.get<FeedPost[]>('/feed/admin');
   return data;

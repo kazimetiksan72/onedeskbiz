@@ -5,6 +5,10 @@ const listPublished = asyncHandler(async (req, res) => {
   res.json(await service.listPublished({ limit: Number(req.query.limit || 20) }));
 });
 
+const getPublished = asyncHandler(async (req, res) => {
+  res.json(await service.getPublishedById(req.params.id));
+});
+
 const listAdmin = asyncHandler(async (req, res) => {
   res.json(await service.listAdmin());
 });
@@ -19,4 +23,4 @@ const deletePost = asyncHandler(async (req, res) => {
   res.status(204).send();
 });
 
-module.exports = { listPublished, listAdmin, createPost, deletePost };
+module.exports = { listPublished, getPublished, listAdmin, createPost, deletePost };

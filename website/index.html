@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OneDesk — KOBİ'ler için Akıllı Yönetim Platformu</title>
+  <meta name="description" content="OneDesk ile İK, satış, araç ve belge yönetimini tek platformda yönetin. Küçük ve orta ölçekli işletmeler için tasarlandı." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- NAV -->
+  <nav class="nav" id="nav">
+    <div class="container nav-inner">
+      <a href="#" class="nav-logo">
+        <span class="logo-mark">O</span>
+        <span class="logo-text">OneDesk</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#features">Özellikler</a></li>
+        <li><a href="#modules">Modüller</a></li>
+        <li><a href="#how">Nasıl Çalışır</a></li>
+        <li><a href="#pricing">Fiyatlandırma</a></li>
+      </ul>
+      <div class="nav-cta">
+        <a href="#pricing" class="btn btn-ghost">Fiyatlar</a>
+        <a href="#contact" class="btn btn-primary">Ücretsiz Dene</a>
+      </div>
+      <button class="nav-burger" id="navBurger" aria-label="Menü">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav-mobile" id="navMobile">
+      <a href="#features">Özellikler</a>
+      <a href="#modules">Modüller</a>
+      <a href="#how">Nasıl Çalışır</a>
+      <a href="#pricing">Fiyatlandırma</a>
+      <a href="#contact" class="btn btn-primary" style="margin-top:8px">Ücretsiz Dene</a>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-glow hero-glow-1"></div>
+      <div class="hero-glow hero-glow-2"></div>
+      <div class="hero-grid"></div>
+    </div>
+    <div class="container hero-inner">
+      <div class="hero-content">
+        <div class="hero-badge">
+          <span class="badge-dot"></span>
+          Yeni — Mobil uygulama kullanıma açıldı
+        </div>
+        <h1 class="hero-title">
+          Tüm işletmenizi<br />
+          <span class="gradient-text">tek ekrandan</span><br />
+          yönetin
+        </h1>
+        <p class="hero-sub">
+          OneDesk; İK, satış, araç, belge ve müşteri yönetimini bir araya getiren, KOBİ'ler için tasarlanmış akıllı iş yönetim platformudur.
+        </p>
+        <div class="hero-actions">
+          <a href="#contact" class="btn btn-primary btn-lg">
+            14 Gün Ücretsiz Başla
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </a>
+          <a href="#how" class="btn btn-outline btn-lg">Demo İzle</a>
+        </div>
+        <div class="hero-trust">
+          <span class="trust-item">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Kredi kartı gerektirmez
+          </span>
+          <span class="trust-item">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            5 dakikada kurulum
+          </span>
+          <span class="trust-item">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7l3.5 3.5L12 3" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Türkçe destek
+          </span>
+        </div>
+      </div>
+      <div class="hero-visual">
+        <div class="phone-mockup">
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+            <div class="phone-screen">
+              <div class="app-header-mock">
+                <div class="app-header-kicker">ONEDESK</div>
+                <div class="app-header-title">Ana Sayfa</div>
+              </div>
+              <div class="app-hero-card">
+                <div class="app-avatar"></div>
+                <div class="app-hero-text">
+                  <div class="app-welcome">HOŞ GELDİNİZ</div>
+                  <div class="app-name">Mert Demir</div>
+                  <div class="app-role">Satış Uzmanı</div>
+                </div>
+                <div class="app-blob"></div>
+              </div>
+              <div class="app-quick-grid">
+                <div class="app-quick-card">
+                  <div class="app-quick-label">KARTVİZİTİM</div>
+                  <div class="app-quick-val">Mert Demir</div>
+                </div>
+                <div class="app-quick-card">
+                  <div class="app-quick-label">FATURA</div>
+                  <div class="app-quick-val">Piksel A.Ş.</div>
+                </div>
+                <div class="app-quick-card">
+                  <div class="app-quick-label">MÜŞTERİLER</div>
+                  <div class="app-quick-val">Firma listesi</div>
+                </div>
+                <div class="app-quick-card">
+                  <div class="app-quick-label">AKSİYONLARIM</div>
+                  <div class="app-quick-val">Arama • Dün</div>
+                </div>
+              </div>
+              <div class="app-feed-label">Feed</div>
+              <div class="app-feed-item">
+                <div class="app-feed-dot"></div>
+                <div class="app-feed-text">Aylık hedefler güncellendi</div>
+              </div>
+            </div>
+          </div>
+          <div class="phone-glow"></div>
+        </div>
+        <div class="floating-card fc-1">
+          <div class="fc-icon fc-icon-green">✓</div>
+          <div class="fc-body">
+            <div class="fc-title">Talep Onaylandı</div>
+            <div class="fc-sub">İzin talebi • Az önce</div>
+          </div>
+        </div>
+        <div class="floating-card fc-2">
+          <div class="fc-icon fc-icon-blue">📋</div>
+          <div class="fc-body">
+            <div class="fc-title">3 yeni belge</div>
+            <div class="fc-sub">Belge yükleme tamamlandı</div>
+          </div>
+        </div>
+        <div class="floating-card fc-3">
+          <div class="fc-icon fc-icon-purple">👥</div>
+          <div class="fc-body">
+            <div class="fc-title">12 çalışan aktif</div>
+            <div class="fc-sub">Bugün giriş yaptı</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATS -->
+  <section class="stats">
+    <div class="container stats-grid">
+      <div class="stat-item">
+        <div class="stat-number">500<span>+</span></div>
+        <div class="stat-label">Aktif Çalışan</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-number">40<span>+</span></div>
+        <div class="stat-label">İşletme</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-number">10K<span>+</span></div>
+        <div class="stat-label">İşlem / Ay</div>
+      </div>
+      <div class="stat-divider"></div>
+      <div class="stat-item">
+        <div class="stat-number">99.9<span>%</span></div>
+        <div class="stat-label">Uptime</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Neden OneDesk?</div>
+        <h2 class="section-title">İşletmenizin ihtiyacı olan<br />her şey tek yerde</h2>
+        <p class="section-sub">Dağınık Excel tablolarına, kaybolmuş belgelerine ve birden fazla uygulamaya elveda deyin.</p>
+      </div>
+      <div class="features-grid">
+        <div class="feature-card feature-card-large">
+          <div class="feature-icon">📱</div>
+          <h3>Mobil & Web Erişim</h3>
+          <p>iOS ve Android uygulamaları ile her yerden erişin. Web yönetim paneli ile masaüstünden tam kontrol sağlayın.</p>
+          <div class="feature-tag">iOS · Android · Web</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>Anlık Bildirimler</h3>
+          <p>Talep onayları, belge yüklemeleri ve önemli güncellemeler anında size ulaşır.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <h3>Güvenli & KVKK Uyumlu</h3>
+          <p>JWT tabanlı kimlik doğrulama, rol bazlı erişim kontrolü ve şifreli veri depolama.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Gerçek Zamanlı Dashboard</h3>
+          <p>İşletmenizin nabzını her an takip edin. Özet istatistikler ve raporlar tek ekranda.</p>
+        </div>
+        <div class="feature-card feature-card-large feature-card-dark">
+          <div class="feature-icon">🇹🇷</div>
+          <h3>Türkiye'ye Özel</h3>
+          <p>Türkçe arayüz, TRY para birimi desteği ve yerel iş süreçlerine uygun tasarım. Türk KOBİ'lerin gerçek ihtiyaçları göz önünde bulundurularak geliştirildi.</p>
+          <div class="feature-tag feature-tag-light">7/24 Türkçe Destek</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODULES -->
+  <section class="modules" id="modules">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Modüller</div>
+        <h2 class="section-title">İhtiyacınız olan her modül<br />hazır ve entegre</h2>
+      </div>
+      <div class="modules-grid">
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#eff6ff;color:#2563eb">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="2"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Çalışan Yönetimi</h3>
+            <p>Personel bilgileri, departman ve rol atamaları, işe giriş/çıkış süreçleri.</p>
+            <ul class="module-list">
+              <li>Departman & Rol yönetimi</li>
+              <li>İzin & Devamsızlık takibi</li>
+              <li>Çalışan profil sayfası</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#f0fdf4;color:#16a34a">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M9 11l3 3L22 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Talep Yönetimi</h3>
+            <p>Araç, izin, malzeme ve harcama taleplerini dijital ortamda yönetin ve onaylayın.</p>
+            <ul class="module-list">
+              <li>Araç rezervasyon sistemi</li>
+              <li>İzin talebi & onay akışı</li>
+              <li>Malzeme & harcama takibi</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#fdf4ff;color:#9333ea">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="7" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2" stroke="currentColor" stroke-width="2"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Müşteri & CRM</h3>
+            <p>Müşteri firmaları, kişi listesi ve tüm iletişim aksiyonlarını tek yerden takip edin.</p>
+            <ul class="module-list">
+              <li>Firma & kişi rehberi</li>
+              <li>Arama, e-posta, ziyaret logları</li>
+              <li>Aksiyon hatırlatıcıları</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#fff7ed;color:#ea580c">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="2"/><polyline points="14 2 14 8 20 8" stroke="currentColor" stroke-width="2"/><line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="2"/><line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="2"/><line x1="10" y1="9" x2="8" y2="9" stroke="currentColor" stroke-width="2"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Özlük Belgeleri</h3>
+            <p>Nüfus cüzdanı, diploma, ikametgah gibi belgeleri kamera veya galeriyle yükleyin.</p>
+            <ul class="module-list">
+              <li>Belge tarama & yükleme</li>
+              <li>Belge türü sınıflandırma</li>
+              <li>Güvenli bulut depolama</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#f0f9ff;color:#0284c7">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 21h8M12 17v4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Dijital Kartvizit</h3>
+            <p>Her çalışan için QR kodlu dijital kartvizit oluşturun. Herkese açık URL ile paylaşın.</p>
+            <ul class="module-list">
+              <li>QR kod & vCard desteği</li>
+              <li>Özelleştirilebilir profil</li>
+              <li>Herkese açık paylaşım linki</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon" style="background:#fff1f2;color:#e11d48">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div class="module-body">
+            <h3>Duyuru & Feed</h3>
+            <p>Şirket duyurularını ve haberleri tüm çalışanlara anında iletin.</p>
+            <ul class="module-list">
+              <li>Duyuru yönetimi</li>
+              <li>Görsel & metin içerik</li>
+              <li>Departman bazlı hedefleme</li>
+            </ul>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="how" id="how">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Nasıl Çalışır?</div>
+        <h2 class="section-title">3 adımda başlayın,<br />aynı gün kullanmaya başlayın</h2>
+      </div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">01</div>
+          <div class="step-content">
+            <h3>Hesabınızı oluşturun</h3>
+            <p>Şirket bilgilerinizi girerek 5 dakikada hesabınızı açın. Kredi kartı gerekmez, hemen başlayın.</p>
+          </div>
+          <div class="step-arrow">→</div>
+        </div>
+        <div class="step">
+          <div class="step-number">02</div>
+          <div class="step-content">
+            <h3>Çalışanlarınızı ekleyin</h3>
+            <p>Çalışan bilgilerini toplu veya tek tek ekleyin. Rol ve departman atamalarını yapın.</p>
+          </div>
+          <div class="step-arrow">→</div>
+        </div>
+        <div class="step">
+          <div class="step-number">03</div>
+          <div class="step-content">
+            <h3>Yönetmeye başlayın</h3>
+            <p>Web panelinden yönetin, çalışanlarınız mobil uygulamadan erişsin. Hepsi bu kadar.</p>
+          </div>
+          <div class="step-arrow" style="visibility:hidden">→</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRICING -->
+  <section class="pricing" id="pricing">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">Fiyatlandırma</div>
+        <h2 class="section-title">İşletmenizin büyüklüğüne<br />göre esnek planlar</h2>
+        <p class="section-sub">Tüm planlarda 14 günlük ücretsiz deneme. İstediğiniz zaman iptal edin.</p>
+      </div>
+      <div class="pricing-grid">
+
+        <div class="pricing-card">
+          <div class="plan-name">Başlangıç</div>
+          <div class="plan-price">
+            <span class="price-amount">₺990</span>
+            <span class="price-period">/ ay</span>
+          </div>
+          <div class="plan-desc">10 çalışana kadar</div>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Çalışan yönetimi</li>
+            <li><span class="check">✓</span> Talep yönetimi</li>
+            <li><span class="check">✓</span> Özlük belgeleri</li>
+            <li><span class="check">✓</span> Dijital kartvizit</li>
+            <li><span class="check">✓</span> Mobil uygulama</li>
+            <li><span class="muted-check">–</span> CRM modülü</li>
+            <li><span class="muted-check">–</span> Özel raporlama</li>
+          </ul>
+          <a href="#contact" class="btn btn-outline btn-full">Ücretsiz Başla</a>
+        </div>
+
+        <div class="pricing-card pricing-card-featured">
+          <div class="plan-badge">En Popüler</div>
+          <div class="plan-name">Profesyonel</div>
+          <div class="plan-price">
+            <span class="price-amount">₺2.490</span>
+            <span class="price-period">/ ay</span>
+          </div>
+          <div class="plan-desc">50 çalışana kadar</div>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Çalışan yönetimi</li>
+            <li><span class="check">✓</span> Talep yönetimi</li>
+            <li><span class="check">✓</span> Özlük belgeleri</li>
+            <li><span class="check">✓</span> Dijital kartvizit</li>
+            <li><span class="check">✓</span> Mobil uygulama</li>
+            <li><span class="check">✓</span> CRM modülü</li>
+            <li><span class="muted-check">–</span> Özel raporlama</li>
+          </ul>
+          <a href="#contact" class="btn btn-primary btn-full">Ücretsiz Başla</a>
+        </div>
+
+        <div class="pricing-card">
+          <div class="plan-name">Kurumsal</div>
+          <div class="plan-price">
+            <span class="price-amount">Özel</span>
+          </div>
+          <div class="plan-desc">Sınırsız çalışan</div>
+          <ul class="plan-features">
+            <li><span class="check">✓</span> Tüm modüller</li>
+            <li><span class="check">✓</span> Özel raporlama</li>
+            <li><span class="check">✓</span> API entegrasyonu</li>
+            <li><span class="check">✓</span> Özel alan adı</li>
+            <li><span class="check">✓</span> Öncelikli destek</li>
+            <li><span class="check">✓</span> Yerinde eğitim</li>
+            <li><span class="check">✓</span> SLA garantisi</li>
+          </ul>
+          <a href="#contact" class="btn btn-outline btn-full">Bizimle İletişime Geçin</a>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-bg">
+      <div class="cta-glow"></div>
+    </div>
+    <div class="container cta-inner">
+      <h2 class="cta-title">İşletmenizi dijitalleştirmeye<br />bugün başlayın</h2>
+      <p class="cta-sub">14 gün boyunca tüm özellikleri ücretsiz deneyin. Kurulum gerektirmez.</p>
+      <a href="#contact" class="btn btn-white btn-lg">
+        Hemen Başla — Ücretsiz
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+    </div>
+  </section>
+
+  <!-- CONTACT -->
+  <section class="contact-section" id="contact">
+    <div class="container">
+      <div class="section-header">
+        <div class="section-tag">İletişim</div>
+        <h2 class="section-title">Hemen başlayalım</h2>
+        <p class="section-sub">Demo talebi veya sorularınız için aşağıdaki formu doldurun, en kısa sürede dönelim.</p>
+      </div>
+      <div class="contact-grid">
+        <form class="contact-form" id="contactForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Ad Soyad</label>
+              <input type="text" placeholder="Ahmet Yılmaz" required />
+            </div>
+            <div class="form-group">
+              <label>Şirket Adı</label>
+              <input type="text" placeholder="Şirketiniz A.Ş." required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>E-posta</label>
+              <input type="email" placeholder="ahmet@sirket.com" required />
+            </div>
+            <div class="form-group">
+              <label>Telefon</label>
+              <input type="tel" placeholder="+90 5XX XXX XX XX" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Çalışan Sayısı</label>
+            <select>
+              <option value="">Seçiniz</option>
+              <option>1–10 kişi</option>
+              <option>11–50 kişi</option>
+              <option>51–200 kişi</option>
+              <option>200+ kişi</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Mesajınız</label>
+            <textarea placeholder="Demo talebi, fiyat bilgisi veya özel ihtiyaçlarınızı yazın..." rows="4"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full btn-lg">
+            Talebi Gönder
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+          <div class="form-success" id="formSuccess">
+            <span>✓</span> Talebiniz alındı! En kısa sürede size döneceğiz.
+          </div>
+        </form>
+        <div class="contact-info">
+          <div class="contact-info-card">
+            <div class="ci-icon">📧</div>
+            <div>
+              <div class="ci-label">E-posta</div>
+              <div class="ci-val">destek@onedesk.com.tr</div>
+            </div>
+          </div>
+          <div class="contact-info-card">
+            <div class="ci-icon">📞</div>
+            <div>
+              <div class="ci-label">Telefon</div>
+              <div class="ci-val">+90 212 XXX XX XX</div>
+            </div>
+          </div>
+          <div class="contact-info-card">
+            <div class="ci-icon">⏰</div>
+            <div>
+              <div class="ci-label">Destek Saatleri</div>
+              <div class="ci-val">Haftaiçi 09:00–18:00</div>
+            </div>
+          </div>
+          <div class="contact-highlight">
+            <div class="ch-title">14 Gün Ücretsiz Deneme</div>
+            <div class="ch-sub">Kredi kartı gerekmez. İstediğiniz zaman iptal edin.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <div class="footer-brand">
+        <a href="#" class="nav-logo">
+          <span class="logo-mark">O</span>
+          <span class="logo-text" style="color:#fff">OneDesk</span>
+        </a>
+        <p class="footer-tagline">KOBİ'ler için akıllı iş yönetim platformu.</p>
+      </div>
+      <div class="footer-links-group">
+        <div class="footer-col">
+          <div class="footer-col-title">Ürün</div>
+          <a href="#features">Özellikler</a>
+          <a href="#modules">Modüller</a>
+          <a href="#pricing">Fiyatlandırma</a>
+          <a href="#how">Nasıl Çalışır</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Şirket</div>
+          <a href="#">Hakkımızda</a>
+          <a href="#">Blog</a>
+          <a href="#contact">İletişim</a>
+        </div>
+        <div class="footer-col">
+          <div class="footer-col-title">Yasal</div>
+          <a href="#">Gizlilik Politikası</a>
+          <a href="#">KVKK Aydınlatma</a>
+          <a href="#">Kullanım Koşulları</a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="container footer-bottom-inner">
+        <span>© 2026 OneDesk. Tüm hakları saklıdır.</span>
+        <span>🇹🇷 Türkiye'de geliştirildi</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>

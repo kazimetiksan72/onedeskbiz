@@ -74,6 +74,12 @@ async function listPublished({ limit }) {
     .lean();
 }
 
+async function getPublishedById(id) {
+  const item = await FeedPost.findOne({ _id: id, status: FEED_STATUS.PUBLISHED }).lean();
+  if (!item) throw new ApiError(404, 'Feed içeriği bulunamadı.');
+  return item;
+}
+
 async function listAdmin() {
   return FeedPost.find().sort({ createdAt: -1 }).lean();
 }
@@ -100,4 +106,4 @@ async function deletePost(id) {
   if (!deleted) throw new ApiError(404, 'Feed içeriği bulunamadı.');
 }
 
-module.exports = { listPublished, listAdmin, createPost, deletePost };
+module.exports = { listPublished, getPublishedById, listAdmin, createPost, deletePost };

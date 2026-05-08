@@ -2,8 +2,23 @@ export interface CompanySettings {
   _id: string;
   companyName: string;
   website?: string;
+  logoUrl?: string;
   timezone?: string;
   departments?: string[];
+  quoteTemplate?: {
+    fileName?: string;
+    htmlUrl?: string;
+    blobName?: string;
+    uploadedAt?: string;
+  };
+  companyReferences?: {
+    _id: string;
+    name: string;
+    logoUrl: string;
+    blobName?: string;
+    createdAt?: string;
+    updatedAt?: string;
+  }[];
   billingInfo: {
     legalCompanyName: string;
     taxNumber: string;

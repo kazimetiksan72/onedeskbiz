@@ -8,6 +8,8 @@ const createRequestSchema = z.object({
       vehicleId: objectId.optional(),
       startAt: z.string().datetime().optional(),
       endAt: z.string().datetime().optional(),
+      leaveType: z.enum(['ANNUAL', 'SICK', 'UNPAID', 'OTHER']).optional(),
+      reason: z.string().max(2000).optional(),
       materialText: z.string().min(1).max(2000).optional(),
       expenseAmount: z.coerce.number().positive().optional(),
       expenseCurrency: z.string().min(3).max(3).default('TRY').optional(),

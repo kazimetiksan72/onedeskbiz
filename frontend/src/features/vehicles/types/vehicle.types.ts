@@ -5,6 +5,7 @@ export interface Vehicle {
   model: string;
   modelYear: number;
   kilometer: number;
+  lastInspectionDate?: string | null;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt?: string;
   updatedAt?: string;

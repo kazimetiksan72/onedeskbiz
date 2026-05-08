@@ -19,7 +19,8 @@ const listApprovals = asyncHandler(async (req, res) => {
   res.json(
     await service.listApprovals(req.user, {
       page: Number(req.query.page || 1),
-      limit: Number(req.query.limit || 50)
+      limit: Number(req.query.limit || 50),
+      status: req.query.status || 'PENDING'
     })
   );
 });

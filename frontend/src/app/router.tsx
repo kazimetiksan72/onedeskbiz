@@ -20,10 +20,15 @@ import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequests
 import { VehicleRequestsPage } from '../features/requests/pages/VehicleRequestsPage';
 import { MaterialRequestsPage } from '../features/requests/pages/MaterialRequestsPage';
 import { ExpenseRequestsPage } from '../features/requests/pages/ExpenseRequestsPage';
+import { AdminRequestsPage } from '../features/requests/pages/AdminRequestsPage';
+import { TasksPage } from '../features/tasks/pages/TasksPage';
 import { EmployeeDocumentsPage } from '../features/employeeDocuments/pages/EmployeeDocumentsPage';
 import { AdminFeedPage } from '../features/feed/pages/AdminFeedPage';
 import { EmployeeHomePage } from '../features/feed/pages/EmployeeHomePage';
+import { EmployeeFeedDetailPage } from '../features/feed/pages/EmployeeFeedDetailPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
+import { QuotesPage } from '../features/quotes/pages/QuotesPage';
+import { QuoteDetailPage } from '../features/quotes/pages/QuoteDetailPage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage mode="employee" /> },
@@ -42,10 +47,12 @@ export const router = createBrowserRouter([
             children: [
               { path: '/leave-requests', element: <LeaveRequestsPage /> },
               { path: '/home', element: <EmployeeHomePage /> },
+              { path: '/feed/:id', element: <EmployeeFeedDetailPage /> },
               { path: '/employee-documents', element: <EmployeeDocumentsPage /> },
               { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
               { path: '/expense-requests', element: <ExpenseRequestsPage /> },
+              { path: '/tasks', element: <TasksPage /> },
               { path: '/contact-actions', element: <ContactActionLogsPage /> }
             ]
           },
@@ -60,11 +67,15 @@ export const router = createBrowserRouter([
               { path: '/admin/contacts', element: <ContactsPage /> },
               { path: '/admin/contacts/:id', element: <ContactDetailPage /> },
               { path: '/admin/contact-actions', element: <ContactActionLogsPage /> },
+              { path: '/admin/requests', element: <AdminRequestsPage /> },
+              { path: '/admin/tasks', element: <TasksPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
               { path: '/admin/feed', element: <AdminFeedPage /> },
               { path: '/admin/department-roles', element: <DepartmentRolesPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
+              { path: '/admin/quotes', element: <QuotesPage /> },
+              { path: '/admin/quotes/:id', element: <QuoteDetailPage /> },
               { path: '/dashboard', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/employees', element: <Navigate to="/admin/employees" replace /> },
               { path: '/customers', element: <Navigate to="/admin/customers" replace /> },

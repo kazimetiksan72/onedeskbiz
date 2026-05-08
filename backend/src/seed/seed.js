@@ -10,6 +10,7 @@ const { Vehicle } = require('../models/Vehicle');
 const { DepartmentRole, PERMISSIONS } = require('../models/DepartmentRole');
 const { DepartmentRoleAssignment } = require('../models/DepartmentRoleAssignment');
 const { Request } = require('../models/Request');
+const { Task } = require('../models/Task');
 const { CompanySettings } = require('../models/CompanySettings');
 const { LeaveRequest } = require('../models/LeaveRequest');
 const { RefreshToken } = require('../models/RefreshToken');
@@ -35,6 +36,7 @@ async function run() {
     DepartmentRole.deleteMany({}),
     DepartmentRoleAssignment.deleteMany({}),
     Request.deleteMany({}),
+    Task.deleteMany({}),
     CompanySettings.deleteMany({}),
     LeaveRequest.deleteMany({}),
     RefreshToken.deleteMany({})
@@ -52,7 +54,8 @@ async function run() {
           PERMISSIONS.VEHICLE_APPROVAL,
           PERMISSIONS.LEAVE_APPROVAL,
           PERMISSIONS.MATERIAL_APPROVAL,
-          PERMISSIONS.EXPENSE_APPROVAL
+          PERMISSIONS.EXPENSE_APPROVAL,
+          PERMISSIONS.TASK_ASSIGNMENT
         ]
       },
       {
@@ -68,8 +71,8 @@ async function run() {
 
   const users = await User.insertMany([
     {
-      email: 'admin@smallbiz.local',
-      workEmail: 'admin@smallbiz.local',
+      email: 'admin@onedesk.local',
+      workEmail: 'admin@onedesk.local',
       passwordHash: defaultPasswordHash,
       role: ROLES.ADMIN,
       firstName: 'Aylin',
@@ -84,8 +87,8 @@ async function run() {
       passwordUpdatedAt: new Date()
     },
     {
-      email: 'mert@smallbiz.local',
-      workEmail: 'mert@smallbiz.local',
+      email: 'mert@onedesk.local',
+      workEmail: 'mert@onedesk.local',
       passwordHash: defaultPasswordHash,
       role: ROLES.EMPLOYEE,
       firstName: 'Mert',
@@ -102,13 +105,13 @@ async function run() {
         displayName: 'Mert Demir',
         title: 'Sales Specialist',
         phone: '+905551000002',
-        email: 'mert@smallbiz.local',
+        email: 'mert@onedesk.local',
         isPublic: true
       }
     },
     {
-      email: 'selin@smallbiz.local',
-      workEmail: 'selin@smallbiz.local',
+      email: 'selin@onedesk.local',
+      workEmail: 'selin@onedesk.local',
       passwordHash: defaultPasswordHash,
       role: ROLES.EMPLOYEE,
       firstName: 'Selin',
@@ -125,7 +128,7 @@ async function run() {
         displayName: 'Selin Yilmaz',
         title: 'Operations Specialist',
         phone: '+905551000003',
-        email: 'selin@smallbiz.local',
+        email: 'selin@onedesk.local',
         isPublic: true
       }
     }
@@ -133,15 +136,15 @@ async function run() {
 
   await DepartmentRoleAssignment.insertMany([
     {
-      userId: users.find((user) => user.email === 'admin@smallbiz.local')._id,
+      userId: users.find((user) => user.email === 'admin@onedesk.local')._id,
       departmentRoleId: findRole('Management', 'Yönetici')
     },
     {
-      userId: users.find((user) => user.email === 'mert@smallbiz.local')._id,
+      userId: users.find((user) => user.email === 'mert@onedesk.local')._id,
       departmentRoleId: findRole('Sales', 'Yönetici')
     },
     {
-      userId: users.find((user) => user.email === 'selin@smallbiz.local')._id,
+      userId: users.find((user) => user.email === 'selin@onedesk.local')._id,
       departmentRoleId: findRole('Operations', 'Çalışan')
     }
   ]);
@@ -354,16 +357,43 @@ async function run() {
     }
   ]);
 
+  const adminUser = users.find((user) => user.email === 'admin@onedesk.local');
+  const mertUser = users.find((user) => user.email === 'mert@onedesk.local');
+  const selinUser = users.find((user) => user.email === 'selin@onedesk.local');
+
+  await Task.insertMany([
+    {
+      title: 'Yeni müşteri görüşme notlarını tamamla',
+      description: 'Bu hafta yapılan müşteri görüşmelerinin kısa özetlerini kişi aksiyonlarına ekle.',
+      assignedUserId: mertUser._id,
+      createdByUserId: adminUser._id,
+      dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      status: 'TODO',
+      notes: ''
+    },
+    {
+      title: 'Araç bakım tarihlerini kontrol et',
+      description: 'Şirket araçlarının güncel bakım durumunu kontrol edip eksikleri not olarak yaz.',
+      assignedUserId: selinUser._id,
+      createdByUserId: adminUser._id,
+      dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      status: 'IN_PROGRESS',
+      notes: 'BMW X3 için kilometre kontrolü yapılacak.'
+    }
+  ]);
+
+
   await CompanySettings.create({
-    companyName: 'SmallBiz Demo Co.',
-    website: 'https://smallbiz.local',
+    companyName: 'OneDesk Demo Co.',
+    website: 'https://onedesk.local',
+    logoUrl: '',
     timezone: 'Europe/Istanbul',
     departments,
     billingInfo: {
-      legalCompanyName: 'SmallBiz Demo Co. Ltd.',
+      legalCompanyName: 'OneDesk Demo Co. Ltd.',
       taxNumber: '1234567890',
       taxOffice: 'Kadikoy',
-      billingEmail: 'billing@smallbiz.local',
+      billingEmail: 'billing@onedesk.local',
       phone: '+90 216 000 0000',
       address: 'Istanbul Business Center No:12',
       city: 'Istanbul',

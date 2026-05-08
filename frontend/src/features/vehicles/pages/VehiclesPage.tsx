@@ -12,6 +12,7 @@ interface VehicleForm {
   model: string;
   modelYear: string;
   kilometer: string;
+  lastInspectionDate: string;
   status: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -21,6 +22,7 @@ const initialForm: VehicleForm = {
   model: '',
   modelYear: '',
   kilometer: '',
+  lastInspectionDate: '',
   status: 'ACTIVE'
 };
 
@@ -53,6 +55,7 @@ export function VehiclesPage() {
       model: form.model,
       modelYear: Number(form.modelYear),
       kilometer: Number(form.kilometer),
+      lastInspectionDate: form.lastInspectionDate ? new Date(form.lastInspectionDate).toISOString() : null,
       status: form.status
     };
 
@@ -191,6 +194,15 @@ export function VehiclesPage() {
               onChange={(e) => setForm({ ...form, kilometer: e.target.value })}
               required
             />
+            <label className="space-y-1 text-sm text-slate-600">
+              <span>Son Muayene Tarihi</span>
+              <input
+                className="input"
+                type="date"
+                value={form.lastInspectionDate}
+                onChange={(e) => setForm({ ...form, lastInspectionDate: e.target.value })}
+              />
+            </label>
             <select
               className="input"
               value={form.status}

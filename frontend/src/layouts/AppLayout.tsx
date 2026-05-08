@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../features/auth/auth.store';
 import { logout } from '../features/auth/api/auth.api';
+import { getPublicCompanyBillingInfo } from '../features/companySettings/api/companySettings.api';
 
 const adminNavItems = [
   { to: '/admin/dashboard', label: 'Panel' },
@@ -8,7 +10,10 @@ const adminNavItems = [
   { to: '/admin/customers', label: 'Müşteriler' },
   { to: '/admin/contacts', label: 'Kişiler' },
   { to: '/admin/contact-actions', label: 'Kişi Aksiyonları' },
+  { to: '/admin/requests', label: 'Talepler' },
+  { to: '/admin/tasks', label: 'Görevler' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
+  { to: '/admin/quotes', label: 'Teklifler' },
   { to: '/admin/feed', label: 'Feed Yönetimi' },
   { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
@@ -21,13 +26,24 @@ const employeeNavItems = [
   { to: '/vehicle-requests', label: 'Araç Talepleri' },
   { to: '/material-requests', label: 'Malzeme Talepleri' },
   { to: '/expense-requests', label: 'Masraf Talepleri' },
+  { to: '/tasks', label: 'Görevlerim' },
   { to: '/contact-actions', label: 'Kişi Aksiyonları' }
 ];
 
 export function AppLayout() {
   const navigate = useNavigate();
   const { user, refreshToken, clearAuth } = useAuthStore();
-  const navItems = user?.role === 'ADMIN' ? adminNavItems : employeeNavItems;
+  const [companyName, setCompanyName] = useState('');
+  const canAssignTasks = user?.role === 'ADMIN' || user?.departmentRoleId?.permissions?.includes('TASK_ASSIGNMENT');
+  const navItems = user?.role === 'ADMIN'
+    ? adminNavItems
+    : employeeNavItems.map((item) => item.to === '/tasks' && canAssignTasks ? { ...item, label: 'Görevler' } : item);
+
+  useEffect(() => {
+    getPublicCompanyBillingInfo()
+      .then((settings) => setCompanyName(settings?.companyName?.trim() || ''))
+      .catch(() => setCompanyName(''));
+  }, []);
 
   const onLogout = async () => {
     try {
@@ -46,9 +62,16 @@ export function AppLayout() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <Link
             to={user?.role === 'ADMIN' ? '/admin/dashboard' : '/home'}
-            className="text-lg font-semibold text-brand-700"
+            className="leading-tight text-brand-700"
           >
-            SmallBiz Platform
+            {companyName ? (
+              <span className="block">
+                <span className="block text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">OneDesk</span>
+                <span className="block text-xl font-semibold text-brand-700">{companyName}</span>
+              </span>
+            ) : (
+              <span className="text-xl font-semibold text-brand-700">OneDesk</span>
+            )}
           </Link>
           <div className="flex items-center gap-3 text-sm text-slate-600">
             <span>{user?.email}</span>

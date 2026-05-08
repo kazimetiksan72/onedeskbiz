@@ -26,12 +26,36 @@ const billingInfoSchema = new mongoose.Schema(
   { _id: false }
 );
 
+const companyReferenceSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true },
+    logoUrl: { type: String, trim: true },
+    blobName: { type: String, trim: true }
+  },
+  {
+    timestamps: true
+  }
+);
+
+const quoteTemplateSchema = new mongoose.Schema(
+  {
+    fileName: { type: String, trim: true },
+    htmlUrl: { type: String, trim: true },
+    blobName: { type: String, trim: true },
+    uploadedAt: { type: Date }
+  },
+  { _id: false }
+);
+
 const companySettingsSchema = new mongoose.Schema(
   {
     companyName: { type: String, trim: true },
     website: { type: String, trim: true, lowercase: true },
+    logoUrl: { type: String, trim: true },
     timezone: { type: String, default: 'UTC' },
     departments: [{ type: String, trim: true }],
+    companyReferences: { type: [companyReferenceSchema], default: [] },
+    quoteTemplate: { type: quoteTemplateSchema, default: {} },
     billingInfo: { type: billingInfoSchema, default: {} }
   },
   {

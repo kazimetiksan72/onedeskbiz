@@ -1,5 +1,13 @@
-import { useEffect, useState, type ReactNode } from 'react';
-import { getCompanySettings, upsertCompanySettings, type CompanySettingsPayload } from '../api/companySettings.api';
+import { useEffect, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
+import {
+  deleteCompanyReference,
+  getCompanySettings,
+  uploadCompanyLogo,
+  uploadCompanyReferenceLogos,
+  uploadQuoteTemplate,
+  upsertCompanySettings,
+  type CompanySettingsPayload
+} from '../api/companySettings.api';
 import type { CompanySettings } from '../types/companySettings.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { ModalPortal } from '../../../components/ModalPortal';
@@ -8,8 +16,11 @@ import { useAuthStore } from '../../auth/auth.store';
 const initial: Omit<CompanySettings, '_id'> = {
   companyName: '',
   website: '',
+  logoUrl: '',
   timezone: 'Europe/Istanbul',
   departments: [],
+  quoteTemplate: {},
+  companyReferences: [],
   billingInfo: {
     legalCompanyName: '',
     taxNumber: '',
@@ -35,6 +46,15 @@ export function CompanySettingsPage() {
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [newDepartment, setNewDepartment] = useState('');
   const [message, setMessage] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoDragActive, setLogoDragActive] = useState(false);
+  const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
+  const [referenceUploading, setReferenceUploading] = useState(false);
+  const [referenceDragActive, setReferenceDragActive] = useState(false);
+  const [selectedReferenceFiles, setSelectedReferenceFiles] = useState<File[]>([]);
+  const [referenceDeletingId, setReferenceDeletingId] = useState<string | null>(null);
+  const [quoteTemplateUploading, setQuoteTemplateUploading] = useState(false);
+  const [selectedQuoteTemplate, setSelectedQuoteTemplate] = useState<File | null>(null);
 
   useEffect(() => {
     getCompanySettings().then((data) => {
@@ -64,6 +84,136 @@ export function CompanySettingsPage() {
     setSettings(normalizeSettings(updated));
     setMessage(successMessage);
     closeModal();
+  };
+
+  const uploadLogoFile = async () => {
+    if (!selectedLogoFile) return;
+
+    setLogoUploading(true);
+    setMessage('');
+    setLogoDragActive(false);
+
+    try {
+      const updated = await uploadCompanyLogo(selectedLogoFile);
+      setSettings(normalizeSettings(updated));
+      setMessage('Şirket logosu yüklendi.');
+      setSelectedLogoFile(null);
+    } catch (requestError: any) {
+      setMessage(requestError?.response?.data?.message || 'Logo yüklenemedi.');
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const onLogoSelected = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setSelectedLogoFile(file);
+    setMessage(`${file.name} seçildi. Yüklemek için Logo Yükle butonuna basın.`);
+  };
+
+  const onLogoDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setLogoDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) return;
+    setSelectedLogoFile(file);
+    setMessage(`${file.name} seçildi. Yüklemek için Logo Yükle butonuna basın.`);
+  };
+
+  const setReferenceFiles = (files: FileList | File[]) => {
+    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) {
+      setMessage('Referans logosu için JPG, PNG veya WEBP dosyası seçin.');
+      return;
+    }
+
+    setSelectedReferenceFiles(imageFiles);
+    setMessage(`${imageFiles.length} referans logosu seçildi. Yüklemek için Referansları Yükle butonuna basın.`);
+  };
+
+  const onReferenceSelected = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    event.target.value = '';
+    if (!files?.length) return;
+    setReferenceFiles(files);
+  };
+
+  const onReferenceDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setReferenceDragActive(false);
+    const files = event.dataTransfer.files;
+    if (!files?.length) return;
+    setReferenceFiles(files);
+  };
+
+  const uploadReferenceFiles = async () => {
+    if (selectedReferenceFiles.length === 0) return;
+
+    setReferenceUploading(true);
+    setMessage('');
+
+    try {
+      const updated = await uploadCompanyReferenceLogos(selectedReferenceFiles);
+      setSettings(normalizeSettings(updated));
+      setSelectedReferenceFiles([]);
+      setMessage('Referans logoları yüklendi.');
+    } catch (requestError: any) {
+      setMessage(requestError?.response?.data?.message || 'Referans logoları yüklenemedi.');
+    } finally {
+      setReferenceUploading(false);
+    }
+  };
+
+  const removeCompanyReference = async (referenceId: string) => {
+    setReferenceDeletingId(referenceId);
+    setMessage('');
+
+    try {
+      const updated = await deleteCompanyReference(referenceId);
+      setSettings(normalizeSettings(updated));
+      setMessage('Referans logosu silindi.');
+    } catch (requestError: any) {
+      setMessage(requestError?.response?.data?.message || 'Referans logosu silinemedi.');
+    } finally {
+      setReferenceDeletingId(null);
+    }
+  };
+
+  const onQuoteTemplateSelected = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const isHtml = file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm');
+    if (!isHtml) {
+      setMessage('Teklif şablonu için HTML dosyası seçin.');
+      return;
+    }
+
+    setSelectedQuoteTemplate(file);
+    setMessage(`${file.name} seçildi. Yüklemek için Şablonu Yükle butonuna basın.`);
+  };
+
+  const uploadSelectedQuoteTemplate = async () => {
+    if (!selectedQuoteTemplate) return;
+
+    setQuoteTemplateUploading(true);
+    setMessage('');
+
+    try {
+      const updated = await uploadQuoteTemplate(selectedQuoteTemplate);
+      setSettings(normalizeSettings(updated));
+      setSelectedQuoteTemplate(null);
+      setMessage('Teklif HTML şablonu yüklendi.');
+    } catch (requestError: any) {
+      setMessage(requestError?.response?.data?.message || 'Teklif şablonu yüklenemedi.');
+    } finally {
+      setQuoteTemplateUploading(false);
+    }
   };
 
   const addDepartment = () => {
@@ -110,6 +260,232 @@ export function CompanySettingsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title="Şirket Ayarları" subtitle="Şirket, vergi, banka ve departman bilgilerini yönetin" />
+
+      <section
+        className={`page-card relative overflow-hidden space-y-4 border-2 border-dashed transition ${
+          logoDragActive
+            ? 'scale-[1.01] border-brand-500 bg-brand-50 shadow-lg ring-4 ring-brand-100'
+            : selectedLogoFile
+              ? 'border-emerald-400 bg-emerald-50/40'
+              : 'border-slate-200'
+        }`}
+        onDragEnter={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setLogoDragActive(true);
+        }}
+        onDragOver={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setLogoDragActive(true);
+        }}
+        onDragLeave={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          setLogoDragActive(false);
+        }}
+        onDrop={onLogoDrop}
+      >
+        {logoDragActive ? (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-brand-600/10 backdrop-blur-[1px]">
+            <div className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-brand-700 shadow-lg">
+              Logoyu buraya bırakın
+            </div>
+          </div>
+        ) : null}
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+              {settings.logoUrl ? (
+                <img src={settings.logoUrl} alt="Şirket logosu" className="h-full w-full object-contain p-2" />
+              ) : (
+                <span className="text-xs font-semibold uppercase tracking-wide text-slate-400">Logo</span>
+              )}
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-slate-900">Şirket Logosu</h2>
+              <p className="text-sm text-slate-500">JPG, PNG veya WEBP formatında logo yükleyin ya da bu alana sürükleyip bırakın.</p>
+              {selectedLogoFile ? (
+                <p className="mt-1 text-sm font-medium text-emerald-700">
+                  Seçilen dosya: {selectedLogoFile.name}
+                </p>
+              ) : null}
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="btn-secondary cursor-pointer">
+              Dosya Seç
+              <input
+                className="hidden"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={onLogoSelected}
+                disabled={logoUploading}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={uploadLogoFile}
+              disabled={logoUploading || !selectedLogoFile}
+            >
+              {logoUploading ? 'Yükleniyor...' : 'Logo Yükle'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-card space-y-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Teklif HTML Şablonu</h2>
+            <p className="text-sm text-slate-500">
+              Teklif PDF çıktısı için içinde <span className="font-semibold">const CONFIG</span> bloğu bulunan HTML şablonu yükleyin.
+            </p>
+            {settings.quoteTemplate?.fileName ? (
+              <p className="mt-2 text-sm text-slate-700">
+                Aktif şablon: <span className="font-semibold">{settings.quoteTemplate.fileName}</span>
+                {settings.quoteTemplate.uploadedAt ? ` · ${new Date(settings.quoteTemplate.uploadedAt).toLocaleString('tr-TR')}` : ''}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-slate-500">Henüz teklif şablonu yüklenmedi. Şablon yoksa sistem varsayılan tasarımı kullanır.</p>
+            )}
+            {selectedQuoteTemplate ? (
+              <p className="mt-1 text-sm font-medium text-emerald-700">Seçilen dosya: {selectedQuoteTemplate.name}</p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <label className="btn-secondary cursor-pointer">
+              HTML Seç
+              <input
+                className="hidden"
+                type="file"
+                accept=".html,.htm,text/html"
+                onChange={onQuoteTemplateSelected}
+                disabled={quoteTemplateUploading}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={uploadSelectedQuoteTemplate}
+              disabled={quoteTemplateUploading || !selectedQuoteTemplate}
+            >
+              {quoteTemplateUploading ? 'Yükleniyor...' : 'Şablonu Yükle'}
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="page-card space-y-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Şirket Referansları</h2>
+            <p className="text-sm text-slate-500">Referans firmaların logolarını toplu olarak yükleyin ve listede yönetin.</p>
+          </div>
+          <div className="text-sm font-medium text-slate-500">
+            {(settings.companyReferences || []).length} referans
+          </div>
+        </div>
+
+        <div
+          className={`relative rounded-2xl border-2 border-dashed p-5 transition ${
+            referenceDragActive
+              ? 'border-brand-500 bg-brand-50 shadow-lg ring-4 ring-brand-100'
+              : selectedReferenceFiles.length > 0
+                ? 'border-emerald-400 bg-emerald-50/40'
+                : 'border-slate-200 bg-slate-50/60'
+          }`}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setReferenceDragActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setReferenceDragActive(true);
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setReferenceDragActive(false);
+          }}
+          onDrop={onReferenceDrop}
+        >
+          {referenceDragActive ? (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-brand-600/10 backdrop-blur-[1px]">
+              <div className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-brand-700 shadow-lg">
+                Referans logolarını buraya bırakın
+              </div>
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="font-medium text-slate-900">Toplu logo yükleme</p>
+              <p className="text-sm text-slate-500">JPG, PNG veya WEBP dosyalarını seçin ya da bu alana sürükleyip bırakın.</p>
+              {selectedReferenceFiles.length > 0 ? (
+                <p className="mt-1 text-sm font-medium text-emerald-700">
+                  {selectedReferenceFiles.length} dosya seçildi.
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              <label className="btn-secondary cursor-pointer">
+                Logoları Seç
+                <input
+                  className="hidden"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  multiple
+                  onChange={onReferenceSelected}
+                  disabled={referenceUploading}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={uploadReferenceFiles}
+                disabled={referenceUploading || selectedReferenceFiles.length === 0}
+              >
+                {referenceUploading ? 'Yükleniyor...' : 'Referansları Yükle'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {(settings.companyReferences || []).length === 0 ? (
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+            Henüz şirket referansı eklenmedi.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {(settings.companyReferences || []).map((reference) => (
+              <div key={reference._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex h-24 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
+                  <img src={reference.logoUrl} alt={reference.name} className="max-h-20 max-w-full object-contain p-2" />
+                </div>
+                <div className="mt-3 flex items-start justify-between gap-3">
+                  <p className="min-w-0 truncate text-sm font-semibold text-slate-900" title={reference.name}>
+                    {reference.name || 'Referans'}
+                  </p>
+                  <button
+                    type="button"
+                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={() => removeCompanyReference(reference._id)}
+                    disabled={referenceDeletingId === reference._id}
+                  >
+                    {referenceDeletingId === reference._id ? 'Siliniyor...' : 'Sil'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
 
       <ReadOnlyCard title="Genel" onEdit={() => openModal('general')}>
         <DetailLine label="Şirket adı" value={settings.companyName} />
@@ -319,6 +695,8 @@ function normalizeSettings(data: CompanySettings): Omit<CompanySettings, '_id'> 
   return {
     ...initial,
     ...rest,
+    quoteTemplate: rest.quoteTemplate || {},
+    companyReferences: rest.companyReferences || [],
     billingInfo: {
       ...initial.billingInfo,
       ...(rest.billingInfo || {}),

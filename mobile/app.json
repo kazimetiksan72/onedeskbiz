@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "SmallBiz Mobile",
-    "slug": "smallbiz-mobile",
-    "scheme": "smallbizmobile",
+    "name": "OneDesk",
+    "slug": "onedesk-mobile",
+    "scheme": "onedesk",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",

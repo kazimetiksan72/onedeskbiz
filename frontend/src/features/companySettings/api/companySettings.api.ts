@@ -10,7 +10,48 @@ export async function getCompanySettings() {
   return data;
 }
 
+export async function getPublicCompanyBillingInfo() {
+  const { data } = await api.get<Pick<CompanySettings, 'companyName' | 'website' | 'billingInfo'> | null>(
+    '/company-settings/public-billing'
+  );
+  return data;
+}
+
 export async function upsertCompanySettings(payload: CompanySettingsPayload) {
   const { data } = await api.put<CompanySettings>('/company-settings', payload);
+  return data;
+}
+
+export async function uploadCompanyLogo(file: File) {
+  const formData = new FormData();
+  formData.append('logo', file);
+  const { data } = await api.post<CompanySettings>('/company-settings/logo', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return data;
+}
+
+export async function uploadCompanyReferenceLogos(files: File[]) {
+  const formData = new FormData();
+  files.forEach((file) => formData.append('logos', file));
+
+  const { data } = await api.post<CompanySettings>('/company-settings/references/logos', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return data;
+}
+
+export async function uploadQuoteTemplate(file: File) {
+  const formData = new FormData();
+  formData.append('template', file);
+
+  const { data } = await api.post<CompanySettings>('/company-settings/quote-template', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return data;
+}
+
+export async function deleteCompanyReference(referenceId: string) {
+  const { data } = await api.delete<CompanySettings>(`/company-settings/references/${referenceId}`);
   return data;
 }

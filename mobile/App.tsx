@@ -29,7 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 declare const require: (moduleName: string) => any;
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'HOME' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS';
+type MenuKey = 'HOME' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS' | 'TASKS' | 'QUOTES';
 
 type AuthUser = {
   _id: string;
@@ -254,6 +254,39 @@ type EmployeeDocumentItem = {
   createdAt: string;
 };
 
+type QuoteItem = {
+  _id: string;
+  number: string;
+  customerId?: { _id: string; companyName: string };
+  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
+  grandTotal: number;
+  currency: string;
+  validUntil?: string | null;
+  createdAt: string;
+};
+
+type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
+
+type TaskItem = {
+  _id: string;
+  title: string;
+  description?: string;
+  dueDate?: string | null;
+  status: TaskStatus;
+  notes?: string;
+  createdAt: string;
+  assignedUserId?: { _id?: string; firstName?: string; lastName?: string; workEmail?: string; department?: string } | string;
+  createdByUserId?: { _id?: string; firstName?: string; lastName?: string; workEmail?: string } | string;
+};
+
+type EmployeeOption = {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  workEmail?: string;
+  department?: string;
+};
+
 const employeeDocumentTypes: Array<{ type: EmployeeDocumentType; title: string; description: string; captureMode: 'DOCUMENT' | 'ID_CARD' }> = [
   { type: 'POPULATION_REGISTRY', title: 'Nüfus Kayıt Örneği', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
   { type: 'RESIDENCE_CERTIFICATE', title: 'İkametgah Belgesi', description: 'Belgeyi düz zeminde tarayın.', captureMode: 'DOCUMENT' },
@@ -264,6 +297,10 @@ const employeeDocumentTypes: Array<{ type: EmployeeDocumentType; title: string; 
 ];
 
 const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL'];
+
+function userCanAssignTasks(user?: AuthUser | null) {
+  return user?.role === 'ADMIN' || Boolean(user?.departmentRoleId?.permissions?.includes('TASK_ASSIGNMENT'));
+}
 
 function userCanApproveRequests(user?: AuthUser | null) {
   const permissions = user?.departmentRoleId?.permissions;
@@ -441,7 +478,7 @@ function mergeCardWithCompanyInfo(card: PublicCardResponse, company: CompanyBill
   };
 }
 
-function buildInvoiceShareText(billingData: CompanyBillingResponse) {
+function buildBillingShareText(billingData: CompanyBillingResponse) {
   const billing = billingData.billingInfo || {};
   return [
     billing.legalCompanyName || billingData.companyName || '-',
@@ -470,7 +507,7 @@ function buildBankShareText(billingData: CompanyBillingResponse) {
 }
 
 export default function App() {
-  const [email, setEmail] = useState('mert@smallbiz.local');
+  const [email, setEmail] = useState('mert@onedesk.local');
   const [password, setPassword] = useState('App12345');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
@@ -491,6 +528,8 @@ export default function App() {
 
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
+  const [quotes, setQuotes] = useState<QuoteItem[]>([]);
+  const [quotesLoading, setQuotesLoading] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
@@ -501,6 +540,10 @@ export default function App() {
   const [actionReturnMenu, setActionReturnMenu] = useState<MenuKey>('HOME');
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [requestsLoading, setRequestsLoading] = useState(false);
+  const [tasks, setTasks] = useState<TaskItem[]>([]);
+  const [tasksLoading, setTasksLoading] = useState(false);
+  const [taskEmployees, setTaskEmployees] = useState<EmployeeOption[]>([]);
+  const [taskFormVisible, setTaskFormVisible] = useState(false);
   const [feedPosts, setFeedPosts] = useState<FeedPostItem[]>([]);
   const [feedLoading, setFeedLoading] = useState(false);
   const [employeeDocuments, setEmployeeDocuments] = useState<EmployeeDocumentItem[]>([]);
@@ -513,13 +556,15 @@ export default function App() {
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const canApproveRequests = userCanApproveRequests(session?.user);
+  const canAssignTasks = userCanAssignTasks(session?.user);
   const isTabRoot =
-    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
+    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS' || selectedMenu === 'QUOTES') &&
     !selectedCustomer &&
     !selectedContact &&
     !selectedActionLog;
   const isRefreshing =
     (selectedMenu === 'REQUESTS' && requestsLoading) ||
+    (selectedMenu === 'TASKS' && tasksLoading) ||
     (selectedMenu === 'DOCUMENTS' && employeeDocumentsLoading) ||
     (selectedMenu === 'CONTACTS' && contactsLoading) ||
     (selectedMenu === 'CUSTOMERS' && customersLoading);
@@ -527,6 +572,9 @@ export default function App() {
   const refreshCurrentScreen = () => {
     if (selectedMenu === 'REQUESTS') {
       loadRequests();
+    }
+    if (selectedMenu === 'TASKS') {
+      loadTasks();
     }
     if (selectedMenu === 'CONTACTS') {
       loadCustomers();
@@ -641,6 +689,22 @@ export default function App() {
     }
   };
 
+  const loadQuotes = async () => {
+    if (!session?.accessToken) return;
+    setQuotesLoading(true);
+    try {
+      const { data } = await api.get<ApiListResponse<QuoteItem>>('/quotes', {
+        params: { page: 1, limit: 50 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setQuotes(data.items || []);
+    } catch {
+      // sessiz hata
+    } finally {
+      setQuotesLoading(false);
+    }
+  };
+
   const loadContacts = async () => {
     if (!session?.accessToken) return;
 
@@ -727,6 +791,50 @@ export default function App() {
     } finally {
       setRequestsLoading(false);
     }
+  };
+
+  const loadTasks = async () => {
+    if (!session?.accessToken) return;
+    setError('');
+    setTasksLoading(true);
+    try {
+      const { data } = await api.get<ApiListResponse<TaskItem>>('/tasks', {
+        params: { page: 1, limit: 100 },
+        headers: { Authorization: `Bearer ${session.accessToken}` }
+      });
+      setTasks(data.items || []);
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Görevler yüklenemedi.');
+    } finally {
+      setTasksLoading(false);
+    }
+  };
+
+  const updateTaskStatus = async (id: string, status: TaskStatus) => {
+    if (!session?.accessToken) return;
+    await api.patch(`/tasks/${id}`, { status }, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+    await loadTasks();
+  };
+
+  const loadTaskEmployees = async () => {
+    if (!session?.accessToken || taskEmployees.length > 0) return;
+    const { data } = await api.get<ApiListResponse<EmployeeOption>>('/employees', {
+      params: { page: 1, limit: 100 },
+      headers: { Authorization: `Bearer ${session.accessToken}` }
+    });
+    const employees = data.items || [];
+    setTaskEmployees(
+      session.user.role === 'ADMIN'
+        ? employees
+        : employees.filter((employee) => !session.user.department || employee.department === session.user.department)
+    );
+  };
+
+  const createTask = async (payload: { title: string; description?: string; assignedUserId: string; dueDate?: string | null }) => {
+    if (!session?.accessToken) return;
+    await api.post('/tasks', payload, { headers: { Authorization: `Bearer ${session.accessToken}` } });
+    setTaskFormVisible(false);
+    await loadTasks();
   };
 
   const loadFeed = async () => {
@@ -1009,6 +1117,9 @@ export default function App() {
     setSelectedActionLog(null);
     setActionReturnMenu('HOME');
     setRequests([]);
+    setTasks([]);
+    setTaskEmployees([]);
+    setTaskFormVisible(false);
     setFeedPosts([]);
     setEmployeeDocuments([]);
     setEmployeeDocumentUploadingType('');
@@ -1019,7 +1130,7 @@ export default function App() {
     setPushPermissionVisible(false);
     setDrawerVisible(false);
     setError('');
-    setEmail('mert@smallbiz.local');
+    setEmail('mert@onedesk.local');
     setPassword('App12345');
   };
 
@@ -1119,6 +1230,10 @@ export default function App() {
       loadCustomers();
     }
 
+    if (selectedMenu === 'QUOTES' && quotes.length === 0 && !quotesLoading) {
+      loadQuotes();
+    }
+
     if (selectedMenu === 'CONTACTS' && contacts.length === 0 && !contactsLoading) {
       loadContacts();
     }
@@ -1129,6 +1244,10 @@ export default function App() {
 
     if (selectedMenu === 'REQUESTS' && requests.length === 0 && !requestsLoading) {
       loadRequests();
+    }
+
+    if (selectedMenu === 'TASKS' && tasks.length === 0 && !tasksLoading) {
+      loadTasks();
     }
 
     if (selectedMenu === 'DOCUMENTS' && employeeDocuments.length === 0 && !employeeDocumentsLoading) {
@@ -1234,7 +1353,7 @@ export default function App() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={refreshCurrentScreen}
-              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
+              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
               tintColor="#2563eb"
             />
           }
@@ -1295,6 +1414,20 @@ export default function App() {
             />
           ) : null}
 
+          {selectedMenu === 'TASKS' ? (
+            <TasksView
+              loading={tasksLoading}
+              items={tasks}
+              canAssignTasks={canAssignTasks}
+              onReload={loadTasks}
+              onUpdateStatus={updateTaskStatus}
+              onNewTask={async () => {
+                await loadTaskEmployees();
+                setTaskFormVisible(true);
+              }}
+            />
+          ) : null}
+
           {selectedMenu === 'APPROVALS' ? (
             <ApprovalsView
               loading={approvalsLoading}
@@ -1303,6 +1436,10 @@ export default function App() {
               onApprove={(id: string) => actOnApproval(id, 'approve')}
               onReject={(id: string) => actOnApproval(id, 'reject')}
             />
+          ) : null}
+
+          {selectedMenu === 'QUOTES' ? (
+            <QuotesView loading={quotesLoading} quotes={quotes} />
           ) : null}
 
           {selectedMenu === 'CONTACTS' && !selectedContact ? (
@@ -1388,6 +1525,26 @@ export default function App() {
         </Modal>
 
         <Modal
+          visible={taskFormVisible}
+          animationType="slide"
+          presentationStyle="pageSheet"
+          onRequestClose={() => setTaskFormVisible(false)}
+        >
+          <SafeAreaView style={styles.presentationContainer}>
+            <View style={styles.presentationHeader}>
+              <View>
+                <Text style={styles.headerKicker}>OneDesk</Text>
+                <Text style={styles.headerTitle}>Yeni Görev</Text>
+              </View>
+              <Pressable style={styles.headerSignOutButton} onPress={() => setTaskFormVisible(false)}>
+                <Text style={styles.headerSignOutText}>Kapat</Text>
+              </Pressable>
+            </View>
+            <TaskForm employees={taskEmployees} onSubmit={createTask} />
+          </SafeAreaView>
+        </Modal>
+
+        <Modal
           visible={profileVisible}
           animationType="slide"
           presentationStyle="pageSheet"
@@ -1442,10 +1599,12 @@ function titleForMenu(menu: MenuKey) {
   if (menu === 'CARD') return 'Kartvizitim';
   if (menu === 'DOCUMENTS') return 'Özlük Belgelerim';
   if (menu === 'REQUESTS') return 'Taleplerim';
+  if (menu === 'TASKS') return 'Görevlerim';
   if (menu === 'APPROVALS') return 'Onaylar';
   if (menu === 'BILLING') return 'Fatura Bilgileri';
   if (menu === 'CONTACTS') return 'Müşteriler';
   if (menu === 'ACTIONS') return 'Aksiyonlarım';
+  if (menu === 'QUOTES') return 'Teklifler';
   return 'Müşteriler';
 }
 
@@ -1523,10 +1682,12 @@ function DrawerMenu({
     { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
     { key: 'DOCUMENTS', label: 'Özlük Belgelerim', icon: '□' },
     { key: 'REQUESTS', label: 'Taleplerim', icon: '≡' },
+    { key: 'TASKS', label: 'Görevlerim', icon: '✓' },
     ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
     { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' },
     { key: 'BILLING', label: 'Fatura Bilgileri', icon: '₺' },
-    { key: 'ACTIONS', label: 'Aksiyonlarım', icon: '↗' }
+    { key: 'ACTIONS', label: 'Aksiyonlarım', icon: '↗' },
+    ...(user.role === 'ADMIN' ? [{ key: 'QUOTES' as MenuKey, label: 'Teklifler', icon: '🧾' }] : [])
   ];
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
 
@@ -1842,11 +2003,11 @@ function BillingView({
   billingData: CompanyBillingResponse | null;
   onReload: () => void;
 }) {
-  const shareInvoiceInfo = async () => {
+  const shareBillingInfo = async () => {
     if (!billingData) return;
     await Share.share({
       title: 'Fatura Bilgileri',
-      message: buildInvoiceShareText(billingData)
+      message: buildBillingShareText(billingData)
     });
   };
 
@@ -1880,7 +2041,7 @@ function BillingView({
           <Text style={styles.cardKicker}>FATURA</Text>
           <Text style={styles.sectionTitle}>Fatura Bilgileri</Text>
         </View>
-        <Pressable style={styles.billingShareButton} onPress={shareInvoiceInfo}>
+        <Pressable style={styles.billingShareButton} onPress={shareBillingInfo}>
           <Text style={styles.billingShareButtonText}>Fatura Paylaş</Text>
         </Pressable>
       </View>
@@ -1977,6 +2138,130 @@ function EmployeeDocumentsView({
         );
       })}
     </View>
+  );
+}
+
+function TasksView({
+  loading,
+  items,
+  canAssignTasks,
+  onReload,
+  onUpdateStatus,
+  onNewTask
+}: {
+  loading: boolean;
+  items: TaskItem[];
+  canAssignTasks: boolean;
+  onReload: () => void;
+  onUpdateStatus: (id: string, status: TaskStatus) => void;
+  onNewTask: () => void;
+}) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>{canAssignTasks ? 'Görevler' : 'Görevlerim'}</Text>
+        <View style={styles.headerActionsRow}>
+          {canAssignTasks ? (
+            <Pressable onPress={onNewTask}>
+              <Text style={styles.refreshText}>Yeni Görev</Text>
+            </Pressable>
+          ) : null}
+          <Pressable onPress={onReload}>
+            <Text style={styles.refreshText}>Yenile</Text>
+          </Pressable>
+        </View>
+      </View>
+      {items.length === 0 ? <Text style={styles.emptyText}>Görev kaydı yok.</Text> : null}
+      {items.map((item) => (
+        <View key={item._id} style={styles.requestItem}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.customerName}>{item.title}</Text>
+            <Text style={[styles.requestStatus, taskStatusStyle(item.status)]}>{taskStatusLabel(item.status)}</Text>
+          </View>
+          {item.description ? <Text style={styles.infoLine}>{item.description}</Text> : null}
+          {item.dueDate ? <Text style={styles.infoLine}>Son tarih: {formatDateTime(item.dueDate)}</Text> : null}
+          {item.notes ? <Text style={styles.actionLogSubtitle}>Not: {item.notes}</Text> : null}
+          <View style={styles.requestActions}>
+            <Pressable style={styles.approveButton} onPress={() => onUpdateStatus(item._id, 'IN_PROGRESS')}>
+              <Text style={styles.requestActionText}>Başlat</Text>
+            </Pressable>
+            <Pressable style={styles.approveButton} onPress={() => onUpdateStatus(item._id, 'DONE')}>
+              <Text style={styles.requestActionText}>Tamamla</Text>
+            </Pressable>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function TaskForm({
+  employees,
+  onSubmit
+}: {
+  employees: EmployeeOption[];
+  onSubmit: (payload: { title: string; description?: string; assignedUserId: string; dueDate?: string | null }) => Promise<void>;
+}) {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [dueDate, setDueDate] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState(employees[0]?._id || '');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!assignedUserId && employees[0]?._id) {
+      setAssignedUserId(employees[0]._id);
+    }
+  }, [employees, assignedUserId]);
+
+  const submit = async () => {
+    if (!title.trim() || !assignedUserId) return;
+    setSaving(true);
+    try {
+      const parsedDueDate = dueDate.trim() ? new Date(`${dueDate.trim()}T12:00:00`) : null;
+      await onSubmit({
+        title: title.trim(),
+        description: description.trim(),
+        assignedUserId,
+        dueDate: parsedDueDate && !Number.isNaN(parsedDueDate.getTime()) ? parsedDueDate.toISOString() : null
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ScrollView contentContainerStyle={styles.presentationContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Görev Bilgileri</Text>
+        <TextInput style={styles.input} placeholder="Görev başlığı" value={title} onChangeText={setTitle} />
+        <TextInput style={[styles.input, styles.noteInput]} placeholder="Açıklama" value={description} onChangeText={setDescription} multiline />
+        <TextInput style={styles.input} placeholder="Son tarih (YYYY-MM-DD)" value={dueDate} onChangeText={setDueDate} />
+      </View>
+
+      <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Personel Seç</Text>
+        {employees.length === 0 ? <Text style={styles.emptyText}>Görev atanabilecek personel bulunamadı.</Text> : null}
+        {employees.map((employee) => (
+          <Pressable
+            key={employee._id}
+            style={[styles.vehicleChoice, assignedUserId === employee._id ? styles.vehicleChoiceActive : null]}
+            onPress={() => setAssignedUserId(employee._id)}
+          >
+            <Text style={styles.customerName}>{employee.firstName} {employee.lastName}</Text>
+            <Text style={styles.infoLine}>{employee.department || employee.workEmail || '-'}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Pressable style={[styles.primaryButton, (!title.trim() || !assignedUserId) ? styles.disabledActionButton : null]} onPress={submit} disabled={saving || !title.trim() || !assignedUserId}>
+        {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Görev Ata</Text>}
+      </Pressable>
+    </ScrollView>
   );
 }
 
@@ -2400,6 +2685,43 @@ function CustomersView({
   );
 }
 
+const QUOTE_STATUS_LABELS: Record<string, string> = {
+  DRAFT: 'Taslak',
+  SENT: 'Gönderildi',
+  ACCEPTED: 'Onaylandı',
+  REJECTED: 'Reddedildi',
+  EXPIRED: 'Süresi Doldu'
+};
+
+function QuotesView({ loading, quotes }: { loading: boolean; quotes: QuoteItem[] }) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      {quotes.length === 0 ? <Text style={styles.infoLine}>Henüz teklif oluşturulmadı.</Text> : null}
+      {quotes.map((item) => (
+        <View key={item._id} style={styles.requestItem}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={styles.customerName}>{item.number}</Text>
+            <Text style={[styles.requestStatus, item.status === 'ACCEPTED' ? styles.requestStatusApproved : item.status === 'REJECTED' || item.status === 'EXPIRED' ? styles.requestStatusRejected : styles.requestStatusPending]}>
+              {QUOTE_STATUS_LABELS[item.status] || item.status}
+            </Text>
+          </View>
+          <Text style={styles.infoLine}>{item.customerId?.companyName || '-'}</Text>
+          <Text style={styles.infoLine}>
+            {item.grandTotal?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {item.currency}
+          </Text>
+          {item.validUntil ? (
+            <Text style={styles.infoLine}>Geçerlilik: {new Date(item.validUntil).toLocaleDateString('tr-TR')}</Text>
+          ) : null}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function CustomerContactsView({
   customer,
   contacts,
@@ -2737,6 +3059,19 @@ function requestStatusLabel(value: RequestStatus) {
 function requestStatusStyle(value: RequestStatus) {
   if (value === 'APPROVED') return styles.requestStatusApproved;
   if (value === 'REJECTED') return styles.requestStatusRejected;
+  return styles.requestStatusPending;
+}
+
+function taskStatusLabel(value: TaskStatus) {
+  if (value === 'IN_PROGRESS') return 'Devam Ediyor';
+  if (value === 'DONE') return 'Tamamlandı';
+  if (value === 'CANCELLED') return 'İptal';
+  return 'Bekliyor';
+}
+
+function taskStatusStyle(value: TaskStatus) {
+  if (value === 'DONE') return styles.requestStatusApproved;
+  if (value === 'CANCELLED') return styles.requestStatusRejected;
   return styles.requestStatusPending;
 }
 

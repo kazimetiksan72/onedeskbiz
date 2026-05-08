@@ -97,6 +97,8 @@ async function createRequest(user, payload, files = []) {
     vehicleId: payload.type === REQUEST_TYPES.VEHICLE ? payload.vehicleId : null,
     startAt: payload.startAt ? new Date(payload.startAt) : null,
     endAt: payload.endAt ? new Date(payload.endAt) : null,
+    leaveType: payload.type === REQUEST_TYPES.LEAVE ? payload.leaveType || 'ANNUAL' : null,
+    reason: payload.type === REQUEST_TYPES.LEAVE ? payload.reason || '' : '',
     materialText: payload.type === REQUEST_TYPES.MATERIAL ? payload.materialText : '',
     expenseAmount: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseAmount : undefined,
     expenseCurrency: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseCurrency || 'TRY' : undefined,
@@ -138,7 +140,7 @@ async function getApprovalPermissions(user) {
   return role?.permissions || [];
 }
 
-async function listApprovals(user, { page, limit }) {
+async function listApprovals(user, { page, limit, status = REQUEST_STATUS.PENDING }) {
   const permissions = await getApprovalPermissions(user);
   const allowedTypes = Object.entries(permissionByRequestType)
     .filter(([, permission]) => permissions.includes(permission))
@@ -151,9 +153,12 @@ async function listApprovals(user, { page, limit }) {
   const { skip } = getPagination({ page, limit });
   const query = {
     type: { $in: allowedTypes },
-    status: REQUEST_STATUS.PENDING,
     requesterUserId: { $ne: user._id }
   };
+
+  if (status && status !== 'ALL') {
+    query.status = status;
+  }
 
   if (user.role !== ROLES.ADMIN) {
     query.requesterDepartment = user.department || '';

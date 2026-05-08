@@ -7,6 +7,7 @@ const vehicleSchema = new mongoose.Schema(
     model: { type: String, required: true, trim: true, index: true },
     modelYear: { type: Number, required: true, index: true },
     kilometer: { type: Number, required: true, min: 0 },
+    lastInspectionDate: { type: Date, default: null },
     status: {
       type: String,
       enum: ['ACTIVE', 'INACTIVE'],
