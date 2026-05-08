@@ -4,6 +4,7 @@ const { DepartmentRole, PERMISSIONS } = require('../../models/DepartmentRole');
 const { ROLES } = require('../../constants/roles');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
+const { sendTaskAssignedNotification } = require('../notifications/oneSignal.service');
 
 const populateFields = [
   { path: 'assignedUserId', select: 'firstName lastName workEmail department title' },
@@ -83,7 +84,7 @@ async function createTask(user, payload) {
     throw new ApiError(403, 'Yalnızca kendi departmanınızdaki personele görev atayabilirsiniz.');
   }
 
-  return Task.create({
+  const createdTask = await Task.create({
     title: payload.title,
     description: payload.description || '',
     assignedUserId: payload.assignedUserId,
@@ -91,7 +92,17 @@ async function createTask(user, payload) {
     dueDate: normalizeDate(payload.dueDate) ?? null,
     status: payload.status,
     notes: payload.notes || ''
-  }).then((created) => Task.findById(created._id).populate(populateFields).lean());
+  });
+
+  const populatedTask = await Task.findById(createdTask._id).populate(populateFields).lean();
+  await sendTaskAssignedNotification({
+    taskId: populatedTask._id,
+    assignedUserId: populatedTask.assignedUserId?._id || payload.assignedUserId,
+    title: populatedTask.title,
+    assignedByName: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+  });
+
+  return populatedTask;
 }
 
 async function getTask(user, id) {
@@ -108,6 +119,7 @@ async function getTask(user, id) {
 async function updateTask(user, id, payload) {
   const task = await Task.findById(id);
   if (!task) throw new ApiError(404, 'Görev bulunamadı.');
+  const previousAssignedUserId = String(task.assignedUserId);
 
   const isAssignedEmployee = String(task.assignedUserId) === String(user._id);
   const isCreator = String(task.createdByUserId) === String(user._id);
@@ -133,7 +145,19 @@ async function updateTask(user, id, payload) {
   if (payload.notes !== undefined) task.notes = payload.notes;
 
   await task.save();
-  return Task.findById(task._id).populate(populateFields).lean();
+  const populatedTask = await Task.findById(task._id).populate(populateFields).lean();
+  const currentAssignedUserId = String(populatedTask.assignedUserId?._id || task.assignedUserId);
+
+  if (payload.assignedUserId && currentAssignedUserId !== previousAssignedUserId) {
+    await sendTaskAssignedNotification({
+      taskId: populatedTask._id,
+      assignedUserId: currentAssignedUserId,
+      title: populatedTask.title,
+      assignedByName: `${user.firstName || ''} ${user.lastName || ''}`.trim()
+    });
+  }
+
+  return populatedTask;
 }
 
 async function deleteTask(user, id) {

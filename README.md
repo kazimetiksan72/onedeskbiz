@@ -79,6 +79,8 @@ Aşağıdaki environment variable'ları App Service'e ekleyin:
 - `BCRYPT_SALT_ROUNDS=10`
 - `UPLOAD_DIR=uploads`
 - `MAX_FILE_SIZE_MB=2`
+- `ONESIGNAL_APP_ID=...`
+- `ONESIGNAL_REST_API_KEY=...`
 
 `CORS_ORIGIN` production'da aynı origin servis nedeniyle zorunlu değil.
 

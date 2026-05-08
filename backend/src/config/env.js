@@ -66,5 +66,10 @@ module.exports = {
   azureStorage: {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'profile-photos'
+  },
+  oneSignal: {
+    appId: process.env.ONESIGNAL_APP_ID || '',
+    apiKey: process.env.ONESIGNAL_REST_API_KEY || '',
+    apiUrl: process.env.ONESIGNAL_API_URL || 'https://api.onesignal.com/notifications'
   }
 };
