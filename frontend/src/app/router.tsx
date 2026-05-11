@@ -24,11 +24,13 @@ import { AdminRequestsPage } from '../features/requests/pages/AdminRequestsPage'
 import { TasksPage } from '../features/tasks/pages/TasksPage';
 import { EmployeeDocumentsPage } from '../features/employeeDocuments/pages/EmployeeDocumentsPage';
 import { AdminFeedPage } from '../features/feed/pages/AdminFeedPage';
+import { EmployeeAnnouncementsPage } from '../features/feed/pages/EmployeeAnnouncementsPage';
 import { EmployeeHomePage } from '../features/feed/pages/EmployeeHomePage';
 import { EmployeeFeedDetailPage } from '../features/feed/pages/EmployeeFeedDetailPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
 import { QuotesPage } from '../features/quotes/pages/QuotesPage';
 import { QuoteDetailPage } from '../features/quotes/pages/QuoteDetailPage';
+import { ProfilePage } from '../features/profile/pages/ProfilePage';
 
 export const router = createBrowserRouter([
   { path: '/', element: <LoginPage mode="employee" /> },
@@ -47,7 +49,9 @@ export const router = createBrowserRouter([
             children: [
               { path: '/leave-requests', element: <LeaveRequestsPage /> },
               { path: '/home', element: <EmployeeHomePage /> },
-              { path: '/feed/:id', element: <EmployeeFeedDetailPage /> },
+              { path: '/profile', element: <ProfilePage /> },
+              { path: '/announcements', element: <EmployeeAnnouncementsPage /> },
+              { path: '/announcements/:id', element: <EmployeeFeedDetailPage /> },
               { path: '/employee-documents', element: <EmployeeDocumentsPage /> },
               { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
@@ -71,7 +75,8 @@ export const router = createBrowserRouter([
               { path: '/admin/tasks', element: <TasksPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
-              { path: '/admin/feed', element: <AdminFeedPage /> },
+              { path: '/admin/announcements', element: <AdminFeedPage /> },
+              { path: '/admin/feed', element: <Navigate to="/admin/announcements" replace /> },
               { path: '/admin/department-roles', element: <DepartmentRolesPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
               { path: '/admin/quotes', element: <QuotesPage /> },

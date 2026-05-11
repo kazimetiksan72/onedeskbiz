@@ -78,13 +78,13 @@ export function EmployeeHomePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Ana Sayfa" subtitle="Şirket duyuruları ve güncel içerikler" />
+      <PageHeader title="Ana Sayfa" subtitle="Şirket duyuruları ve güncel işlemler" />
 
       {loading ? <div className="page-card text-sm text-slate-500">Yükleniyor...</div> : null}
-      {!loading && items.length === 0 ? <div className="page-card"><EmptyState message="Henüz feed içeriği yok." /></div> : null}
+      {!loading && items.length === 0 ? <div className="page-card"><EmptyState message="Henüz duyuru yok." /></div> : null}
       {activeFeed ? (
         <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-          <Link to={`/feed/${activeFeed._id}`} className="grid min-h-[224px] grid-cols-1 lg:grid-cols-[1.15fr_0.85fr]">
+          <Link to={`/announcements/${activeFeed._id}`} className="grid min-h-[224px] grid-cols-1 lg:grid-cols-[1.15fr_0.85fr]">
             <div className="relative h-52 overflow-hidden lg:h-auto">
               <img src={activeFeed.image.webUrl} alt={activeFeed.title} className="h-full w-full object-cover transition duration-500 hover:scale-[1.02]" />
               <div className="absolute inset-0 bg-gradient-to-r from-slate-950/10 to-transparent" />
@@ -112,7 +112,7 @@ export function EmployeeHomePage() {
                   <button
                     key={item._id}
                     type="button"
-                    aria-label={`${index + 1}. feed içeriğini göster`}
+                    aria-label={`${index + 1}. duyuruyu göster`}
                     onClick={() => setActiveIndex(index)}
                     className={`h-2.5 rounded-full transition-all ${index === activeIndex ? 'w-8 bg-brand-600' : 'w-2.5 bg-slate-300 hover:bg-slate-400'}`}
                   />

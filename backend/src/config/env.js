@@ -67,6 +67,11 @@ module.exports = {
     connectionString: process.env.AZURE_STORAGE_CONNECTION_STRING || '',
     containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || 'profile-photos'
   },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || '',
+    imageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1.5',
+    imageQuality: process.env.OPENAI_IMAGE_QUALITY || 'medium'
+  },
   oneSignal: {
     appId: process.env.ONESIGNAL_APP_ID || '',
     apiKey: process.env.ONESIGNAL_REST_API_KEY || '',

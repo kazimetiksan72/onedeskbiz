@@ -18,7 +18,7 @@ async function uploadBuffer(containerClient, blobName, buffer, contentType) {
 }
 
 async function createImageVariants(file) {
-  if (!file) throw new ApiError(400, 'Feed görseli zorunludur.');
+  if (!file) throw new ApiError(400, 'Duyuru görseli zorunludur.');
   if (!env.azureStorage.connectionString) throw new ApiError(500, 'Azure Storage is not configured');
 
   const blobServiceClient = BlobServiceClient.fromConnectionString(env.azureStorage.connectionString);
@@ -46,7 +46,7 @@ async function createImageVariants(file) {
       size: file.size,
       error: logger.serializeError(error)
     });
-    throw new ApiError(400, 'Feed görseli işlenemedi. Lütfen JPG, PNG veya WEBP formatında geçerli bir görsel yükleyin.');
+    throw new ApiError(400, 'Duyuru görseli işlenemedi. Lütfen JPG, PNG veya WEBP formatında geçerli bir görsel yükleyin.');
   }
 
   logger.info('Uploading feed image variants to Azure Blob Storage', {
@@ -76,7 +76,7 @@ async function listPublished({ limit }) {
 
 async function getPublishedById(id) {
   const item = await FeedPost.findOne({ _id: id, status: FEED_STATUS.PUBLISHED }).lean();
-  if (!item) throw new ApiError(404, 'Feed içeriği bulunamadı.');
+  if (!item) throw new ApiError(404, 'Duyuru bulunamadı.');
   return item;
 }
 
@@ -103,7 +103,7 @@ async function createPost(actorUser, payload, file) {
 
 async function deletePost(id) {
   const deleted = await FeedPost.findByIdAndDelete(id).lean();
-  if (!deleted) throw new ApiError(404, 'Feed içeriği bulunamadı.');
+  if (!deleted) throw new ApiError(404, 'Duyuru bulunamadı.');
 }
 
 module.exports = { listPublished, getPublishedById, listAdmin, createPost, deletePost };

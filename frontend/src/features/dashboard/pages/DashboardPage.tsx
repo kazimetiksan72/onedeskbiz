@@ -4,6 +4,11 @@ import { getDashboardSummary } from '../api/dashboard.api';
 import type { DashboardSummary } from '../types/dashboard.types';
 import { PageHeader } from '../../../components/PageHeader';
 import { Loading } from '../../../components/Loading';
+import type { RequestStatus } from '../../requests/types/request.types';
+import type { TaskStatus } from '../../tasks/types/task.types';
+import type { Vehicle } from '../../vehicles/types/vehicle.types';
+
+type VehicleStatus = Vehicle['status'];
 
 const moduleCards = [
   {
@@ -55,9 +60,9 @@ const moduleCards = [
     icon: 'document'
   },
   {
-    to: '/admin/feed',
-    title: 'Feed Yönetimi',
-    description: 'Web ve mobil duyuru/feed içeriklerini yönetin.',
+    to: '/admin/announcements',
+    title: 'Duyuru Yönetimi',
+    description: 'Personel ekranında gösterilecek duyuruları yönetin.',
     icon: 'feed'
   },
   {
@@ -74,15 +79,35 @@ const moduleCards = [
   }
 ] as const;
 
+const taskStatusMeta: Record<TaskStatus, { label: string; color: string }> = {
+  TODO: { label: 'Bekliyor', color: '#f59e0b' },
+  IN_PROGRESS: { label: 'Devam ediyor', color: '#2563eb' },
+  DONE: { label: 'Tamamlandı', color: '#16a34a' },
+  CANCELLED: { label: 'İptal', color: '#ef4444' }
+};
+
+const requestStatusMeta: Record<RequestStatus, { label: string; color: string }> = {
+  PENDING: { label: 'Bekliyor', color: '#f59e0b' },
+  APPROVED: { label: 'Onaylandı', color: '#16a34a' },
+  REJECTED: { label: 'Reddedildi', color: '#ef4444' }
+};
+
+const vehicleStatusMeta: Record<VehicleStatus, { label: string; color: string }> = {
+  ACTIVE: { label: 'Kullanımda', color: '#16a34a' },
+  INACTIVE: { label: 'Pasif', color: '#64748b' }
+};
+
 export function DashboardPage() {
   const [data, setData] = useState<DashboardSummary | null>(null);
+  const [department, setDepartment] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getDashboardSummary()
+    setLoading(true);
+    getDashboardSummary({ department: department || undefined })
       .then(setData)
       .finally(() => setLoading(false));
-  }, []);
+  }, [department]);
 
   return (
     <div>
@@ -92,11 +117,91 @@ export function DashboardPage() {
 
       {!loading && data ? (
         <>
+          <div className="mb-6 flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-sm font-semibold text-slate-950">Dashboard filtresi</h2>
+              <p className="mt-1 text-sm text-slate-500">Görev ve talep metriklerini departmana göre inceleyin.</p>
+            </div>
+            <select
+              className="input sm:max-w-xs"
+              value={department}
+              onChange={(event) => setDepartment(event.target.value)}
+            >
+              <option value="">Tüm departmanlar</option>
+              {data.filters.departments.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
             <MetricCard label="Aktif Personel" value={data.metrics.employeeCount} />
             <MetricCard label="Aktif Müşteri" value={data.metrics.activeCustomerCount} />
             <MetricCard label="Bekleyen İzin Talebi" value={data.metrics.pendingLeaveCount} />
+            <MetricCard label="Geciken Görev" value={data.metrics.overdueTaskCount} tone="danger" />
+            <MetricCard label="Bekleyen Talep" value={data.metrics.pendingRequestCount} tone="warning" />
+            <MetricCard label="Bu Ay Açılan / Kapanan" value={`${data.metrics.openedThisMonthCount} / ${data.metrics.closedThisMonthCount}`} />
           </div>
+
+          <section className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <BarListCard
+              title="Departmana Göre Görevler"
+              subtitle="Tüm görevlerin departman kırılımı"
+              items={data.charts.tasksByDepartment.map((item) => ({ label: item.department, value: item.count }))}
+            />
+            <BarListCard
+              title="Bekleyen Talepler"
+              subtitle="Departman bazlı açık talep yoğunluğu"
+              items={data.charts.pendingRequestsByDepartment.map((item) => ({ label: item.department, value: item.count }))}
+            />
+          </section>
+
+          <section className="mb-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+            <StatusPieCard
+              title="Görev Durumu"
+              subtitle="Tüm görevlerin güncel dağılımı"
+              totalLabel="Görev"
+              items={data.charts.tasksByStatus.map((item) => ({
+                key: item.status,
+                label: taskStatusMeta[item.status].label,
+                value: item.count,
+                color: taskStatusMeta[item.status].color
+              }))}
+            />
+            <StatusPieCard
+              title="Talep Durumu"
+              subtitle="İzin, masraf, araç ve malzeme talepleri"
+              totalLabel="Talep"
+              items={data.charts.requestsByStatus.map((item) => ({
+                key: item.status,
+                label: requestStatusMeta[item.status].label,
+                value: item.count,
+                color: requestStatusMeta[item.status].color
+              }))}
+            />
+            <StatusPieCard
+              title="Araç Kullanım Durumu"
+              subtitle="Aktif ve pasif araç dağılımı"
+              totalLabel="Araç"
+              items={data.charts.vehiclesByStatus.map((item) => ({
+                key: item.status,
+                label: vehicleStatusMeta[item.status].label,
+                value: item.count,
+                color: vehicleStatusMeta[item.status].color
+              }))}
+            />
+            <StatusPieCard
+              title="Araç Talep Yoğunluğu"
+              subtitle={department ? `${department} departmanı araç talepleri` : 'Tüm araç taleplerinin sonucu'}
+              totalLabel="Talep"
+              items={data.charts.vehicleRequestDensity.map((item) => ({
+                key: item.status,
+                label: requestStatusMeta[item.status].label,
+                value: item.count,
+                color: requestStatusMeta[item.status].color
+              }))}
+            />
+          </section>
 
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {moduleCards.map((card) => (
@@ -109,11 +214,161 @@ export function DashboardPage() {
   );
 }
 
-function MetricCard({ label, value }: { label: string; value: number }) {
+function StatusPieCard({
+  title,
+  subtitle,
+  totalLabel,
+  items
+}: {
+  title: string;
+  subtitle: string;
+  totalLabel: string;
+  items: Array<{ key: string; label: string; value: number; color: string }>;
+}) {
+  const total = items.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div className="page-card">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+          <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+        </div>
+        <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+          {total} {totalLabel}
+        </span>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-[180px_1fr] sm:items-center">
+        <DonutChart items={items} total={total} />
+        <div className="space-y-3">
+          {items.map((item) => {
+            const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+
+            return (
+              <div key={item.key} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="h-3 w-3 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="truncate text-sm font-medium text-slate-700">{item.label}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-semibold text-slate-950">{item.value}</span>
+                  <span className="ml-2 text-xs text-slate-500">%{percentage}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DonutChart({
+  items,
+  total
+}: {
+  items: Array<{ key: string; label: string; value: number; color: string }>;
+  total: number;
+}) {
+  const radius = 58;
+  const strokeWidth = 24;
+  const circumference = 2 * Math.PI * radius;
+  let offset = 0;
+
+  if (total === 0) {
+    return (
+      <div className="relative mx-auto h-44 w-44">
+        <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160" role="img" aria-label="Veri bulunmuyor">
+          <circle cx="80" cy="80" r={radius} fill="none" stroke="#e2e8f0" strokeWidth={strokeWidth} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-3xl font-semibold text-slate-950">0</span>
+          <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Kayıt</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative mx-auto h-44 w-44">
+      <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160" role="img" aria-label="Durum dağılım grafiği">
+        <circle cx="80" cy="80" r={radius} fill="none" stroke="#e2e8f0" strokeWidth={strokeWidth} />
+        {items.map((item) => {
+          const dash = (item.value / total) * circumference;
+          const circle = (
+            <circle
+              key={item.key}
+              cx="80"
+              cy="80"
+              r={radius}
+              fill="none"
+              stroke={item.color}
+              strokeWidth={strokeWidth}
+              strokeDasharray={`${dash} ${circumference - dash}`}
+              strokeDashoffset={-offset}
+              strokeLinecap="round"
+            />
+          );
+          offset += dash;
+          return circle;
+        })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-3xl font-semibold text-slate-950">{total}</span>
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">Toplam</span>
+      </div>
+    </div>
+  );
+}
+
+function BarListCard({
+  title,
+  subtitle,
+  items
+}: {
+  title: string;
+  subtitle: string;
+  items: Array<{ label: string; value: number }>;
+}) {
+  const max = Math.max(...items.map((item) => item.value), 1);
+
+  return (
+    <div className="page-card">
+      <h2 className="text-base font-semibold text-slate-950">{title}</h2>
+      <p className="mt-1 text-sm text-slate-500">{subtitle}</p>
+      <div className="mt-5 space-y-4">
+        {items.length === 0 ? <p className="text-sm text-slate-500">Veri bulunmuyor.</p> : null}
+        {items.slice(0, 8).map((item) => (
+          <div key={item.label}>
+            <div className="mb-1 flex items-center justify-between gap-3 text-sm">
+              <span className="truncate font-medium text-slate-700">{item.label}</span>
+              <span className="font-semibold text-slate-950">{item.value}</span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className="h-full rounded-full bg-brand-600"
+                style={{ width: `${Math.max((item.value / max) * 100, item.value > 0 ? 8 : 0)}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MetricCard({ label, value, tone = 'brand' }: { label: string; value: number | string; tone?: 'brand' | 'danger' | 'warning' }) {
+  const colorClass = tone === 'danger'
+    ? 'text-red-600'
+    : tone === 'warning'
+      ? 'text-amber-600'
+      : 'text-brand-700';
+
   return (
     <div className="page-card">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-brand-700">{value}</p>
+      <p className={`mt-2 text-3xl font-semibold ${colorClass}`}>{value}</p>
     </div>
   );
 }

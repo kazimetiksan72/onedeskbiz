@@ -13,6 +13,11 @@ export interface CurrentUser {
   role: Role;
   isActive: boolean;
   mustChangePassword?: boolean;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  title?: string;
+  workEmail?: string;
   department?: string;
   departmentRoleId?: {
     _id: string;
@@ -20,4 +25,15 @@ export interface CurrentUser {
     name: string;
     permissions: string[];
   } | null;
+  businessCard?: {
+    displayName?: string;
+    title?: string;
+    phone?: string;
+    email?: string;
+    website?: string;
+    address?: string;
+    bio?: string;
+    avatarUrl?: string;
+    avatarPublicUrl?: string;
+  };
 }

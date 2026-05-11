@@ -4,6 +4,7 @@ const { DepartmentRole, PERMISSIONS } = require('../../models/DepartmentRole');
 const { ROLES } = require('../../constants/roles');
 const { ApiError } = require('../../utils/apiError');
 const { getPagination } = require('../../utils/pagination');
+const { logActivitySafe } = require('./activityLogs.service');
 const { sendTaskAssignedNotification } = require('../notifications/oneSignal.service');
 
 const populateFields = [
@@ -101,6 +102,18 @@ async function createTask(user, payload) {
     title: populatedTask.title,
     assignedByName: `${user.firstName || ''} ${user.lastName || ''}`.trim()
   });
+  await logActivitySafe({
+    actorUserId: user._id,
+    targetUserId: populatedTask.assignedUserId?._id || payload.assignedUserId,
+    entityType: 'TASK',
+    entityId: populatedTask._id,
+    action: 'TASK_CREATED',
+    description: `${populatedTask.title} görevi oluşturuldu.`,
+    metadata: {
+      title: populatedTask.title,
+      status: populatedTask.status
+    }
+  });
 
   return populatedTask;
 }
@@ -147,6 +160,19 @@ async function updateTask(user, id, payload) {
   await task.save();
   const populatedTask = await Task.findById(task._id).populate(populateFields).lean();
   const currentAssignedUserId = String(populatedTask.assignedUserId?._id || task.assignedUserId);
+  await logActivitySafe({
+    actorUserId: user._id,
+    targetUserId: populatedTask.assignedUserId?._id || task.assignedUserId,
+    entityType: 'TASK',
+    entityId: populatedTask._id,
+    action: 'TASK_UPDATED',
+    description: `${populatedTask.title} görevi güncellendi.`,
+    metadata: {
+      status: populatedTask.status,
+      previousAssignedUserId,
+      assignedUserId: currentAssignedUserId
+    }
+  });
 
   if (payload.assignedUserId && currentAssignedUserId !== previousAssignedUserId) {
     await sendTaskAssignedNotification({

@@ -1,5 +1,6 @@
 const env = require('../../config/env');
 const { logger } = require('../../utils/logger');
+const notificationsService = require('../modules/notifications.service');
 
 function isConfigured() {
   return Boolean(env.oneSignal.appId && env.oneSignal.apiKey);
@@ -80,15 +81,23 @@ async function sendTaskAssignedNotification({ taskId, assignedUserId, title, ass
   const content = assignedByName
     ? `${assignedByName} size yeni bir görev atadı: ${title}`
     : `Size yeni bir görev atandı: ${title}`;
+  const notification = {
+    type: 'TASK_ASSIGNED',
+    title: 'Yeni görev atandı',
+    message: content,
+    data: {
+      type: 'TASK_ASSIGNED',
+      taskId: String(taskId)
+    }
+  };
+
+  await notificationsService.createForUsers([assignedUserId], notification);
 
   try {
     const result = await sendPushToExternalUser(assignedUserId, {
-      heading: 'Yeni görev atandı',
-      content,
-      data: {
-        type: 'TASK_ASSIGNED',
-        taskId: String(taskId)
-      }
+      heading: notification.title,
+      content: notification.message,
+      data: notification.data
     });
 
     if (result) {
@@ -120,16 +129,24 @@ async function sendRequestCreatedNotification({ requestId, approverUserIds, requ
   const content = requesterName
     ? `${requesterName} yeni bir ${label.toLowerCase()} oluşturdu.`
     : `Yeni bir ${label.toLowerCase()} oluşturuldu.`;
+  const notification = {
+    type: 'REQUEST_CREATED',
+    title: `Yeni ${label.toLowerCase()}`,
+    message: content,
+    data: {
+      type: 'REQUEST_CREATED',
+      requestId: String(requestId),
+      requestType
+    }
+  };
+
+  await notificationsService.createForUsers(approverUserIds, notification);
 
   try {
     const result = await sendPushToExternalUsers(approverUserIds, {
-      heading: `Yeni ${label.toLowerCase()}`,
-      content,
-      data: {
-        type: 'REQUEST_CREATED',
-        requestId: String(requestId),
-        requestType
-      }
+      heading: notification.title,
+      content: notification.message,
+      data: notification.data
     });
 
     if (result) {
@@ -154,16 +171,24 @@ async function sendRequestApprovedNotification({ requestId, requesterUserId, req
   const content = approverName
     ? `${label} ${approverName} tarafından onaylandı.`
     : `${label} onaylandı.`;
+  const notification = {
+    type: 'REQUEST_APPROVED',
+    title: 'Talebiniz onaylandı',
+    message: content,
+    data: {
+      type: 'REQUEST_APPROVED',
+      requestId: String(requestId),
+      requestType
+    }
+  };
+
+  await notificationsService.createForUsers([requesterUserId], notification);
 
   try {
     const result = await sendPushToExternalUser(requesterUserId, {
-      heading: 'Talebiniz onaylandı',
-      content,
-      data: {
-        type: 'REQUEST_APPROVED',
-        requestId: String(requestId),
-        requestType
-      }
+      heading: notification.title,
+      content: notification.message,
+      data: notification.data
     });
 
     if (result) {

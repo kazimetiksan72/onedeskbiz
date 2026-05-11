@@ -18,7 +18,7 @@ export function EmployeeFeedDetailPage() {
     getFeedPost(id)
       .then(setItem)
       .catch((requestError: any) => {
-        setError(requestError?.response?.data?.message || 'Feed içeriği yüklenemedi.');
+        setError(requestError?.response?.data?.message || 'Duyuru yüklenemedi.');
       })
       .finally(() => setLoading(false));
   }, [id]);
@@ -31,7 +31,7 @@ export function EmployeeFeedDetailPage() {
         <button className="btn-secondary" type="button" onClick={() => navigate('/home')}>
           Geri dön
         </button>
-        <p className="text-sm text-red-600">{error || 'Feed içeriği bulunamadı.'}</p>
+        <p className="text-sm text-red-600">{error || 'Duyuru bulunamadı.'}</p>
       </div>
     );
   }

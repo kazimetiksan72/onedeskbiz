@@ -29,7 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 declare const require: (moduleName: string) => any;
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'HOME' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS' | 'TASKS' | 'QUOTES';
+type MenuKey = 'HOME' | 'ANNOUNCEMENTS' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS' | 'TASKS' | 'QUOTES';
 
 type AuthUser = {
   _id: string;
@@ -65,6 +65,12 @@ type LoginResponse = {
   user: AuthUser;
   accessToken: string;
   refreshToken: string;
+};
+
+type PushNavigationTarget = {
+  menu: MenuKey;
+  taskId?: string;
+  requestId?: string;
 };
 
 type AuthMeResponse = {
@@ -194,6 +200,7 @@ type FeedPostItem = {
     mobileUrl: string;
     webUrl: string;
   };
+  publishedAt?: string;
   createdAt: string;
 };
 
@@ -425,6 +432,33 @@ async function requestOneSignalPushPermission() {
   }
 }
 
+function getNotificationAdditionalData(event: any) {
+  return event?.notification?.additionalData
+    || event?.notification?.additional_data
+    || event?.result?.notification?.additionalData
+    || event?.result?.notification?.additional_data
+    || event?.additionalData
+    || {};
+}
+
+function getPushNavigationTarget(data: any): PushNavigationTarget | null {
+  if (!data?.type) return null;
+
+  if (data.type === 'TASK_ASSIGNED') {
+    return { menu: 'TASKS', taskId: data.taskId };
+  }
+
+  if (data.type === 'REQUEST_CREATED') {
+    return { menu: 'APPROVALS', requestId: data.requestId };
+  }
+
+  if (data.type === 'REQUEST_APPROVED') {
+    return { menu: 'REQUESTS', requestId: data.requestId };
+  }
+
+  return null;
+}
+
 function escapeVCardValue(value: string) {
   return value
     .replace(/\\/g, '\\\\')
@@ -557,12 +591,13 @@ export default function App() {
   const [approvalsLoading, setApprovalsLoading] = useState(false);
   const [vehicles, setVehicles] = useState<VehicleItem[]>([]);
   const [requestFormVisible, setRequestFormVisible] = useState(false);
+  const pendingPushNavigationRef = useRef<PushNavigationTarget | null>(null);
 
   const vCardText = useMemo(() => buildVCard(cardData), [cardData]);
   const canApproveRequests = userCanApproveRequests(session?.user);
   const canAssignTasks = userCanAssignTasks(session?.user);
   const isTabRoot =
-    (selectedMenu === 'HOME' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS' || selectedMenu === 'QUOTES') &&
+    (selectedMenu === 'HOME' || selectedMenu === 'ANNOUNCEMENTS' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS' || selectedMenu === 'QUOTES') &&
     !selectedCustomer &&
     !selectedContact &&
     !selectedActionLog;
@@ -570,6 +605,7 @@ export default function App() {
     (selectedMenu === 'REQUESTS' && requestsLoading) ||
     (selectedMenu === 'TASKS' && tasksLoading) ||
     (selectedMenu === 'DOCUMENTS' && employeeDocumentsLoading) ||
+    (selectedMenu === 'ANNOUNCEMENTS' && feedLoading) ||
     (selectedMenu === 'CONTACTS' && contactsLoading) ||
     (selectedMenu === 'CUSTOMERS' && customersLoading);
 
@@ -590,6 +626,55 @@ export default function App() {
     if (selectedMenu === 'DOCUMENTS') {
       loadEmployeeDocuments();
     }
+    if (selectedMenu === 'ANNOUNCEMENTS') {
+      loadFeed();
+    }
+  };
+
+  const navigateFromPush = async (target: PushNavigationTarget | null) => {
+    if (!target) return;
+
+    pendingPushNavigationRef.current = null;
+    setDrawerVisible(false);
+    setProfileVisible(false);
+    setRequestFormVisible(false);
+    setTaskFormVisible(false);
+    setSelectedCustomer(null);
+    setSelectedContact(null);
+    setSelectedActionLog(null);
+
+    if (target.menu === 'APPROVALS' && !userCanApproveRequests(session?.user)) {
+      setSelectedMenu('REQUESTS');
+      await loadRequests();
+      return;
+    }
+
+    setSelectedMenu(target.menu);
+
+    if (target.menu === 'TASKS') {
+      await loadTasks();
+      return;
+    }
+
+    if (target.menu === 'REQUESTS') {
+      await loadRequests();
+      return;
+    }
+
+    if (target.menu === 'APPROVALS') {
+      await loadApprovals();
+    }
+  };
+
+  const queuePushNavigation = (target: PushNavigationTarget | null) => {
+    if (!target) return;
+
+    if (!session) {
+      pendingPushNavigationRef.current = target;
+      return;
+    }
+
+    navigateFromPush(target);
   };
 
   const login = async () => {
@@ -609,7 +694,13 @@ export default function App() {
       }
 
       setSession(data);
-      setSelectedMenu('HOME');
+      const pendingPushNavigation = pendingPushNavigationRef.current;
+      if (!pendingPushNavigation) {
+        setSelectedMenu('HOME');
+      } else {
+        pendingPushNavigationRef.current = null;
+        setSelectedMenu(pendingPushNavigation.menu === 'APPROVALS' && !userCanApproveRequests(data.user) ? 'REQUESTS' : pendingPushNavigation.menu);
+      }
       const oneSignalReady = await identifyOneSignalUser(data.user);
       if (oneSignalReady && await canShowOneSignalPermissionModal()) {
         setPushPermissionVisible(true);
@@ -858,7 +949,7 @@ export default function App() {
         return;
       }
 
-      setError(requestError?.response?.data?.message || 'Feed yüklenemedi.');
+      setError(requestError?.response?.data?.message || 'Duyurular yüklenemedi.');
     } finally {
       setFeedLoading(false);
     }
@@ -1109,6 +1200,7 @@ export default function App() {
     if (oneSignal) {
       oneSignal.logout();
     }
+    pendingPushNavigationRef.current = null;
     setSession(null);
     setSelectedMenu('HOME');
     setCardData(null);
@@ -1187,6 +1279,24 @@ export default function App() {
   };
 
   useEffect(() => {
+    const oneSignal = getOneSignal();
+    if (!oneSignal?.Notifications?.addEventListener) return;
+
+    const handleNotificationClick = (event: any) => {
+      queuePushNavigation(getPushNavigationTarget(getNotificationAdditionalData(event)));
+    };
+
+    oneSignal.Notifications.addEventListener('click', handleNotificationClick);
+
+    return () => {
+      if (oneSignal.Notifications.removeEventListener) {
+        oneSignal.Notifications.removeEventListener('click', handleNotificationClick);
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.accessToken, canApproveRequests]);
+
+  useEffect(() => {
     if (selectedMenu === 'APPROVALS' && !canApproveRequests) {
       setSelectedMenu('HOME');
     }
@@ -1214,7 +1324,7 @@ export default function App() {
       loadActionLogs();
     }
 
-    if (selectedMenu === 'HOME' && feedPosts.length === 0 && !feedLoading) {
+    if ((selectedMenu === 'HOME' || selectedMenu === 'ANNOUNCEMENTS') && feedPosts.length === 0 && !feedLoading) {
       loadFeed();
     }
 
@@ -1261,6 +1371,7 @@ export default function App() {
     if (canApproveRequests && selectedMenu === 'APPROVALS' && approvals.length === 0 && !approvalsLoading) {
       loadApprovals();
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedMenu, session, profileVisible]);
 
@@ -1357,7 +1468,7 @@ export default function App() {
             <RefreshControl
               refreshing={isRefreshing}
               onRefresh={refreshCurrentScreen}
-              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS'}
+              enabled={selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'CONTACTS' || selectedMenu === 'CUSTOMERS' || selectedMenu === 'ANNOUNCEMENTS'}
               tintColor="#2563eb"
             />
           }
@@ -1399,6 +1510,14 @@ export default function App() {
               uploadingType={employeeDocumentUploadingType}
               onScan={scanEmployeeDocument}
               onPick={pickEmployeeDocument}
+            />
+          ) : null}
+
+          {selectedMenu === 'ANNOUNCEMENTS' ? (
+            <AnnouncementsView
+              loading={feedLoading}
+              items={feedPosts}
+              onReload={loadFeed}
             />
           ) : null}
 
@@ -1600,6 +1719,7 @@ export default function App() {
 
 function titleForMenu(menu: MenuKey) {
   if (menu === 'HOME') return 'Ana Sayfa';
+  if (menu === 'ANNOUNCEMENTS') return 'Duyurular';
   if (menu === 'CARD') return 'Kartvizitim';
   if (menu === 'DOCUMENTS') return 'Özlük Belgelerim';
   if (menu === 'REQUESTS') return 'Taleplerim';
@@ -1683,6 +1803,7 @@ function DrawerMenu({
 
   const menuItems: Array<{ key: MenuKey; label: string; icon: string }> = [
     { key: 'HOME', label: 'Ana Sayfa', icon: '⌂' },
+    { key: 'ANNOUNCEMENTS', label: 'Duyurular', icon: '!' },
     { key: 'CARD', label: 'Kartvizitim', icon: '▣' },
     { key: 'DOCUMENTS', label: 'Özlük Belgelerim', icon: '□' },
     { key: 'REQUESTS', label: 'Taleplerim', icon: '≡' },
@@ -1811,9 +1932,9 @@ function HomeView({
       </View>
 
       <View style={styles.feedSection}>
-        <Text style={styles.sectionTitle}>Feed</Text>
+        <Text style={styles.sectionTitle}>Duyurular</Text>
         {feedLoading ? <ActivityIndicator color="#2563eb" /> : null}
-        {!feedLoading && feedPosts.length === 0 ? <Text style={styles.emptyText}>Henüz içerik yok.</Text> : null}
+        {!feedLoading && feedPosts.length === 0 ? <Text style={styles.emptyText}>Henüz duyuru yok.</Text> : null}
         {feedPosts.map((item) => (
           <View key={item._id} style={styles.feedCard}>
             <Image source={{ uri: item.image.mobileUrl }} style={styles.feedImage} />
@@ -2196,6 +2317,42 @@ function TasksView({
             <Pressable style={styles.approveButton} onPress={() => onUpdateStatus(item._id, 'DONE')}>
               <Text style={styles.requestActionText}>Tamamla</Text>
             </Pressable>
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
+function AnnouncementsView({
+  loading,
+  items,
+  onReload
+}: {
+  loading: boolean;
+  items: FeedPostItem[];
+  onReload: () => void;
+}) {
+  if (loading) {
+    return <ActivityIndicator color="#2563eb" />;
+  }
+
+  return (
+    <View style={styles.sectionCard}>
+      <View style={styles.sectionHeaderRow}>
+        <Text style={styles.sectionTitle}>Duyurular</Text>
+        <Pressable onPress={onReload}>
+          <Text style={styles.refreshText}>Yenile</Text>
+        </Pressable>
+      </View>
+      {items.length === 0 ? <Text style={styles.emptyText}>Henüz duyuru yok.</Text> : null}
+      {items.map((item) => (
+        <View key={item._id} style={styles.feedCard}>
+          <Image source={{ uri: item.image.mobileUrl }} style={styles.feedImage} />
+          <View style={styles.feedBody}>
+            <Text style={styles.feedTitle}>{item.title}</Text>
+            <Text style={styles.feedContent}>{item.content}</Text>
+            <Text style={styles.actionLogSubtitle}>{formatDateTime(item.publishedAt || item.createdAt)}</Text>
           </View>
         </View>
       ))}

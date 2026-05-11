@@ -14,13 +14,14 @@ const adminNavItems = [
   { to: '/admin/tasks', label: 'Görevler' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
   { to: '/admin/quotes', label: 'Teklifler' },
-  { to: '/admin/feed', label: 'Feed Yönetimi' },
+  { to: '/admin/announcements', label: 'Duyuru Yönetimi' },
   { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
 ];
 
 const employeeNavItems = [
   { to: '/home', label: 'Ana Sayfa' },
+  { to: '/announcements', label: 'Duyurular' },
   { to: '/employee-documents', label: 'Özlük Belgelerim' },
   { to: '/leave-requests', label: 'İzin Talepleri' },
   { to: '/vehicle-requests', label: 'Araç Talepleri' },
@@ -35,6 +36,9 @@ export function AppLayout() {
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [companyName, setCompanyName] = useState('');
   const canAssignTasks = user?.role === 'ADMIN' || user?.departmentRoleId?.permissions?.includes('TASK_ASSIGNMENT');
+  const userDisplayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || '';
+  const userInitials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || 'U';
+  const userAvatarUrl = user?.businessCard?.avatarPublicUrl || user?.businessCard?.avatarUrl || '';
   const navItems = user?.role === 'ADMIN'
     ? adminNavItems
     : employeeNavItems.map((item) => item.to === '/tasks' && canAssignTasks ? { ...item, label: 'Görevler' } : item);
@@ -73,12 +77,49 @@ export function AppLayout() {
               <span className="text-xl font-semibold text-brand-700">OneDesk</span>
             )}
           </Link>
-          <div className="flex items-center gap-3 text-sm text-slate-600">
-            <span>{user?.email}</span>
-            <button onClick={onLogout} className="btn-secondary">
-              Çıkış
-            </button>
-          </div>
+          {user?.role === 'EMPLOYEE' ? (
+            <div className="group relative">
+              <button
+                type="button"
+                className="flex items-center gap-3 rounded-xl px-2 py-1.5 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+              >
+                {userAvatarUrl ? (
+                  <img src={userAvatarUrl} alt={userDisplayName} className="h-9 w-9 rounded-full object-cover" />
+                ) : (
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 text-sm font-semibold text-brand-700">
+                    {userInitials}
+                  </span>
+                )}
+                <span className="hidden leading-tight sm:block">
+                  <span className="block font-semibold text-slate-900">{userDisplayName}</span>
+                  <span className="block text-xs text-slate-500">{user?.department || user?.email}</span>
+                </span>
+                <span className="text-slate-400">⌄</span>
+              </button>
+
+              <div className="invisible absolute right-0 z-20 w-56 pt-2 opacity-0 transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white py-2 shadow-lg">
+                  <Link to="/profile" className="block px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">
+                    Profilim
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    className="block w-full px-4 py-2 text-left text-sm font-medium text-red-600 hover:bg-red-50"
+                  >
+                    Çıkış
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 text-sm text-slate-600">
+              <span>{user?.email}</span>
+              <button onClick={onLogout} className="btn-secondary">
+                Çıkış
+              </button>
+            </div>
+          )}
         </div>
       </header>
 

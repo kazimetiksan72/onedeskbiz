@@ -7,6 +7,7 @@ interface AuthState {
   refreshToken: string | null;
   user: CurrentUser | null;
   setAuth: (payload: { accessToken: string; refreshToken: string; user: CurrentUser }) => void;
+  setUser: (user: CurrentUser) => void;
   clearAuth: () => void;
 }
 
@@ -17,6 +18,7 @@ export const useAuthStore = create<AuthState>()(
       refreshToken: null,
       user: null,
       setAuth: ({ accessToken, refreshToken, user }) => set({ accessToken, refreshToken, user }),
+      setUser: (user) => set({ user }),
       clearAuth: () => set({ accessToken: null, refreshToken: null, user: null })
     }),
     { name: 'onedesk-auth' }

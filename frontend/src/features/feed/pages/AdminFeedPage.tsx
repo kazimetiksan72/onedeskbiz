@@ -34,25 +34,25 @@ export function AdminFeedPage() {
       setImage(null);
       await load();
     } catch (requestError: any) {
-      setError(requestError?.response?.data?.message || 'Feed içeriği oluşturulamadı.');
+      setError(requestError?.response?.data?.message || 'Duyuru oluşturulamadı.');
     } finally {
       setSaving(false);
     }
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Bu feed içeriğini silmek istediğinize emin misiniz?')) return;
+    if (!confirm('Bu duyuruyu silmek istediğinize emin misiniz?')) return;
     await deleteFeedPost(id);
     await load();
   };
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Feed Yönetimi" subtitle="Mobil ve web ana sayfalarında gösterilecek içerikleri yönetin" />
+      <PageHeader title="Duyuru Yönetimi" subtitle="Personel ekranında gösterilecek duyuruları yönetin" />
       {error ? <div className="page-card text-sm text-red-600">{error}</div> : null}
 
       <form className="page-card space-y-3" onSubmit={submit}>
-        <h2 className="text-base font-semibold text-slate-950">Yeni Feed İçeriği</h2>
+        <h2 className="text-base font-semibold text-slate-950">Yeni Duyuru</h2>
         <input className="input" placeholder="Başlık" value={title} onChange={(event) => setTitle(event.target.value)} required maxLength={160} />
         <textarea className="input min-h-32" placeholder="İçerik metni" value={content} onChange={(event) => setContent(event.target.value)} required maxLength={4000} />
         <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_180px]">
@@ -63,12 +63,12 @@ export function AdminFeedPage() {
           </select>
         </div>
         <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-70" disabled={saving || !title.trim() || !content.trim() || !image}>
-          {saving ? 'Oluşturuluyor...' : 'Oluştur'}
+          {saving ? 'Yayınlanıyor...' : 'Duyuru Yayınla'}
         </button>
       </form>
 
       <div className="page-card">
-        {items.length === 0 ? <EmptyState message="Feed içeriği yok." /> : null}
+        {items.length === 0 ? <EmptyState message="Duyuru yok." /> : null}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {items.map((item) => (
             <article key={item._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">

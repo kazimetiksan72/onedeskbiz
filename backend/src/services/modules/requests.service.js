@@ -14,6 +14,7 @@ const {
   sendRequestApprovedNotification,
   sendRequestCreatedNotification
 } = require('../notifications/oneSignal.service');
+const { logActivitySafe } = require('./activityLogs.service');
 
 const permissionByRequestType = {
   [REQUEST_TYPES.VEHICLE]: PERMISSIONS.VEHICLE_APPROVAL,
@@ -118,6 +119,18 @@ async function createRequest(user, payload, files = []) {
     approverUserIds,
     requesterName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
     requestType: request.type
+  });
+  await logActivitySafe({
+    actorUserId: user._id,
+    targetUserId: user._id,
+    entityType: 'REQUEST',
+    entityId: request._id,
+    action: 'REQUEST_CREATED',
+    description: `${request.type} talebi oluşturuldu.`,
+    metadata: {
+      type: request.type,
+      status: request.status
+    }
   });
 
   return request;
@@ -287,6 +300,19 @@ async function actOnRequest(user, id, action, note) {
       approverName: `${user.firstName || ''} ${user.lastName || ''}`.trim()
     });
   }
+  await logActivitySafe({
+    actorUserId: user._id,
+    targetUserId: populatedRequest.requesterUserId?._id || request.requesterUserId,
+    entityType: 'REQUEST',
+    entityId: populatedRequest._id,
+    action: action === 'APPROVE' ? 'REQUEST_APPROVED' : 'REQUEST_REJECTED',
+    description: `${populatedRequest.type} talebi ${action === 'APPROVE' ? 'onaylandı' : 'reddedildi'}.`,
+    metadata: {
+      type: populatedRequest.type,
+      status: populatedRequest.status,
+      note
+    }
+  });
 
   return populatedRequest;
 }

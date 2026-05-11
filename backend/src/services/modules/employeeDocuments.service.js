@@ -6,6 +6,7 @@ const { EmployeeDocument, EMPLOYEE_DOCUMENT_TYPES } = require('../../models/Empl
 const { User } = require('../../models/User');
 const { ApiError } = require('../../utils/apiError');
 const { logger } = require('../../utils/logger');
+const { logActivitySafe } = require('./activityLogs.service');
 
 const documentLabels = {
   [EMPLOYEE_DOCUMENT_TYPES.POPULATION_REGISTRY]: 'nufus-kayit-ornegi',
@@ -124,7 +125,7 @@ async function uploadForUser(actorUser, userId, payload, file) {
     }
   });
 
-  return EmployeeDocument.create({
+  const created = await EmployeeDocument.create({
     userId,
     type,
     url: blockBlobClient.url,
@@ -135,6 +136,21 @@ async function uploadForUser(actorUser, userId, payload, file) {
     uploadedByUserId: actorUser._id,
     source: payload.source || 'WEB_UPLOAD'
   });
+  await logActivitySafe({
+    actorUserId: actorUser._id,
+    targetUserId: userId,
+    entityType: 'EMPLOYEE_DOCUMENT',
+    entityId: created._id,
+    action: 'EMPLOYEE_DOCUMENT_UPLOADED',
+    description: `${type} personel evrakı yüklendi.`,
+    metadata: {
+      type,
+      source: created.source,
+      fileName
+    }
+  });
+
+  return created;
 }
 
 module.exports = { listForUser, uploadForUser };
