@@ -3,6 +3,7 @@ const { z, objectId } = require('../common');
 const employeeBody = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
+  birthDate: z.string().datetime().optional().nullable(),
   workEmail: z.string().email(),
   personalEmail: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),

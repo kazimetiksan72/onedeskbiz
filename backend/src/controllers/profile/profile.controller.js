@@ -6,4 +6,9 @@ const uploadProfilePhoto = asyncHandler(async (req, res) => {
   res.json(result);
 });
 
-module.exports = { uploadProfilePhoto };
+const updateProfile = asyncHandler(async (req, res) => {
+  const user = await profileService.updateProfile(req.user._id, req.body);
+  res.json({ user });
+});
+
+module.exports = { uploadProfilePhoto, updateProfile };

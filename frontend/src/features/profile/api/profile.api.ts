@@ -11,3 +11,8 @@ export async function uploadProfilePhoto(file: File) {
 
   return data;
 }
+
+export async function updateProfile(payload: { firstName: string; lastName: string; birthDate?: string | null }) {
+  const { data } = await api.patch<{ user: CurrentUser }>('/profile', payload);
+  return data.user;
+}

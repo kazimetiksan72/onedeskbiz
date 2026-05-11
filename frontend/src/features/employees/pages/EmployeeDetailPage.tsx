@@ -7,7 +7,7 @@ import { Loading } from '../../../components/Loading';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalPortal } from '../../../components/ModalPortal';
 
-type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'workEmail' | 'phone' | 'department' | 'title' | 'startDate' | 'status' | 'employmentType'>>;
+type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'startDate' | 'status' | 'employmentType'>>;
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
@@ -37,6 +37,7 @@ export function EmployeeDetailPage() {
     setForm({
       firstName: employee.firstName,
       lastName: employee.lastName,
+      birthDate: employee.birthDate || '',
       workEmail: employee.workEmail,
       phone: employee.phone || '',
       department: employee.department || '',
@@ -97,6 +98,7 @@ export function EmployeeDetailPage() {
         </div>
         <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
           <DetailItem label="E-posta" value={employee.workEmail} />
+          <DetailItem label="Doğum Tarihi" value={employee.birthDate ? employee.birthDate.slice(0, 10) : undefined} />
           <DetailItem label="Telefon" value={employee.phone} />
           <DetailItem label="Departman" value={employee.department} />
           <DetailItem label="Çalışma Tipi" value={translateEmploymentType(employee.employmentType)} />
@@ -113,6 +115,7 @@ export function EmployeeDetailPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <input className="input" placeholder="Ad" value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
               <input className="input" placeholder="Soyad" value={form.lastName || ''} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+              <input className="input" type="date" value={(form.birthDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, birthDate: e.target.value ? new Date(e.target.value).toISOString() : null })} />
               <input className="input" placeholder="E-posta" value={form.workEmail || ''} onChange={(e) => setForm({ ...form, workEmail: e.target.value })} required />
               <input className="input" placeholder="Telefon" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
               <select className="input" value={form.department || ''} onChange={(e) => setForm({ ...form, department: e.target.value })}>

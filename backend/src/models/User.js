@@ -55,6 +55,7 @@ const userSchema = new mongoose.Schema(
     },
     firstName: { type: String, required: true, trim: true },
     lastName: { type: String, required: true, trim: true },
+    birthDate: { type: Date },
     personalEmail: { type: String, trim: true, lowercase: true },
     phone: { type: String, trim: true },
     department: { type: String, trim: true, index: true },

@@ -28,6 +28,7 @@ function pickUserProfileFields(payload) {
   return {
     firstName: payload.firstName,
     lastName: payload.lastName,
+    birthDate: payload.birthDate,
     workEmail: payload.workEmail,
     email: payload.workEmail,
     personalEmail: payload.personalEmail,
@@ -137,6 +138,7 @@ async function updateEmployee(id, payload) {
   const mergedPayload = {
     firstName: rawProfile.firstName ?? current.firstName,
     lastName: rawProfile.lastName ?? current.lastName,
+    birthDate: rawProfile.birthDate ?? current.birthDate,
     workEmail: mergedWorkEmail,
     personalEmail: rawProfile.personalEmail ?? current.personalEmail,
     phone: rawProfile.phone ?? current.phone,

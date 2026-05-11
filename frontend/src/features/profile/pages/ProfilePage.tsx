@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from 'react';
+import { useEffect, useMemo, useState, type ChangeEvent, type DragEvent, type FormEvent } from 'react';
 import { PageHeader } from '../../../components/PageHeader';
 import { fetchMe } from '../../auth/api/auth.api';
 import { useAuthStore } from '../../auth/auth.store';
-import { uploadProfilePhoto } from '../api/profile.api';
+import { updateProfile, uploadProfilePhoto } from '../api/profile.api';
 
 export function ProfilePage() {
   const { user, setUser } = useAuthStore();
@@ -11,12 +11,22 @@ export function ProfilePage() {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', birthDate: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
     fetchMe().then(setUser).catch(() => undefined);
   }, [setUser]);
+
+  useEffect(() => {
+    setProfileForm({
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      birthDate: user?.birthDate ? user.birthDate.slice(0, 10) : ''
+    });
+  }, [user?._id, user?.firstName, user?.lastName, user?.birthDate]);
 
   const displayName = useMemo(() => {
     const fullName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim();
@@ -29,6 +39,10 @@ export function ProfilePage() {
   }, [user]);
 
   const avatarUrl = user?.businessCard?.avatarPublicUrl || user?.businessCard?.avatarUrl || '';
+
+  const formattedBirthDate = user?.birthDate
+    ? new Date(user.birthDate).toLocaleDateString('tr-TR')
+    : '-';
 
   useEffect(() => {
     if (!selectedFile) {
@@ -92,6 +106,27 @@ export function ProfilePage() {
     }
   };
 
+  const submitProfile = async (event: FormEvent) => {
+    event.preventDefault();
+
+    setProfileSaving(true);
+    setError('');
+    setSuccess('');
+    try {
+      const updated = await updateProfile({
+        firstName: profileForm.firstName.trim(),
+        lastName: profileForm.lastName.trim(),
+        birthDate: profileForm.birthDate ? new Date(profileForm.birthDate).toISOString() : null
+      });
+      setUser(updated);
+      setSuccess('Profil bilgileriniz güncellendi.');
+    } catch (requestError: any) {
+      setError(requestError?.response?.data?.message || 'Profil bilgileri güncellenemedi.');
+    } finally {
+      setProfileSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Profilim" subtitle="Profil bilgilerinizi görüntüleyin ve fotoğrafınızı güncelleyin" />
@@ -121,8 +156,46 @@ export function ProfilePage() {
 
       <section className="page-card">
         <h2 className="text-base font-semibold text-slate-950">Bilgilerim</h2>
+        <form className="mt-4 space-y-4" onSubmit={submitProfile}>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Ad</label>
+              <input
+                className="input"
+                value={profileForm.firstName}
+                onChange={(event) => setProfileForm({ ...profileForm, firstName: event.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Soyad</label>
+              <input
+                className="input"
+                value={profileForm.lastName}
+                onChange={(event) => setProfileForm({ ...profileForm, lastName: event.target.value })}
+                required
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500">Doğum Tarihi</label>
+              <input
+                className="input"
+                type="date"
+                value={profileForm.birthDate}
+                onChange={(event) => setProfileForm({ ...profileForm, birthDate: event.target.value })}
+              />
+            </div>
+          </div>
+          <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-70" type="submit" disabled={profileSaving}>
+            {profileSaving ? 'Kaydediliyor...' : 'Bilgileri Güncelle'}
+          </button>
+        </form>
+      </section>
+
+      <section className="page-card">
+        <h2 className="text-base font-semibold text-slate-950">Diğer Bilgiler</h2>
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <DetailItem label="Ad Soyad" value={displayName} />
+          <DetailItem label="Doğum Tarihi" value={formattedBirthDate} />
           <DetailItem label="E-posta" value={user?.workEmail || user?.email} />
           <DetailItem label="Telefon" value={user?.phone} />
           <DetailItem label="Departman" value={user?.department} />
@@ -180,6 +253,12 @@ export function ProfilePage() {
               </p>
               <p className="mt-1 text-xs text-slate-500">JPG, PNG veya WEBP</p>
             </label>
+
+            {error ? (
+              <div className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
 
             <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button className="btn-secondary" type="button" onClick={closeModal} disabled={uploading}>

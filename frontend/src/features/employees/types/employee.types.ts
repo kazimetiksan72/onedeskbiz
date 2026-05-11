@@ -2,6 +2,7 @@ export interface Employee {
   _id: string;
   firstName: string;
   lastName: string;
+  birthDate?: string | null;
   workEmail: string;
   personalEmail?: string;
   phone?: string;

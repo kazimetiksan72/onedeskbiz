@@ -15,6 +15,7 @@ export interface CurrentUser {
   mustChangePassword?: boolean;
   firstName?: string;
   lastName?: string;
+  birthDate?: string | null;
   phone?: string;
   title?: string;
   workEmail?: string;
