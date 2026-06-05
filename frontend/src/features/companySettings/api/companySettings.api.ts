@@ -41,16 +41,6 @@ export async function uploadCompanyReferenceLogos(files: File[]) {
   return data;
 }
 
-export async function uploadQuoteTemplate(file: File) {
-  const formData = new FormData();
-  formData.append('template', file);
-
-  const { data } = await api.post<CompanySettings>('/company-settings/quote-template', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return data;
-}
-
 export async function deleteCompanyReference(referenceId: string) {
   const { data } = await api.delete<CompanySettings>(`/company-settings/references/${referenceId}`);
   return data;

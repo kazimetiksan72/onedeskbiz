@@ -10,4 +10,8 @@ async function connectDb() {
   });
 }
 
-module.exports = { connectDb };
+function isDbConnected() {
+  return mongoose.connection.readyState === 1;
+}
+
+module.exports = { connectDb, isDbConnected };

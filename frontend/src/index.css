@@ -71,7 +71,7 @@ body {
   animation: slide-in-right 260ms ease-out both;
 }
 
-/* Quote specific */
+/* Shared table and status utilities */
 .btn-sm {
   @apply px-2 py-1 text-xs rounded-md;
 }

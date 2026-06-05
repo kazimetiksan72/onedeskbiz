@@ -5,12 +5,6 @@ export interface CompanySettings {
   logoUrl?: string;
   timezone?: string;
   departments?: string[];
-  quoteTemplate?: {
-    fileName?: string;
-    htmlUrl?: string;
-    blobName?: string;
-    uploadedAt?: string;
-  };
   companyReferences?: {
     _id: string;
     name: string;

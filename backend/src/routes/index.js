@@ -14,7 +14,6 @@ const dashboardRoutes = require('./modules/dashboard.routes');
 const profileRoutes = require('./modules/profile.routes');
 const employeeDocumentRoutes = require('./modules/employeeDocuments.routes');
 const feedRoutes = require('./modules/feed.routes');
-const quoteRoutes = require('./modules/quotes.routes');
 const taskRoutes = require('./modules/tasks.routes');
 const companySettingsController = require('../controllers/companySettings/companySettings.controller');
 const { auth } = require('../middleware/auth');
@@ -54,6 +53,5 @@ router.use(
 );
 router.use('/leave-requests', auth, enforcePasswordChange, leaveRequestRoutes);
 router.use('/dashboard', auth, enforcePasswordChange, dashboardRoutes);
-router.use('/quotes', auth, enforcePasswordChange, quoteRoutes);
 
 module.exports = router;

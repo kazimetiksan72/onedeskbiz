@@ -29,7 +29,7 @@ import { StatusBar } from 'expo-status-bar';
 declare const require: (moduleName: string) => any;
 
 type UserRole = 'ADMIN' | 'EMPLOYEE';
-type MenuKey = 'HOME' | 'ANNOUNCEMENTS' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS' | 'TASKS' | 'QUOTES';
+type MenuKey = 'HOME' | 'ANNOUNCEMENTS' | 'CARD' | 'DOCUMENTS' | 'REQUESTS' | 'APPROVALS' | 'BILLING' | 'CUSTOMERS' | 'CONTACTS' | 'ACTIONS' | 'TASKS';
 
 type AuthUser = {
   _id: string;
@@ -261,17 +261,6 @@ type EmployeeDocumentItem = {
   createdAt: string;
 };
 
-type QuoteItem = {
-  _id: string;
-  number: string;
-  customerId?: { _id: string; companyName: string };
-  status: 'DRAFT' | 'SENT' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
-  grandTotal: number;
-  currency: string;
-  validUntil?: string | null;
-  createdAt: string;
-};
-
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED';
 
 type TaskItem = {
@@ -336,7 +325,7 @@ function cardFromSessionUser(user: AuthUser): PublicCardResponse {
 }
 
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api',
+  baseURL: process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-vercel-domain.vercel.app/api',
   timeout: 15000
 });
 
@@ -566,8 +555,6 @@ export default function App() {
 
   const [customers, setCustomers] = useState<CustomerItem[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
-  const [quotes, setQuotes] = useState<QuoteItem[]>([]);
-  const [quotesLoading, setQuotesLoading] = useState(false);
   const [contacts, setContacts] = useState<ContactItem[]>([]);
   const [contactsLoading, setContactsLoading] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerItem | null>(null);
@@ -597,7 +584,7 @@ export default function App() {
   const canApproveRequests = userCanApproveRequests(session?.user);
   const canAssignTasks = userCanAssignTasks(session?.user);
   const isTabRoot =
-    (selectedMenu === 'HOME' || selectedMenu === 'ANNOUNCEMENTS' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS' || selectedMenu === 'QUOTES') &&
+    (selectedMenu === 'HOME' || selectedMenu === 'ANNOUNCEMENTS' || selectedMenu === 'CARD' || selectedMenu === 'DOCUMENTS' || selectedMenu === 'REQUESTS' || selectedMenu === 'TASKS' || selectedMenu === 'APPROVALS' || selectedMenu === 'CONTACTS') &&
     !selectedCustomer &&
     !selectedContact &&
     !selectedActionLog;
@@ -781,22 +768,6 @@ export default function App() {
       setError(requestError?.response?.data?.message || 'Müşteri listesi yüklenemedi.');
     } finally {
       setCustomersLoading(false);
-    }
-  };
-
-  const loadQuotes = async () => {
-    if (!session?.accessToken) return;
-    setQuotesLoading(true);
-    try {
-      const { data } = await api.get<ApiListResponse<QuoteItem>>('/quotes', {
-        params: { page: 1, limit: 50 },
-        headers: { Authorization: `Bearer ${session.accessToken}` }
-      });
-      setQuotes(data.items || []);
-    } catch {
-      // sessiz hata
-    } finally {
-      setQuotesLoading(false);
     }
   };
 
@@ -1344,10 +1315,6 @@ export default function App() {
       loadCustomers();
     }
 
-    if (selectedMenu === 'QUOTES' && quotes.length === 0 && !quotesLoading) {
-      loadQuotes();
-    }
-
     if (selectedMenu === 'CONTACTS' && contacts.length === 0 && !contactsLoading) {
       loadContacts();
     }
@@ -1421,7 +1388,7 @@ export default function App() {
             </Pressable>
             {error ? <Text style={styles.error}>{error}</Text> : null}
             <Text style={styles.loginApiHint}>
-              {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://onedesk.azurewebsites.net/api'}
+              {process.env.EXPO_PUBLIC_API_BASE_URL || 'https://your-vercel-domain.vercel.app/api'}
             </Text>
           </View>
         </KeyboardAvoidingView>
@@ -1559,10 +1526,6 @@ export default function App() {
               onApprove={(id: string) => actOnApproval(id, 'approve')}
               onReject={(id: string) => actOnApproval(id, 'reject')}
             />
-          ) : null}
-
-          {selectedMenu === 'QUOTES' ? (
-            <QuotesView loading={quotesLoading} quotes={quotes} />
           ) : null}
 
           {selectedMenu === 'CONTACTS' && !selectedContact ? (
@@ -1728,7 +1691,6 @@ function titleForMenu(menu: MenuKey) {
   if (menu === 'BILLING') return 'Fatura Bilgileri';
   if (menu === 'CONTACTS') return 'Müşteriler';
   if (menu === 'ACTIONS') return 'Aksiyonlarım';
-  if (menu === 'QUOTES') return 'Teklifler';
   return 'Müşteriler';
 }
 
@@ -1811,8 +1773,7 @@ function DrawerMenu({
     ...(canShowApprovals ? [{ key: 'APPROVALS' as MenuKey, label: 'Onaylar', icon: '✓' }] : []),
     { key: 'CONTACTS', label: 'Müşteriler', icon: '◉' },
     { key: 'BILLING', label: 'Fatura Bilgileri', icon: '₺' },
-    { key: 'ACTIONS', label: 'Aksiyonlarım', icon: '↗' },
-    ...(user.role === 'ADMIN' ? [{ key: 'QUOTES' as MenuKey, label: 'Teklifler', icon: '🧾' }] : [])
+    { key: 'ACTIONS', label: 'Aksiyonlarım', icon: '↗' }
   ];
   const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email;
 
@@ -2841,43 +2802,6 @@ function CustomersView({
           <Text style={styles.infoLine}>{item.taxNumber || '-'}</Text>
           <Text style={styles.infoLine}>{item.taxOffice || '-'}</Text>
         </Pressable>
-      ))}
-    </View>
-  );
-}
-
-const QUOTE_STATUS_LABELS: Record<string, string> = {
-  DRAFT: 'Taslak',
-  SENT: 'Gönderildi',
-  ACCEPTED: 'Onaylandı',
-  REJECTED: 'Reddedildi',
-  EXPIRED: 'Süresi Doldu'
-};
-
-function QuotesView({ loading, quotes }: { loading: boolean; quotes: QuoteItem[] }) {
-  if (loading) {
-    return <ActivityIndicator color="#2563eb" />;
-  }
-
-  return (
-    <View style={styles.sectionCard}>
-      {quotes.length === 0 ? <Text style={styles.infoLine}>Henüz teklif oluşturulmadı.</Text> : null}
-      {quotes.map((item) => (
-        <View key={item._id} style={styles.requestItem}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Text style={styles.customerName}>{item.number}</Text>
-            <Text style={[styles.requestStatus, item.status === 'ACCEPTED' ? styles.requestStatusApproved : item.status === 'REJECTED' || item.status === 'EXPIRED' ? styles.requestStatusRejected : styles.requestStatusPending]}>
-              {QUOTE_STATUS_LABELS[item.status] || item.status}
-            </Text>
-          </View>
-          <Text style={styles.infoLine}>{item.customerId?.companyName || '-'}</Text>
-          <Text style={styles.infoLine}>
-            {item.grandTotal?.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {item.currency}
-          </Text>
-          {item.validUntil ? (
-            <Text style={styles.infoLine}>Geçerlilik: {new Date(item.validUntil).toLocaleDateString('tr-TR')}</Text>
-          ) : null}
-        </View>
       ))}
     </View>
   );

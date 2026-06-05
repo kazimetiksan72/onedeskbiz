@@ -159,29 +159,6 @@ async function uploadCompanyImage(file, folder, filePrefix) {
   return { url: blockBlobClient.url, blobName };
 }
 
-async function uploadCompanyFile(file, folder, filePrefix, contentType) {
-  const containerClient = await getCompanyContainerClient();
-  const ext = path.extname(file.originalname || '').toLowerCase() || '.html';
-  const blobName = `${folder}/${filePrefix}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-  const blockBlobClient = containerClient.getBlockBlobClient(blobName);
-
-  logger.info('Uploading company file to Azure Blob Storage', {
-    containerName: COMPANY_CONTAINER_NAME,
-    blobName,
-    mimeType: contentType || file.mimetype,
-    size: file.size
-  });
-
-  await blockBlobClient.uploadData(file.buffer, {
-    blobHTTPHeaders: {
-      blobContentType: contentType || file.mimetype,
-      blobCacheControl: 'no-cache'
-    }
-  });
-
-  return { url: blockBlobClient.url, blobName };
-}
-
 async function uploadCompanyLogo(file) {
   if (!file) throw new ApiError(400, 'Logo dosyası zorunludur.');
 
@@ -190,38 +167,6 @@ async function uploadCompanyLogo(file) {
   return CompanySettings.findOneAndUpdate(
     {},
     { $set: { logoUrl: uploadedLogo.url } },
-    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
-  ).lean();
-}
-
-async function uploadQuoteTemplate(file) {
-  if (!file) throw new ApiError(400, 'Teklif HTML şablonu zorunludur.');
-
-  const html = file.buffer.toString('utf8');
-  if (!html.includes('const CONFIG')) {
-    throw new ApiError(400, 'HTML şablonunda const CONFIG bloğu bulunmalıdır.');
-  }
-
-  const settings = await CompanySettings.findOne().lean();
-  if (settings?.quoteTemplate?.blobName) {
-    const containerClient = await getCompanyContainerClient();
-    await containerClient.getBlockBlobClient(settings.quoteTemplate.blobName).deleteIfExists();
-  }
-
-  const uploadedTemplate = await uploadCompanyFile(file, 'quote-templates', 'quote-template', 'text/html; charset=utf-8');
-
-  return CompanySettings.findOneAndUpdate(
-    {},
-    {
-      $set: {
-        quoteTemplate: {
-          fileName: file.originalname || 'quote-template.html',
-          htmlUrl: uploadedTemplate.url,
-          blobName: uploadedTemplate.blobName,
-          uploadedAt: new Date()
-        }
-      }
-    },
     { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
   ).lean();
 }
@@ -272,7 +217,6 @@ module.exports = {
   getPublicBillingInfo,
   upsertCompanySettings,
   uploadCompanyLogo,
-  uploadQuoteTemplate,
   uploadCompanyReferences,
   deleteCompanyReference
 };

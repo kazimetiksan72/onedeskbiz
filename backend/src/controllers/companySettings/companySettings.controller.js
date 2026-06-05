@@ -26,11 +26,6 @@ const uploadCompanyReferences = asyncHandler(async (req, res) => {
   res.json(settings);
 });
 
-const uploadQuoteTemplate = asyncHandler(async (req, res) => {
-  const settings = await service.uploadQuoteTemplate(req.file);
-  res.json(settings);
-});
-
 const deleteCompanyReference = asyncHandler(async (req, res) => {
   const settings = await service.deleteCompanyReference(req.params.referenceId);
   res.json(settings);
@@ -41,7 +36,6 @@ module.exports = {
   getPublicBillingInfo,
   upsertCompanySettings,
   uploadCompanyLogo,
-  uploadQuoteTemplate,
   uploadCompanyReferences,
   deleteCompanyReference
 };

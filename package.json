@@ -13,7 +13,9 @@
     "dev:all": "concurrently -n backend,frontend,mobile -c blue,green,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\" \"npm run start --workspace=mobile\"",
     "build": "npm run build --workspace=frontend",
     "start": "npm run start --workspace=backend",
-    "start:azure": "npm run start",
+    "vercel:dev": "vercel dev",
+    "vercel:env": "node scripts/push-vercel-env.js",
+    "deploy": "vercel --prod",
     "seed": "npm run seed --workspace=backend"
   },
   "overrides": {
@@ -23,6 +25,7 @@
     "@types/react-dom": "19.1.9"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "vercel": "^54.9.1"
   }
 }

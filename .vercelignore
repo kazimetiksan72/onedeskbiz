@@ -1,0 +1,11 @@
+mobile
+website
+uploads
+**/node_modules
+**/.env
+**/.expo
+**/.expo-shared
+**/android
+**/ios
+PXL_Antetli_Kagit.docx
+create_letterhead.py

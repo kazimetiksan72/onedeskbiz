@@ -21,7 +21,6 @@ const storage = multer.diskStorage({
 
 const allowedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const allowedDocumentMimeTypes = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
-const allowedHtmlMimeTypes = new Set(['text/html', 'application/octet-stream']);
 
 const upload = multer({
   storage,
@@ -79,23 +78,4 @@ const documentMemoryUpload = multer({
   }
 });
 
-const htmlMemoryUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: Math.max(env.maxFileSizeMb, 15) * 1024 * 1024
-  },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname || '').toLowerCase();
-    if (ext !== '.html' && ext !== '.htm') {
-      return cb(new ApiError(400, 'Only HTML template files are allowed'));
-    }
-
-    if (!allowedHtmlMimeTypes.has(file.mimetype)) {
-      return cb(new ApiError(400, 'Only HTML template files are allowed'));
-    }
-
-    return cb(null, true);
-  }
-});
-
-module.exports = { upload, memoryUpload, feedImageUpload, documentMemoryUpload, htmlMemoryUpload, uploadPath };
+module.exports = { upload, memoryUpload, feedImageUpload, documentMemoryUpload, uploadPath };

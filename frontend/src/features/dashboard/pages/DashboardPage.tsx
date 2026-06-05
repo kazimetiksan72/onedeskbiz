@@ -54,12 +54,6 @@ const moduleCards = [
     icon: 'car'
   },
   {
-    to: '/admin/quotes',
-    title: 'Teklifler',
-    description: 'Müşteri tekliflerini oluşturun ve PDF olarak indirin.',
-    icon: 'document'
-  },
-  {
     to: '/admin/announcements',
     title: 'Duyuru Yönetimi',
     description: 'Personel ekranında gösterilecek duyuruları yönetin.',
@@ -74,7 +68,7 @@ const moduleCards = [
   {
     to: '/admin/company-settings',
     title: 'Şirket Ayarları',
-    description: 'Şirket bilgileri, logo, referanslar ve şablonları yönetin.',
+    description: 'Şirket bilgileri, logo, referanslar ve departmanları yönetin.',
     icon: 'settings'
   }
 ] as const;
@@ -462,16 +456,6 @@ function DashboardIcon({ name }: { name: (typeof moduleCards)[number]['icon'] })
       <svg {...common}>
         <path d="M5 17h14l-1.4-6.3A3 3 0 0 0 14.7 8H9.3a3 3 0 0 0-2.9 2.7L5 17Z" />
         <path d="M7 17v2M17 17v2M6.5 13h1M16.5 13h1" />
-      </svg>
-    );
-  }
-
-  if (name === 'document') {
-    return (
-      <svg {...common}>
-        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
-        <path d="M14 2v6h6" />
-        <path d="M8 13h8M8 17h5" />
       </svg>
     );
   }

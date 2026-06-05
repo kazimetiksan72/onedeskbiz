@@ -21,7 +21,7 @@ function write(level, message, meta = {}) {
   const output = JSON.stringify(payload);
 
   if (level === 'error') {
-    // Azure App Service Log Stream captures stderr.
+    // Hosting providers capture stderr for error-level logs.
     console.error(output);
     return;
   }

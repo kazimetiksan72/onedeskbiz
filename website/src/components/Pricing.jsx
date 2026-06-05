@@ -1,7 +1,7 @@
 const plans = [
   {
     name: 'Başlangıç',
-    note: 'Demo sonrası teklif',
+    note: 'Demo sonrası planlama',
     features: ['10 kullanıcıya kadar', 'Görev takibi', 'İzin talepleri', 'Temel raporlar'],
     cta: 'Demo Talep Et'
   },
@@ -14,9 +14,9 @@ const plans = [
   },
   {
     name: 'Kurumsal',
-    note: 'Özel teklif',
+    note: 'Özel plan',
     features: ['Özel kullanıcı limiti', 'Özel süreç uyarlamaları', 'Yetkilendirme', 'Öncelikli destek'],
-    cta: 'Teklif Al'
+    cta: 'İletişime Geç'
   }
 ];
 

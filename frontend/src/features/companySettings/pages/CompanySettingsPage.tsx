@@ -4,7 +4,6 @@ import {
   getCompanySettings,
   uploadCompanyLogo,
   uploadCompanyReferenceLogos,
-  uploadQuoteTemplate,
   upsertCompanySettings,
   type CompanySettingsPayload
 } from '../api/companySettings.api';
@@ -19,7 +18,6 @@ const initial: Omit<CompanySettings, '_id'> = {
   logoUrl: '',
   timezone: 'Europe/Istanbul',
   departments: [],
-  quoteTemplate: {},
   companyReferences: [],
   billingInfo: {
     legalCompanyName: '',
@@ -53,8 +51,6 @@ export function CompanySettingsPage() {
   const [referenceDragActive, setReferenceDragActive] = useState(false);
   const [selectedReferenceFiles, setSelectedReferenceFiles] = useState<File[]>([]);
   const [referenceDeletingId, setReferenceDeletingId] = useState<string | null>(null);
-  const [quoteTemplateUploading, setQuoteTemplateUploading] = useState(false);
-  const [selectedQuoteTemplate, setSelectedQuoteTemplate] = useState<File | null>(null);
 
   useEffect(() => {
     getCompanySettings().then((data) => {
@@ -183,39 +179,6 @@ export function CompanySettingsPage() {
     }
   };
 
-  const onQuoteTemplateSelected = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-
-    const isHtml = file.name.toLowerCase().endsWith('.html') || file.name.toLowerCase().endsWith('.htm');
-    if (!isHtml) {
-      setMessage('Teklif şablonu için HTML dosyası seçin.');
-      return;
-    }
-
-    setSelectedQuoteTemplate(file);
-    setMessage(`${file.name} seçildi. Yüklemek için Şablonu Yükle butonuna basın.`);
-  };
-
-  const uploadSelectedQuoteTemplate = async () => {
-    if (!selectedQuoteTemplate) return;
-
-    setQuoteTemplateUploading(true);
-    setMessage('');
-
-    try {
-      const updated = await uploadQuoteTemplate(selectedQuoteTemplate);
-      setSettings(normalizeSettings(updated));
-      setSelectedQuoteTemplate(null);
-      setMessage('Teklif HTML şablonu yüklendi.');
-    } catch (requestError: any) {
-      setMessage(requestError?.response?.data?.message || 'Teklif şablonu yüklenemedi.');
-    } finally {
-      setQuoteTemplateUploading(false);
-    }
-  };
-
   const addDepartment = () => {
     const value = newDepartment.trim();
     if (!value) return;
@@ -330,49 +293,6 @@ export function CompanySettingsPage() {
               disabled={logoUploading || !selectedLogoFile}
             >
               {logoUploading ? 'Yükleniyor...' : 'Logo Yükle'}
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <section className="page-card space-y-4">
-        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Teklif HTML Şablonu</h2>
-            <p className="text-sm text-slate-500">
-              Teklif PDF çıktısı için içinde <span className="font-semibold">const CONFIG</span> bloğu bulunan HTML şablonu yükleyin.
-            </p>
-            {settings.quoteTemplate?.fileName ? (
-              <p className="mt-2 text-sm text-slate-700">
-                Aktif şablon: <span className="font-semibold">{settings.quoteTemplate.fileName}</span>
-                {settings.quoteTemplate.uploadedAt ? ` · ${new Date(settings.quoteTemplate.uploadedAt).toLocaleString('tr-TR')}` : ''}
-              </p>
-            ) : (
-              <p className="mt-2 text-sm text-slate-500">Henüz teklif şablonu yüklenmedi. Şablon yoksa sistem varsayılan tasarımı kullanır.</p>
-            )}
-            {selectedQuoteTemplate ? (
-              <p className="mt-1 text-sm font-medium text-emerald-700">Seçilen dosya: {selectedQuoteTemplate.name}</p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <label className="btn-secondary cursor-pointer">
-              HTML Seç
-              <input
-                className="hidden"
-                type="file"
-                accept=".html,.htm,text/html"
-                onChange={onQuoteTemplateSelected}
-                disabled={quoteTemplateUploading}
-              />
-            </label>
-            <button
-              type="button"
-              className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-              onClick={uploadSelectedQuoteTemplate}
-              disabled={quoteTemplateUploading || !selectedQuoteTemplate}
-            >
-              {quoteTemplateUploading ? 'Yükleniyor...' : 'Şablonu Yükle'}
             </button>
           </div>
         </div>
@@ -691,11 +611,13 @@ export function CompanySettingsPage() {
 }
 
 function normalizeSettings(data: CompanySettings): Omit<CompanySettings, '_id'> {
-  const { _id, ...rest } = data;
+  const rest = Object.fromEntries(
+    Object.entries(data).filter(([key]) => key !== '_id')
+  ) as Omit<CompanySettings, '_id'>;
+
   return {
     ...initial,
     ...rest,
-    quoteTemplate: rest.quoteTemplate || {},
     companyReferences: rest.companyReferences || [],
     billingInfo: {
       ...initial.billingInfo,

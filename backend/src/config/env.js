@@ -34,7 +34,6 @@ if (nodeEnv !== 'production') {
 }
 
 const required = [
-  'PORT',
   'MONGODB_URI',
   'JWT_ACCESS_SECRET',
   'JWT_REFRESH_SECRET',
@@ -50,7 +49,7 @@ for (const key of required) {
 
 module.exports = {
   nodeEnv,
-  port: Number(process.env.PORT),
+  port: Number(process.env.PORT || 3000),
   mongodbUri: process.env.MONGODB_URI,
   corsOrigin: process.env.CORS_ORIGIN || 'http://localhost:5173',
   jwt: {

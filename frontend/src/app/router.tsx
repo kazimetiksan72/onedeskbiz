@@ -28,8 +28,6 @@ import { EmployeeAnnouncementsPage } from '../features/feed/pages/EmployeeAnnoun
 import { EmployeeHomePage } from '../features/feed/pages/EmployeeHomePage';
 import { EmployeeFeedDetailPage } from '../features/feed/pages/EmployeeFeedDetailPage';
 import { PublicBusinessCardPage } from '../features/digitalCards/pages/PublicBusinessCardPage';
-import { QuotesPage } from '../features/quotes/pages/QuotesPage';
-import { QuoteDetailPage } from '../features/quotes/pages/QuoteDetailPage';
 import { ProfilePage } from '../features/profile/pages/ProfilePage';
 
 export const router = createBrowserRouter([
@@ -79,8 +77,6 @@ export const router = createBrowserRouter([
               { path: '/admin/feed', element: <Navigate to="/admin/announcements" replace /> },
               { path: '/admin/department-roles', element: <DepartmentRolesPage /> },
               { path: '/admin/company-settings', element: <CompanySettingsPage /> },
-              { path: '/admin/quotes', element: <QuotesPage /> },
-              { path: '/admin/quotes/:id', element: <QuoteDetailPage /> },
               { path: '/dashboard', element: <Navigate to="/admin/dashboard" replace /> },
               { path: '/employees', element: <Navigate to="/admin/employees" replace /> },
               { path: '/customers', element: <Navigate to="/admin/customers" replace /> },

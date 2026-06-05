@@ -37,16 +37,6 @@ const companyReferenceSchema = new mongoose.Schema(
   }
 );
 
-const quoteTemplateSchema = new mongoose.Schema(
-  {
-    fileName: { type: String, trim: true },
-    htmlUrl: { type: String, trim: true },
-    blobName: { type: String, trim: true },
-    uploadedAt: { type: Date }
-  },
-  { _id: false }
-);
-
 const companySettingsSchema = new mongoose.Schema(
   {
     companyName: { type: String, trim: true },
@@ -55,7 +45,6 @@ const companySettingsSchema = new mongoose.Schema(
     timezone: { type: String, default: 'UTC' },
     departments: [{ type: String, trim: true }],
     companyReferences: { type: [companyReferenceSchema], default: [] },
-    quoteTemplate: { type: quoteTemplateSchema, default: {} },
     billingInfo: { type: billingInfoSchema, default: {} }
   },
   {

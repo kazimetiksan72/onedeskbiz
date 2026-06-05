@@ -13,7 +13,7 @@ Küçük işletmeler (10-15 çalışan) için üretim kalitesinde MVP:
 - Backend: Node.js + Express + Mongoose + Zod
 - Veritabanı: MongoDB
 - Personel modeli: Ayrı `employees` koleksiyonu yoktur; tüm personel ve admin hesapları `users` koleksiyonundadır (`role` ile ayrılır).
-- Tek Azure App Service hedefi: Production'da backend, `frontend/dist` statik çıktısını servis eder.
+- Vercel hedefi: Frontend `frontend/dist` olarak statik yayınlanır; backend Express app `/api/*` altında serverless function olarak çalışır.
 
 ## Monorepo ve Tek Komut Çalışma
 Root seviyesinde workspace scriptleri var.
@@ -46,7 +46,7 @@ cp mobile/.env.example mobile/.env
 
 `mobile/.env` için production API:
 ```env
-EXPO_PUBLIC_API_BASE_URL=https://onedesk.azurewebsites.net/api
+EXPO_PUBLIC_API_BASE_URL=https://<vercel-domain>/api
 ```
 
 Çalıştırma:
@@ -64,13 +64,25 @@ Mobil uygulama akışı:
 npm run seed
 ```
 
-## Production / Azure App Service (Tek Servis)
-Bu kurulumda tek App Service hem API hem frontend sunar.
+## Production / Vercel
+Bu kurulumda Vercel frontend'i statik çıktıdan, backend'i `/api` serverless function üzerinden yayınlar.
 
-### 1) Azure App Settings
-Aşağıdaki environment variable'ları App Service'e ekleyin:
+### 1) Vercel CLI
+Vercel CLI root dev dependency olarak kuruludur.
+
+```bash
+npm run vercel:dev
+```
+
+Production deploy:
+
+```bash
+npm run deploy
+```
+
+### 2) Environment Variables
+Aşağıdaki environment variable'ları Vercel projesine ekleyin:
 - `NODE_ENV=production`
-- `PORT=8080` (veya App Service'in verdiği port)
 - `MONGODB_URI=mongodb+srv://onedesk_db_user:<db_password>@onedeskbiz.9pfzodi.mongodb.net/?appName=onedeskbiz`
 - `JWT_ACCESS_SECRET=...`
 - `JWT_REFRESH_SECRET=...`
@@ -81,20 +93,22 @@ Aşağıdaki environment variable'ları App Service'e ekleyin:
 - `MAX_FILE_SIZE_MB=2`
 - `ONESIGNAL_APP_ID=...`
 - `ONESIGNAL_REST_API_KEY=...`
+- `PUBLIC_BASE_URL=https://<vercel-domain>`
+- `VITE_API_BASE_URL=/api`
 
-`CORS_ORIGIN` production'da aynı origin servis nedeniyle zorunlu değil.
+`PORT` ve `CORS_ORIGIN` Vercel production ortamında zorunlu değildir.
 
-### 2) Startup Command
-Azure App Service startup command olarak:
+Mevcut `backend/.env` ve `frontend/.env` değerlerini Vercel'e aktarmak için:
+
 ```bash
-npm run start:azure
+npm run vercel:env
 ```
-kullanın.
 
-Bu komut:
-1. frontend'i build eder (`frontend/dist`)
-2. backend'i başlatır
-3. backend `/api` endpointlerini ve frontend SPA'yı aynı origin altında servis eder.
+Varsayılan olarak `production`, `preview` ve `development` ortamlarına aktarır. Sadece production için:
+
+```bash
+npm run vercel:env -- production
+```
 
 ## Önemli Endpointler
 - API base: `/api`

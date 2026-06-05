@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "installCommand": "npm install --workspace=backend --workspace=frontend --include-workspace-root",
+  "buildCommand": "npm run build --workspace=frontend",
+  "outputDirectory": "frontend/dist",
+  "functions": {
+    "api/index.js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/health",
+      "destination": "/api"
+    },
+    {
+      "source": "/uploads/(.*)",
+      "destination": "/api"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

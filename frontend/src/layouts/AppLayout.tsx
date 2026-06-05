@@ -13,7 +13,6 @@ const adminNavItems = [
   { to: '/admin/requests', label: 'Talepler' },
   { to: '/admin/tasks', label: 'Görevler' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
-  { to: '/admin/quotes', label: 'Teklifler' },
   { to: '/admin/announcements', label: 'Duyuru Yönetimi' },
   { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
