@@ -24,6 +24,19 @@ export async function createVehicleRequest(payload: { vehicleId: string; startAt
   return data;
 }
 
+export async function createAssetRequest(payload: {
+  assetId: string;
+  assetAssignmentType: 'PERMANENT' | 'TEMPORARY';
+  startAt?: string;
+  endAt?: string;
+}) {
+  const { data } = await api.post<RequestItem>('/requests', {
+    type: 'ASSET',
+    ...payload
+  });
+  return data;
+}
+
 export async function createLeaveApprovalRequest(payload: {
   leaveType: 'ANNUAL' | 'SICK' | 'UNPAID' | 'OTHER';
   startAt: string;

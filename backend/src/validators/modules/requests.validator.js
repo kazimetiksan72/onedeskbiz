@@ -6,6 +6,8 @@ const createRequestSchema = z.object({
     .object({
       type: z.enum(Object.values(REQUEST_TYPES)),
       vehicleId: objectId.optional(),
+      assetId: objectId.optional(),
+      assetAssignmentType: z.enum(['PERMANENT', 'TEMPORARY']).optional(),
       startAt: z.string().datetime().optional(),
       endAt: z.string().datetime().optional(),
       leaveType: z.enum(['ANNUAL', 'SICK', 'UNPAID', 'OTHER']).optional(),
@@ -18,6 +20,12 @@ const createRequestSchema = z.object({
     .superRefine((body, ctx) => {
       if (body.type === REQUEST_TYPES.VEHICLE && (!body.vehicleId || !body.startAt || !body.endAt)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Araç, başlangıç ve bitiş tarihi zorunludur.' });
+      }
+      if (body.type === REQUEST_TYPES.ASSET && !body.assetId) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Demirbaş seçimi zorunludur.' });
+      }
+      if (body.type === REQUEST_TYPES.ASSET && body.assetAssignmentType === 'TEMPORARY' && (!body.startAt || !body.endAt)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Geçici demirbaş talebi için başlangıç ve bitiş tarihi zorunludur.' });
       }
       if (body.type === REQUEST_TYPES.LEAVE && (!body.startAt || !body.endAt)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Başlangıç ve bitiş tarihi zorunludur.' });

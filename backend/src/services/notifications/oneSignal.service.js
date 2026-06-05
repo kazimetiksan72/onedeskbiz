@@ -121,7 +121,8 @@ const requestTypeLabels = {
   VEHICLE: 'Araç talebi',
   LEAVE: 'İzin talebi',
   MATERIAL: 'Malzeme talebi',
-  EXPENSE: 'Masraf talebi'
+  EXPENSE: 'Masraf talebi',
+  ASSET: 'Demirbaş talebi'
 };
 
 async function sendRequestCreatedNotification({ requestId, approverUserIds, requesterName, requestType }) {

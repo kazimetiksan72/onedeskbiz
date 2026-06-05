@@ -54,6 +54,12 @@ const moduleCards = [
     icon: 'car'
   },
   {
+    to: '/admin/assets',
+    title: 'Demirbaşlarım',
+    description: 'Cihazları, zimmetleri ve geçici atamaları yönetin.',
+    icon: 'inbox'
+  },
+  {
     to: '/admin/announcements',
     title: 'Duyuru Yönetimi',
     description: 'Personel ekranında gösterilecek duyuruları yönetin.',

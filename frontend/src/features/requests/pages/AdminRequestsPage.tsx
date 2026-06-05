@@ -7,6 +7,7 @@ import type { RequestItem, RequestStatus, RequestType } from '../types/request.t
 const typeFilterOptions: Array<{ value: RequestType | 'ALL'; label: string }> = [
   { value: 'ALL', label: 'Tüm Tipler' },
   { value: 'VEHICLE', label: 'Araç' },
+  { value: 'ASSET', label: 'Demirbaş' },
   { value: 'LEAVE', label: 'İzin' },
   { value: 'MATERIAL', label: 'Malzeme' },
   { value: 'EXPENSE', label: 'Masraf' }
@@ -66,7 +67,7 @@ export function AdminRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Talepler" subtitle="Araç, izin, malzeme ve masraf taleplerini görüntüleyin ve onaylayın" />
+      <PageHeader title="Talepler" subtitle="Araç, demirbaş, izin, malzeme ve masraf taleplerini görüntüleyin ve onaylayın" />
 
       {error ? <div className="page-card text-sm text-red-600">{error}</div> : null}
       {message ? <div className="page-card text-sm text-emerald-700">{message}</div> : null}
@@ -173,6 +174,15 @@ function requestDetail(item: RequestItem) {
     return `${vehicle} | ${formatDateTime(item.startAt)} - ${formatDateTime(item.endAt)}`;
   }
 
+  if (item.type === 'ASSET') {
+    const asset = item.assetId ? `${item.assetId.name} (${item.assetId.category})` : 'Demirbaş';
+    const assignmentType = item.assetAssignmentType === 'TEMPORARY' ? 'Geçici' : 'Kalıcı';
+    const dateRange = item.assetAssignmentType === 'TEMPORARY'
+      ? ` | ${formatDateTime(item.startAt)} - ${formatDateTime(item.endAt)}`
+      : '';
+    return `${asset} | ${assignmentType}${dateRange}`;
+  }
+
   if (item.type === 'LEAVE') {
     return `${leaveTypeLabel(item.leaveType)} | ${formatDateTime(item.startAt)} - ${formatDateTime(item.endAt)}${item.reason ? ` | ${item.reason}` : ''}`;
   }
@@ -198,6 +208,7 @@ function approvalText(item: RequestItem) {
 
 function requestTypeLabel(value: RequestType) {
   if (value === 'VEHICLE') return 'Araç Talebi';
+  if (value === 'ASSET') return 'Demirbaş Talebi';
   if (value === 'LEAVE') return 'İzin Talebi';
   if (value === 'MATERIAL') return 'Malzeme Talebi';
   return 'Masraf Talebi';

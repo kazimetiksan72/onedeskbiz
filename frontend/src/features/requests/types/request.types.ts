@@ -1,7 +1,8 @@
 import type { Vehicle } from '../../vehicles/types/vehicle.types';
+import type { Asset, AssetAssignmentType } from '../../assets/types/asset.types';
 
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE';
+export type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE' | 'ASSET';
 
 export interface RequestItem {
   _id: string;
@@ -30,6 +31,8 @@ export interface RequestItem {
     size?: number;
   }>;
   vehicleId?: Vehicle | null;
+  assetId?: Asset | null;
+  assetAssignmentType?: AssetAssignmentType | null;
   approvalAction?: {
     actorUserId?: {
       _id: string;

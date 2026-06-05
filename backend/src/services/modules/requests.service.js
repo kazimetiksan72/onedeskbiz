@@ -5,6 +5,7 @@ const { DepartmentRoleAssignment } = require('../../models/DepartmentRoleAssignm
 const { Request, REQUEST_STATUS, REQUEST_TYPES } = require('../../models/Request');
 const { User } = require('../../models/User');
 const { Vehicle } = require('../../models/Vehicle');
+const { Asset, ASSET_ASSIGNMENT_TYPE } = require('../../models/Asset');
 const env = require('../../config/env');
 const { ApiError } = require('../../utils/apiError');
 const { logger } = require('../../utils/logger');
@@ -15,12 +16,14 @@ const {
   sendRequestCreatedNotification
 } = require('../notifications/oneSignal.service');
 const { logActivitySafe } = require('./activityLogs.service');
+const assetsService = require('./assets.service');
 
 const permissionByRequestType = {
   [REQUEST_TYPES.VEHICLE]: PERMISSIONS.VEHICLE_APPROVAL,
   [REQUEST_TYPES.LEAVE]: PERMISSIONS.LEAVE_APPROVAL,
   [REQUEST_TYPES.MATERIAL]: PERMISSIONS.MATERIAL_APPROVAL,
-  [REQUEST_TYPES.EXPENSE]: PERMISSIONS.EXPENSE_APPROVAL
+  [REQUEST_TYPES.EXPENSE]: PERMISSIONS.EXPENSE_APPROVAL,
+  [REQUEST_TYPES.ASSET]: PERMISSIONS.ASSET_APPROVAL
 };
 
 function ensureValidDateRange(startAt, endAt) {
@@ -93,6 +96,19 @@ async function createRequest(user, payload, files = []) {
     }
   }
 
+  if (payload.type === REQUEST_TYPES.ASSET) {
+    const asset = await Asset.findById(payload.assetId).select('_id status').lean();
+    if (!asset || asset.status !== 'ACTIVE') {
+      throw new ApiError(404, 'Demirbaş bulunamadı.');
+    }
+    await assetsService.ensureAssetAvailable(
+      payload.assetId,
+      payload.assetAssignmentType || ASSET_ASSIGNMENT_TYPE.PERMANENT,
+      payload.startAt,
+      payload.endAt
+    );
+  }
+
   const expenseAttachments = payload.type === REQUEST_TYPES.EXPENSE
     ? await uploadExpenseAttachments(user._id, files)
     : [];
@@ -102,6 +118,8 @@ async function createRequest(user, payload, files = []) {
     requesterDepartment: user.department || '',
     type: payload.type,
     vehicleId: payload.type === REQUEST_TYPES.VEHICLE ? payload.vehicleId : null,
+    assetId: payload.type === REQUEST_TYPES.ASSET ? payload.assetId : null,
+    assetAssignmentType: payload.type === REQUEST_TYPES.ASSET ? payload.assetAssignmentType || ASSET_ASSIGNMENT_TYPE.PERMANENT : null,
     startAt: payload.startAt ? new Date(payload.startAt) : null,
     endAt: payload.endAt ? new Date(payload.endAt) : null,
     leaveType: payload.type === REQUEST_TYPES.LEAVE ? payload.leaveType || 'ANNUAL' : null,
@@ -143,6 +161,7 @@ async function listMyRequests(user, { page, limit }) {
   const [items, total] = await Promise.all([
     Request.find(query)
       .populate('vehicleId')
+      .populate('assetId')
       .populate('approvalAction.actorUserId', 'firstName lastName workEmail')
       .sort({ createdAt: -1 })
       .skip(skip)
@@ -252,6 +271,7 @@ async function listApprovals(user, { page, limit, status = REQUEST_STATUS.PENDIN
     Request.find(query)
       .populate('requesterUserId', 'firstName lastName workEmail department')
       .populate('vehicleId')
+      .populate('assetId')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -277,6 +297,15 @@ async function actOnRequest(user, id, action, note) {
     throw new ApiError(403, 'Bu talep için onay yetkiniz yok.');
   }
 
+  if (action === 'APPROVE' && request.type === REQUEST_TYPES.ASSET) {
+    await assetsService.ensureAssetAvailable(
+      request.assetId,
+      request.assetAssignmentType,
+      request.startAt,
+      request.endAt
+    );
+  }
+
   request.status = action === 'APPROVE' ? REQUEST_STATUS.APPROVED : REQUEST_STATUS.REJECTED;
   request.approvalAction = {
     actorUserId: user._id,
@@ -286,9 +315,22 @@ async function actOnRequest(user, id, action, note) {
   };
 
   await request.save();
+
+  if (action === 'APPROVE' && request.type === REQUEST_TYPES.ASSET) {
+    await assetsService.assignAsset(user, {
+      assetId: request.assetId,
+      assignedUserId: request.requesterUserId,
+      type: request.assetAssignmentType,
+      startAt: request.startAt,
+      endAt: request.endAt,
+      requestId: request._id
+    });
+  }
+
   const populatedRequest = await Request.findById(request._id)
     .populate('requesterUserId', 'firstName lastName workEmail department')
     .populate('vehicleId')
+    .populate('assetId')
     .populate('approvalAction.actorUserId', 'firstName lastName workEmail')
     .lean();
 

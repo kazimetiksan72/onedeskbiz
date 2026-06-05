@@ -20,6 +20,7 @@ const permissions: Array<{ value: RolePermission; label: string }> = [
   { value: 'LEAVE_APPROVAL', label: 'İzin onay' },
   { value: 'MATERIAL_APPROVAL', label: 'Malzeme onay' },
   { value: 'EXPENSE_APPROVAL', label: 'Masraf onay' },
+  { value: 'ASSET_APPROVAL', label: 'Demirbaş onay ve atama' },
   { value: 'TASK_ASSIGNMENT', label: 'Görev atama' }
 ];
 

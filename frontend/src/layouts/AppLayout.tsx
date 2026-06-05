@@ -13,6 +13,7 @@ const adminNavItems = [
   { to: '/admin/requests', label: 'Talepler' },
   { to: '/admin/tasks', label: 'Görevler' },
   { to: '/admin/vehicles', label: 'Araçlarım' },
+  { to: '/admin/assets', label: 'Demirbaşlarım' },
   { to: '/admin/announcements', label: 'Duyuru Yönetimi' },
   { to: '/admin/department-roles', label: 'Roller ve Yetkiler' },
   { to: '/admin/company-settings', label: 'Şirket Ayarları' }
@@ -24,6 +25,7 @@ const employeeNavItems = [
   { to: '/employee-documents', label: 'Özlük Belgelerim' },
   { to: '/leave-requests', label: 'İzin Talepleri' },
   { to: '/vehicle-requests', label: 'Araç Talepleri' },
+  { to: '/asset-requests', label: 'Demirbaş Talepleri' },
   { to: '/material-requests', label: 'Malzeme Talepleri' },
   { to: '/expense-requests', label: 'Masraf Talepleri' },
   { to: '/tasks', label: 'Görevlerim' },
@@ -35,12 +37,16 @@ export function AppLayout() {
   const { user, refreshToken, clearAuth } = useAuthStore();
   const [companyName, setCompanyName] = useState('');
   const canAssignTasks = user?.role === 'ADMIN' || user?.departmentRoleId?.permissions?.includes('TASK_ASSIGNMENT');
+  const canManageAssets = user?.role === 'ADMIN' || user?.departmentRoleId?.permissions?.includes('ASSET_APPROVAL');
   const userDisplayName = `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || user?.email || '';
   const userInitials = `${user?.firstName?.[0] || ''}${user?.lastName?.[0] || ''}`.toLocaleUpperCase('tr-TR') || 'U';
   const userAvatarUrl = user?.businessCard?.avatarPublicUrl || user?.businessCard?.avatarUrl || '';
   const navItems = user?.role === 'ADMIN'
     ? adminNavItems
-    : employeeNavItems.map((item) => item.to === '/tasks' && canAssignTasks ? { ...item, label: 'Görevler' } : item);
+    : [
+      ...employeeNavItems.map((item) => item.to === '/tasks' && canAssignTasks ? { ...item, label: 'Görevler' } : item),
+      ...(canManageAssets ? [{ to: '/assets', label: 'Demirbaşlarım' }] : [])
+    ];
 
   useEffect(() => {
     getPublicCompanyBillingInfo()

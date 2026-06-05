@@ -28,6 +28,13 @@ const homeCards = [
     accent: 'from-orange-500 to-red-600'
   },
   {
+    to: '/asset-requests',
+    title: 'Demirbaş Talepleri',
+    description: 'Cihazlar için kalıcı veya geçici talep oluşturun.',
+    icon: DeviceIcon,
+    accent: 'from-violet-500 to-slate-800'
+  },
+  {
     to: '/material-requests',
     title: 'Malzeme Talepleri',
     description: 'İhtiyaç duyduğunuz malzemeleri bildirin.',
@@ -178,6 +185,10 @@ function CalendarIcon() {
 
 function VehicleIcon() {
   return <IconBase><path d="M5 17h14" /><path d="M7 17v2" /><path d="M17 17v2" /><path d="M5 17l1.5-6h11L19 17" /><path d="M8 11l1.5-4h5L16 11" /></IconBase>;
+}
+
+function DeviceIcon() {
+  return <IconBase><rect x="4" y="5" width="16" height="11" rx="2" /><path d="M8 21h8" /><path d="M12 16v5" /></IconBase>;
 }
 
 function BoxIcon() {

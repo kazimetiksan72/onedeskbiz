@@ -14,6 +14,8 @@ import { ContactDetailPage } from '../features/contacts/pages/ContactDetailPage'
 import { ContactActionLogsPage } from '../features/contactActionLogs/pages/ContactActionLogsPage';
 import { VehiclesPage } from '../features/vehicles/pages/VehiclesPage';
 import { VehicleDetailPage } from '../features/vehicles/pages/VehicleDetailPage';
+import { AssetsPage } from '../features/assets/pages/AssetsPage';
+import { AssetRequestsPage } from '../features/assets/pages/AssetRequestsPage';
 import { CompanySettingsPage } from '../features/companySettings/pages/CompanySettingsPage';
 import { DepartmentRolesPage } from '../features/departmentRoles/pages/DepartmentRolesPage';
 import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequestsPage';
@@ -52,6 +54,8 @@ export const router = createBrowserRouter([
               { path: '/announcements/:id', element: <EmployeeFeedDetailPage /> },
               { path: '/employee-documents', element: <EmployeeDocumentsPage /> },
               { path: '/vehicle-requests', element: <VehicleRequestsPage /> },
+              { path: '/asset-requests', element: <AssetRequestsPage /> },
+              { path: '/assets', element: <AssetsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
               { path: '/expense-requests', element: <ExpenseRequestsPage /> },
               { path: '/tasks', element: <TasksPage /> },
@@ -73,6 +77,7 @@ export const router = createBrowserRouter([
               { path: '/admin/tasks', element: <TasksPage /> },
               { path: '/admin/vehicles', element: <VehiclesPage /> },
               { path: '/admin/vehicles/:id', element: <VehicleDetailPage /> },
+              { path: '/admin/assets', element: <AssetsPage /> },
               { path: '/admin/announcements', element: <AdminFeedPage /> },
               { path: '/admin/feed', element: <Navigate to="/admin/announcements" replace /> },
               { path: '/admin/department-roles', element: <DepartmentRolesPage /> },

@@ -4,7 +4,8 @@ const REQUEST_TYPES = {
   VEHICLE: 'VEHICLE',
   LEAVE: 'LEAVE',
   MATERIAL: 'MATERIAL',
-  EXPENSE: 'EXPENSE'
+  EXPENSE: 'EXPENSE',
+  ASSET: 'ASSET'
 };
 
 const REQUEST_STATUS = {
@@ -45,6 +46,12 @@ const requestSchema = new mongoose.Schema(
       index: true
     },
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: 'Vehicle', default: null },
+    assetId: { type: mongoose.Schema.Types.ObjectId, ref: 'Asset', default: null },
+    assetAssignmentType: {
+      type: String,
+      enum: ['PERMANENT', 'TEMPORARY'],
+      default: null
+    },
     startAt: { type: Date, default: null, index: true },
     endAt: { type: Date, default: null, index: true },
     leaveType: {
