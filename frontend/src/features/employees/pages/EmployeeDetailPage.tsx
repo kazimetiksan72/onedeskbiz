@@ -133,8 +133,6 @@ export function EmployeeDetailPage() {
           <DetailItem label="Çalışma Tipi" value={translateEmploymentType(employee.employmentType)} />
           <DetailItem label="İşe Başlangıç" value={employee.startDate ? employee.startDate.slice(0, 10) : undefined} />
           <DetailItem label="Durum" value={employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif'} />
-          <DetailItem label="Kartvizit Adı" value={employee.businessCard?.displayName} />
-          <DetailItem label="Kartvizit E-postası" value={employee.businessCard?.email} />
         </div>
       </section>
 
