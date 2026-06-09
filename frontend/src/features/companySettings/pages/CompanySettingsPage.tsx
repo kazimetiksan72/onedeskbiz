@@ -1,9 +1,7 @@
 import { useEffect, useState, type ChangeEvent, type DragEvent, type ReactNode } from 'react';
 import {
-  deleteCompanyReference,
   getCompanySettings,
   uploadCompanyLogo,
-  uploadCompanyReferenceLogos,
   upsertCompanySettings,
   type CompanySettingsPayload
 } from '../api/companySettings.api';
@@ -18,7 +16,6 @@ const initial: Omit<CompanySettings, '_id'> = {
   logoUrl: '',
   timezone: 'Europe/Istanbul',
   departments: [],
-  companyReferences: [],
   billingInfo: {
     legalCompanyName: '',
     taxNumber: '',
@@ -47,10 +44,6 @@ export function CompanySettingsPage() {
   const [logoUploading, setLogoUploading] = useState(false);
   const [logoDragActive, setLogoDragActive] = useState(false);
   const [selectedLogoFile, setSelectedLogoFile] = useState<File | null>(null);
-  const [referenceUploading, setReferenceUploading] = useState(false);
-  const [referenceDragActive, setReferenceDragActive] = useState(false);
-  const [selectedReferenceFiles, setSelectedReferenceFiles] = useState<File[]>([]);
-  const [referenceDeletingId, setReferenceDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     getCompanySettings().then((data) => {
@@ -117,66 +110,6 @@ export function CompanySettingsPage() {
     if (!file) return;
     setSelectedLogoFile(file);
     setMessage(`${file.name} seçildi. Yüklemek için Logo Yükle butonuna basın.`);
-  };
-
-  const setReferenceFiles = (files: FileList | File[]) => {
-    const imageFiles = Array.from(files).filter((file) => file.type.startsWith('image/'));
-    if (imageFiles.length === 0) {
-      setMessage('Referans logosu için JPG, PNG veya WEBP dosyası seçin.');
-      return;
-    }
-
-    setSelectedReferenceFiles(imageFiles);
-    setMessage(`${imageFiles.length} referans logosu seçildi. Yüklemek için Referansları Yükle butonuna basın.`);
-  };
-
-  const onReferenceSelected = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    event.target.value = '';
-    if (!files?.length) return;
-    setReferenceFiles(files);
-  };
-
-  const onReferenceDrop = (event: DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setReferenceDragActive(false);
-    const files = event.dataTransfer.files;
-    if (!files?.length) return;
-    setReferenceFiles(files);
-  };
-
-  const uploadReferenceFiles = async () => {
-    if (selectedReferenceFiles.length === 0) return;
-
-    setReferenceUploading(true);
-    setMessage('');
-
-    try {
-      const updated = await uploadCompanyReferenceLogos(selectedReferenceFiles);
-      setSettings(normalizeSettings(updated));
-      setSelectedReferenceFiles([]);
-      setMessage('Referans logoları yüklendi.');
-    } catch (requestError: any) {
-      setMessage(requestError?.response?.data?.message || 'Referans logoları yüklenemedi.');
-    } finally {
-      setReferenceUploading(false);
-    }
-  };
-
-  const removeCompanyReference = async (referenceId: string) => {
-    setReferenceDeletingId(referenceId);
-    setMessage('');
-
-    try {
-      const updated = await deleteCompanyReference(referenceId);
-      setSettings(normalizeSettings(updated));
-      setMessage('Referans logosu silindi.');
-    } catch (requestError: any) {
-      setMessage(requestError?.response?.data?.message || 'Referans logosu silinemedi.');
-    } finally {
-      setReferenceDeletingId(null);
-    }
   };
 
   const addDepartment = () => {
@@ -296,115 +229,6 @@ export function CompanySettingsPage() {
             </button>
           </div>
         </div>
-      </section>
-
-      <section className="page-card space-y-5">
-        <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-slate-900">Şirket Referansları</h2>
-            <p className="text-sm text-slate-500">Referans firmaların logolarını toplu olarak yükleyin ve listede yönetin.</p>
-          </div>
-          <div className="text-sm font-medium text-slate-500">
-            {(settings.companyReferences || []).length} referans
-          </div>
-        </div>
-
-        <div
-          className={`relative rounded-2xl border-2 border-dashed p-5 transition ${
-            referenceDragActive
-              ? 'border-brand-500 bg-brand-50 shadow-lg ring-4 ring-brand-100'
-              : selectedReferenceFiles.length > 0
-                ? 'border-emerald-400 bg-emerald-50/40'
-                : 'border-slate-200 bg-slate-50/60'
-          }`}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setReferenceDragActive(true);
-          }}
-          onDragOver={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setReferenceDragActive(true);
-          }}
-          onDragLeave={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            setReferenceDragActive(false);
-          }}
-          onDrop={onReferenceDrop}
-        >
-          {referenceDragActive ? (
-            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-brand-600/10 backdrop-blur-[1px]">
-              <div className="rounded-2xl bg-white px-5 py-3 text-sm font-semibold text-brand-700 shadow-lg">
-                Referans logolarını buraya bırakın
-              </div>
-            </div>
-          ) : null}
-
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="font-medium text-slate-900">Toplu logo yükleme</p>
-              <p className="text-sm text-slate-500">JPG, PNG veya WEBP dosyalarını seçin ya da bu alana sürükleyip bırakın.</p>
-              {selectedReferenceFiles.length > 0 ? (
-                <p className="mt-1 text-sm font-medium text-emerald-700">
-                  {selectedReferenceFiles.length} dosya seçildi.
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <label className="btn-secondary cursor-pointer">
-                Logoları Seç
-                <input
-                  className="hidden"
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={onReferenceSelected}
-                  disabled={referenceUploading}
-                />
-              </label>
-              <button
-                type="button"
-                className="btn-primary disabled:cursor-not-allowed disabled:opacity-60"
-                onClick={uploadReferenceFiles}
-                disabled={referenceUploading || selectedReferenceFiles.length === 0}
-              >
-                {referenceUploading ? 'Yükleniyor...' : 'Referansları Yükle'}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {(settings.companyReferences || []).length === 0 ? (
-          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
-            Henüz şirket referansı eklenmedi.
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {(settings.companyReferences || []).map((reference) => (
-              <div key={reference._id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-                <div className="flex h-24 items-center justify-center rounded-xl border border-slate-100 bg-slate-50">
-                  <img src={reference.logoUrl} alt={reference.name} className="max-h-20 max-w-full object-contain p-2" />
-                </div>
-                <div className="mt-3 flex items-start justify-between gap-3">
-                  <p className="min-w-0 truncate text-sm font-semibold text-slate-900" title={reference.name}>
-                    {reference.name || 'Referans'}
-                  </p>
-                  <button
-                    type="button"
-                    className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-                    onClick={() => removeCompanyReference(reference._id)}
-                    disabled={referenceDeletingId === reference._id}
-                  >
-                    {referenceDeletingId === reference._id ? 'Siliniyor...' : 'Sil'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       <ReadOnlyCard title="Genel" onEdit={() => openModal('general')}>
@@ -618,7 +442,6 @@ function normalizeSettings(data: CompanySettings): Omit<CompanySettings, '_id'> 
   return {
     ...initial,
     ...rest,
-    companyReferences: rest.companyReferences || [],
     billingInfo: {
       ...initial.billingInfo,
       ...(rest.billingInfo || {}),

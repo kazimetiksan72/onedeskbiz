@@ -26,17 +26,6 @@ const billingInfoSchema = new mongoose.Schema(
   { _id: false }
 );
 
-const companyReferenceSchema = new mongoose.Schema(
-  {
-    name: { type: String, trim: true },
-    logoUrl: { type: String, trim: true },
-    blobName: { type: String, trim: true }
-  },
-  {
-    timestamps: true
-  }
-);
-
 const companySettingsSchema = new mongoose.Schema(
   {
     companyName: { type: String, trim: true },
@@ -44,7 +33,6 @@ const companySettingsSchema = new mongoose.Schema(
     logoUrl: { type: String, trim: true },
     timezone: { type: String, default: 'UTC' },
     departments: [{ type: String, trim: true }],
-    companyReferences: { type: [companyReferenceSchema], default: [] },
     billingInfo: { type: billingInfoSchema, default: {} }
   },
   {

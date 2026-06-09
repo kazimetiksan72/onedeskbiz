@@ -120,11 +120,6 @@ function getLogoExtension(file) {
   return '.jpg';
 }
 
-function getReferenceName(file) {
-  const parsed = path.parse(file.originalname || '');
-  return (parsed.name || 'Referans').replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
 async function getCompanyContainerClient() {
   if (!env.azureStorage.connectionString) {
     throw new ApiError(500, 'Azure Storage is not configured');
@@ -171,52 +166,9 @@ async function uploadCompanyLogo(file) {
   ).lean();
 }
 
-async function uploadCompanyReferences(files = []) {
-  if (!Array.isArray(files) || files.length === 0) {
-    throw new ApiError(400, 'En az bir referans logosu seçilmelidir.');
-  }
-
-  const uploadedReferences = await Promise.all(
-    files.map(async (file) => {
-      const uploadedLogo = await uploadCompanyImage(file, 'references', 'reference-logo');
-      return {
-        name: getReferenceName(file),
-        logoUrl: uploadedLogo.url,
-        blobName: uploadedLogo.blobName
-      };
-    })
-  );
-
-  return CompanySettings.findOneAndUpdate(
-    {},
-    { $push: { companyReferences: { $each: uploadedReferences } } },
-    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true }
-  ).lean();
-}
-
-async function deleteCompanyReference(referenceId) {
-  const settings = await CompanySettings.findOne();
-  if (!settings) throw new ApiError(404, 'Şirket ayarları bulunamadı.');
-
-  const reference = settings.companyReferences.id(referenceId);
-  if (!reference) throw new ApiError(404, 'Referans bulunamadı.');
-
-  if (reference.blobName) {
-    const containerClient = await getCompanyContainerClient();
-    const blockBlobClient = containerClient.getBlockBlobClient(reference.blobName);
-    await blockBlobClient.deleteIfExists();
-  }
-
-  reference.deleteOne();
-  await settings.save();
-  return settings.toObject();
-}
-
 module.exports = {
   getCompanySettings,
   getPublicBillingInfo,
   upsertCompanySettings,
-  uploadCompanyLogo,
-  uploadCompanyReferences,
-  deleteCompanyReference
+  uploadCompanyLogo
 };

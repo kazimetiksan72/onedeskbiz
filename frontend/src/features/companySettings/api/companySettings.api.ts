@@ -30,18 +30,3 @@ export async function uploadCompanyLogo(file: File) {
   });
   return data;
 }
-
-export async function uploadCompanyReferenceLogos(files: File[]) {
-  const formData = new FormData();
-  files.forEach((file) => formData.append('logos', file));
-
-  const { data } = await api.post<CompanySettings>('/company-settings/references/logos', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  return data;
-}
-
-export async function deleteCompanyReference(referenceId: string) {
-  const { data } = await api.delete<CompanySettings>(`/company-settings/references/${referenceId}`);
-  return data;
-}

@@ -74,7 +74,7 @@ const moduleCards = [
   {
     to: '/admin/company-settings',
     title: 'Şirket Ayarları',
-    description: 'Şirket bilgileri, logo, referanslar ve departmanları yönetin.',
+    description: 'Şirket bilgileri, logo ve departmanları yönetin.',
     icon: 'settings'
   }
 ] as const;
