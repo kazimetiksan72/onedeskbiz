@@ -1,13 +1,13 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { deleteEmployee, generateJobDescription, getEmployee, updateEmployee } from '../api/employees.api';
+import { deleteEmployee, downloadEmployeeProfilePdf, generateJobDescription, getEmployee, updateEmployee } from '../api/employees.api';
 import type { Employee } from '../types/employee.types';
 import { getCompanySettings } from '../../companySettings/api/companySettings.api';
 import { Loading } from '../../../components/Loading';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalPortal } from '../../../components/ModalPortal';
 
-type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'jobDescription' | 'startDate' | 'status' | 'employmentType'>>;
+type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'tckn' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'jobDescription' | 'startDate' | 'status' | 'employmentType'>>;
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
@@ -21,6 +21,21 @@ export function EmployeeDetailPage() {
   const [error, setError] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  const isValidTckn = (value?: string) => {
+    if (!value) return true;
+    if (!/^[1-9][0-9]{10}$/.test(value)) return false;
+
+    const digits = value.split('').map(Number);
+    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+    const tenthDigit = ((oddSum * 7) - evenSum) % 10;
+    const eleventhDigit = digits.slice(0, 10).reduce((sum, digit) => sum + digit, 0) % 10;
+
+    return digits[9] === tenthDigit && digits[10] === eleventhDigit;
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -39,6 +54,7 @@ export function EmployeeDetailPage() {
     setForm({
       firstName: employee.firstName,
       lastName: employee.lastName,
+      tckn: employee.tckn || '',
       birthDate: employee.birthDate || '',
       workEmail: employee.workEmail,
       phone: employee.phone || '',
@@ -50,12 +66,20 @@ export function EmployeeDetailPage() {
       employmentType: employee.employmentType
     });
     setAiError('');
+    setFormError('');
     setIsEditOpen(true);
   };
 
   const onSave = async (event: FormEvent) => {
     event.preventDefault();
     if (!id || !form) return;
+    setFormError('');
+
+    if (!isValidTckn(form.tckn)) {
+      setFormError('Geçerli bir TCKN girin.');
+      return;
+    }
+
     const updated = await updateEmployee(id, form);
     setEmployee(updated);
     setIsEditOpen(false);
@@ -65,6 +89,26 @@ export function EmployeeDetailPage() {
     if (!id) return;
     await deleteEmployee(id);
     navigate('/admin/employees');
+  };
+
+  const downloadPdf = async () => {
+    if (!id || !employee) return;
+    setPdfLoading(true);
+
+    try {
+      const blob = await downloadEmployeeProfilePdf(id);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      const safeName = `${employee.firstName}-${employee.lastName}`.toLowerCase().replace(/[^a-z0-9]+/gi, '-');
+      link.href = url;
+      link.download = `${safeName || 'personel'}-gorev-tanimi.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } finally {
+      setPdfLoading(false);
+    }
   };
 
   const createJobDescriptionWithAI = async () => {
@@ -110,6 +154,9 @@ export function EmployeeDetailPage() {
       <div className="flex items-center justify-between gap-3">
         <button type="button" className="btn-secondary" onClick={() => navigate('/admin/employees')}>Geri dön</button>
         <div className="flex gap-2">
+          <button type="button" className="btn-secondary" onClick={downloadPdf} disabled={pdfLoading}>
+            {pdfLoading ? 'PDF hazırlanıyor...' : 'PDF İndir'}
+          </button>
           <button type="button" className="btn-secondary" onClick={openEdit}>Düzenle</button>
           <button type="button" className="btn-danger" onClick={() => setIsDeleteOpen(true)}>Sil</button>
         </div>
@@ -126,6 +173,7 @@ export function EmployeeDetailPage() {
         </div>
         <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
           <DetailItem label="E-posta" value={employee.workEmail} />
+          <DetailItem label="TCKN" value={employee.tckn} />
           <DetailItem label="Doğum Tarihi" value={employee.birthDate ? employee.birthDate.slice(0, 10) : undefined} />
           <DetailItem label="Telefon" value={employee.phone} />
           <DetailItem label="Departman" value={employee.department} />
@@ -142,6 +190,7 @@ export function EmployeeDetailPage() {
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               <input className="input" placeholder="Ad" value={form.firstName || ''} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
               <input className="input" placeholder="Soyad" value={form.lastName || ''} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
+              <input className="input" inputMode="numeric" maxLength={11} placeholder="TCKN" value={form.tckn || ''} onChange={(e) => setForm({ ...form, tckn: e.target.value.replace(/\D/g, '').slice(0, 11) })} />
               <input className="input" type="date" value={(form.birthDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, birthDate: e.target.value ? new Date(e.target.value).toISOString() : null })} />
               <input className="input" placeholder="E-posta" value={form.workEmail || ''} onChange={(e) => setForm({ ...form, workEmail: e.target.value })} required />
               <input className="input" placeholder="Telefon" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
@@ -167,6 +216,7 @@ export function EmployeeDetailPage() {
                 <option value="INACTIVE">Pasif</option>
               </select>
             </div>
+            {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
             <div className="flex gap-2"><button className="btn-primary" type="submit">Güncelle</button><button className="btn-secondary" type="button" onClick={() => setIsEditOpen(false)}>Vazgeç</button></div>
           </form>
         </FormModal>

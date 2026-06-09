@@ -1,5 +1,7 @@
 const bcrypt = require('bcryptjs');
+const PDFDocument = require('pdfkit');
 const { User } = require('../../models/User');
+const { CompanySettings } = require('../../models/CompanySettings');
 const { ROLES } = require('../../constants/roles');
 const env = require('../../config/env');
 const { ApiError } = require('../../utils/apiError');
@@ -43,6 +45,7 @@ function pickUserProfileFields(payload) {
   return {
     firstName: payload.firstName,
     lastName: payload.lastName,
+    tckn: payload.tckn,
     birthDate: payload.birthDate,
     workEmail: payload.workEmail,
     email: payload.workEmail,
@@ -62,6 +65,151 @@ function pickUserProfileFields(payload) {
 
 function normalizeWorkEmail(workEmail) {
   return (workEmail || '').toLowerCase().trim();
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  return new Intl.DateTimeFormat('tr-TR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).format(new Date(value));
+}
+
+function getFullName(user) {
+  return `${user.firstName || ''} ${user.lastName || ''}`.trim() || '-';
+}
+
+function translateEmploymentType(value) {
+  if (value === 'PART_TIME') return 'Yarı zamanlı';
+  if (value === 'CONTRACTOR') return 'Sözleşmeli';
+  return 'Tam zamanlı';
+}
+
+async function fetchImageBuffer(url) {
+  if (!url) return null;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.startsWith('image/') || contentType.includes('webp')) return null;
+    return Buffer.from(await response.arrayBuffer());
+  } catch {
+    return null;
+  }
+}
+
+function addLabelValue(document, label, value, options = {}) {
+  const x = options.x || document.x;
+  const y = options.y || document.y;
+  const labelWidth = options.labelWidth || 130;
+  const valueWidth = options.valueWidth || 360;
+
+  document
+    .font('Helvetica-Bold')
+    .fontSize(10)
+    .fillColor('#334155')
+    .text(label, x, y, { width: labelWidth });
+
+  document
+    .font('Helvetica')
+    .fontSize(10)
+    .fillColor('#0f172a')
+    .text(value || '-', x + labelWidth + 8, y, { width: valueWidth });
+
+  document.moveDown(0.65);
+}
+
+function createEmployeeProfilePdf({ employee, settings, logoBuffer }) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    const document = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true });
+    const billingInfo = settings?.billingInfo || {};
+    const companyName = settings?.companyName || billingInfo.legalCompanyName || 'Şirket';
+
+    document.on('data', (chunk) => chunks.push(chunk));
+    document.on('end', () => resolve(Buffer.concat(chunks)));
+    document.on('error', reject);
+
+    if (logoBuffer) {
+      try {
+        document.image(logoBuffer, 48, 42, { fit: [96, 52], align: 'left' });
+      } catch {
+        document.font('Helvetica-Bold').fontSize(12).text(companyName, 48, 52, { width: 160 });
+      }
+    } else {
+      document.font('Helvetica-Bold').fontSize(12).text(companyName, 48, 52, { width: 160 });
+    }
+
+    document
+      .font('Helvetica-Bold')
+      .fontSize(17)
+      .fillColor('#0f172a')
+      .text('Personel Bilgi ve Görev Tanımı Formu', 170, 50, { align: 'right', width: 377 });
+
+    document
+      .font('Helvetica')
+      .fontSize(9)
+      .fillColor('#64748b')
+      .text(`Düzenleme Tarihi: ${formatDate(new Date())}`, 170, 78, { align: 'right', width: 377 });
+
+    document.moveTo(48, 116).lineTo(547, 116).strokeColor('#cbd5e1').stroke();
+    document.y = 138;
+
+    document.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a').text('Personel Bilgileri');
+    document.moveDown(0.8);
+    addLabelValue(document, 'Ad Soyad', getFullName(employee));
+    addLabelValue(document, 'TCKN', employee.tckn || '-');
+    addLabelValue(document, 'E-posta', employee.workEmail || employee.email || '-');
+    addLabelValue(document, 'Telefon', employee.phone || '-');
+    addLabelValue(document, 'Doğum Tarihi', formatDate(employee.birthDate));
+    addLabelValue(document, 'Departman', employee.department || '-');
+    addLabelValue(document, 'Ünvan', employee.title || '-');
+    addLabelValue(document, 'Çalışma Tipi', translateEmploymentType(employee.employmentType));
+    addLabelValue(document, 'İşe Başlangıç', formatDate(employee.startDate));
+    addLabelValue(document, 'Durum', employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif');
+
+    document.moveDown(1.1);
+    document.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a').text('Görev Tanımı');
+    document.moveDown(0.5);
+    document
+      .font('Helvetica')
+      .fontSize(10)
+      .fillColor('#0f172a')
+      .text(employee.jobDescription || '-', { width: 499, align: 'left', lineGap: 3 });
+
+    if (document.y > 610) {
+      document.addPage();
+      document.y = 80;
+    }
+
+    const signatureY = Math.max(document.y + 42, 610);
+    document.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a');
+    document.text('Personel İmzası', 48, signatureY, { width: 190, align: 'center' });
+    document.text('Yetkili İmzası', 357, signatureY, { width: 190, align: 'center' });
+    document.moveTo(58, signatureY + 54).lineTo(228, signatureY + 54).strokeColor('#94a3b8').stroke();
+    document.moveTo(367, signatureY + 54).lineTo(537, signatureY + 54).strokeColor('#94a3b8').stroke();
+
+    const footerParts = [
+      billingInfo.legalCompanyName || settings?.companyName,
+      billingInfo.address,
+      [billingInfo.city, billingInfo.country].filter(Boolean).join(' / '),
+      billingInfo.phone,
+      billingInfo.billingEmail,
+      settings?.website,
+      billingInfo.taxNumber ? `Vergi No: ${billingInfo.taxNumber}` : '',
+      billingInfo.taxOffice ? `Vergi Dairesi: ${billingInfo.taxOffice}` : ''
+    ].filter(Boolean);
+
+    document
+      .font('Helvetica')
+      .fontSize(7)
+      .fillColor('#64748b')
+      .text(footerParts.join(' | '), 48, 762, { width: 499, align: 'center' });
+
+    document.end();
+  });
 }
 
 async function ensureUniqueEmail(workEmail, excludeUserId) {
@@ -154,6 +302,7 @@ async function updateEmployee(id, payload) {
   const mergedPayload = {
     firstName: rawProfile.firstName ?? current.firstName,
     lastName: rawProfile.lastName ?? current.lastName,
+    tckn: rawProfile.tckn ?? current.tckn,
     birthDate: rawProfile.birthDate ?? current.birthDate,
     workEmail: mergedWorkEmail,
     personalEmail: rawProfile.personalEmail ?? current.personalEmail,
@@ -243,11 +392,35 @@ async function generateJobDescription(payload) {
   return { jobDescription };
 }
 
+async function generateEmployeeProfilePdf(id) {
+  const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
+    .select('-passwordHash')
+    .lean();
+
+  if (!employee) {
+    throw new ApiError(404, 'Employee not found');
+  }
+
+  const settings = await CompanySettings.findOne().lean();
+  const logoBuffer = await fetchImageBuffer(settings?.logoUrl);
+  const buffer = await createEmployeeProfilePdf({ employee, settings, logoBuffer });
+  const safeName = getFullName(employee)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/(^-|-$)/g, '') || 'personel';
+
+  return {
+    buffer,
+    fileName: `${safeName}-gorev-tanimi.pdf`
+  };
+}
+
 module.exports = {
   createEmployee,
   listEmployees,
   getEmployeeById,
   updateEmployee,
   deleteEmployee,
-  generateJobDescription
+  generateJobDescription,
+  generateEmployeeProfilePdf
 };

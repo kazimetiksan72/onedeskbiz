@@ -18,6 +18,13 @@ export async function getEmployee(id: string) {
   return data;
 }
 
+export async function downloadEmployeeProfilePdf(id: string) {
+  const response = await api.get<Blob>(`/employees/${id}/profile-document.pdf`, {
+    responseType: 'blob'
+  });
+  return response.data;
+}
+
 export async function createEmployee(payload: EmployeePayload) {
   const { data } = await api.post<Employee>('/employees', payload);
   return data;

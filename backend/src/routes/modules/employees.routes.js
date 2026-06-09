@@ -20,6 +20,7 @@ router.post(
   controller.generateJobDescription
 );
 router.post('/', requireRole(ROLES.ADMIN), validate(createEmployeeSchema), controller.createEmployee);
+router.get('/:id/profile-document.pdf', requireRole(ROLES.ADMIN), validate(employeeParamsSchema), controller.downloadEmployeeProfilePdf);
 router.get('/:id', validate(employeeParamsSchema), controller.getEmployee);
 router.patch('/:id', requireRole(ROLES.ADMIN), validate(updateEmployeeSchema), controller.updateEmployee);
 router.delete('/:id', requireRole(ROLES.ADMIN), validate(employeeParamsSchema), controller.deleteEmployee);

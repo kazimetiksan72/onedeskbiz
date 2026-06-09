@@ -25,6 +25,13 @@ const updateEmployee = asyncHandler(async (req, res) => {
   res.json(item);
 });
 
+const downloadEmployeeProfilePdf = asyncHandler(async (req, res) => {
+  const result = await employeesService.generateEmployeeProfilePdf(req.params.id);
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+  res.send(result.buffer);
+});
+
 const generateJobDescription = asyncHandler(async (req, res) => {
   const result = await employeesService.generateJobDescription(req.body);
   res.json(result);
@@ -40,6 +47,7 @@ module.exports = {
   listEmployees,
   getEmployee,
   updateEmployee,
+  downloadEmployeeProfilePdf,
   generateJobDescription,
   deleteEmployee
 };

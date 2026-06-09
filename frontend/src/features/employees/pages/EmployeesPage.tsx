@@ -21,6 +21,7 @@ const PhoneInput =
 const initialForm: Partial<Employee> = {
   firstName: '',
   lastName: '',
+  tckn: '',
   workEmail: '',
   phone: '',
   department: '',
@@ -44,6 +45,20 @@ export function EmployeesPage() {
   const [departments, setDepartments] = useState<string[]>([]);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [formError, setFormError] = useState('');
+
+  const isValidTckn = (value?: string) => {
+    if (!value) return true;
+    if (!/^[1-9][0-9]{10}$/.test(value)) return false;
+
+    const digits = value.split('').map(Number);
+    const oddSum = digits[0] + digits[2] + digits[4] + digits[6] + digits[8];
+    const evenSum = digits[1] + digits[3] + digits[5] + digits[7];
+    const tenthDigit = ((oddSum * 7) - evenSum) % 10;
+    const eleventhDigit = digits.slice(0, 10).reduce((sum, digit) => sum + digit, 0) % 10;
+
+    return digits[9] === tenthDigit && digits[10] === eleventhDigit;
+  };
 
   const load = async () => {
     const result = await getEmployees(search);
@@ -60,6 +75,12 @@ export function EmployeesPage() {
   const onSave = async (e: FormEvent) => {
     e.preventDefault();
     if (!isAdmin) return;
+    setFormError('');
+
+    if (!isValidTckn(form.tckn)) {
+      setFormError('Geçerli bir TCKN girin.');
+      return;
+    }
 
     const payload: EmployeePayload = {
       ...form,
@@ -85,6 +106,7 @@ export function EmployeesPage() {
     setForm(initialForm);
     setTemporaryPassword('');
     setAiError('');
+    setFormError('');
     setIsFormOpen(true);
   };
 
@@ -93,6 +115,7 @@ export function EmployeesPage() {
     setForm(initialForm);
     setTemporaryPassword('');
     setAiError('');
+    setFormError('');
     setIsFormOpen(false);
   };
 
@@ -207,6 +230,14 @@ export function EmployeesPage() {
             />
             <input
               className="input"
+              inputMode="numeric"
+              maxLength={11}
+              placeholder="TCKN"
+              value={form.tckn || ''}
+              onChange={(e) => setForm({ ...form, tckn: e.target.value.replace(/\D/g, '').slice(0, 11) })}
+            />
+            <input
+              className="input"
               placeholder="E-posta"
               value={form.workEmail || ''}
               onChange={(e) => setForm({ ...form, workEmail: e.target.value })}
@@ -296,6 +327,7 @@ export function EmployeesPage() {
           </div>
 
           <p className="text-xs text-slate-500">Yeni personel için şifre zorunludur. Güncellemede yalnızca şifreyi değiştirmek istiyorsanız doldurun.</p>
+          {formError ? <p className="text-sm text-red-600">{formError}</p> : null}
 
           <div className="flex gap-2">
             <button className="btn-primary" type="submit">
