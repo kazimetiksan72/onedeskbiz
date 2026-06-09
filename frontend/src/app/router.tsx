@@ -22,6 +22,7 @@ import { LeaveRequestsPage } from '../features/leaveRequests/pages/LeaveRequests
 import { VehicleRequestsPage } from '../features/requests/pages/VehicleRequestsPage';
 import { MaterialRequestsPage } from '../features/requests/pages/MaterialRequestsPage';
 import { ExpenseRequestsPage } from '../features/requests/pages/ExpenseRequestsPage';
+import { AdvanceRequestsPage } from '../features/requests/pages/AdvanceRequestsPage';
 import { AdminRequestsPage } from '../features/requests/pages/AdminRequestsPage';
 import { TasksPage } from '../features/tasks/pages/TasksPage';
 import { EmployeeDocumentsPage } from '../features/employeeDocuments/pages/EmployeeDocumentsPage';
@@ -58,6 +59,7 @@ export const router = createBrowserRouter([
               { path: '/assets', element: <AssetsPage /> },
               { path: '/material-requests', element: <MaterialRequestsPage /> },
               { path: '/expense-requests', element: <ExpenseRequestsPage /> },
+              { path: '/advance-requests', element: <AdvanceRequestsPage /> },
               { path: '/tasks', element: <TasksPage /> },
               { path: '/contact-actions', element: <ContactActionLogsPage /> }
             ]

@@ -10,7 +10,8 @@ const typeFilterOptions: Array<{ value: RequestType | 'ALL'; label: string }> = 
   { value: 'ASSET', label: 'Demirbaş' },
   { value: 'LEAVE', label: 'İzin' },
   { value: 'MATERIAL', label: 'Malzeme' },
-  { value: 'EXPENSE', label: 'Masraf' }
+  { value: 'EXPENSE', label: 'Masraf' },
+  { value: 'ADVANCE', label: 'Avans' }
 ];
 
 export function AdminRequestsPage() {
@@ -67,7 +68,7 @@ export function AdminRequestsPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Talepler" subtitle="Araç, demirbaş, izin, malzeme ve masraf taleplerini görüntüleyin ve onaylayın" />
+      <PageHeader title="Talepler" subtitle="Araç, demirbaş, izin, malzeme, masraf ve avans taleplerini görüntüleyin ve onaylayın" />
 
       {error ? <div className="page-card text-sm text-red-600">{error}</div> : null}
       {message ? <div className="page-card text-sm text-emerald-700">{message}</div> : null}
@@ -191,6 +192,10 @@ function requestDetail(item: RequestItem) {
     return item.materialText || '-';
   }
 
+  if (item.type === 'ADVANCE') {
+    return `${formatMoney(item.advanceAmount, item.advanceCurrency)} | ${item.advanceDescription || '-'}`;
+  }
+
   return `${formatMoney(item.expenseAmount, item.expenseCurrency)} | ${item.expenseDescription || '-'}`;
 }
 
@@ -211,6 +216,7 @@ function requestTypeLabel(value: RequestType) {
   if (value === 'ASSET') return 'Demirbaş Talebi';
   if (value === 'LEAVE') return 'İzin Talebi';
   if (value === 'MATERIAL') return 'Malzeme Talebi';
+  if (value === 'ADVANCE') return 'Avans Talebi';
   return 'Masraf Talebi';
 }
 

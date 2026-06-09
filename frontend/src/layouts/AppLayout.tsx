@@ -28,6 +28,7 @@ const employeeNavItems = [
   { to: '/asset-requests', label: 'Demirbaş Talepleri' },
   { to: '/material-requests', label: 'Malzeme Talepleri' },
   { to: '/expense-requests', label: 'Masraf Talepleri' },
+  { to: '/advance-requests', label: 'Avans Talepleri' },
   { to: '/tasks', label: 'Görevlerim' },
   { to: '/contact-actions', label: 'Kişi Aksiyonları' }
 ];

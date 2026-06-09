@@ -1,18 +1,19 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { deleteEmployee, downloadEmployeeProfilePdf, generateJobDescription, getEmployee, updateEmployee } from '../api/employees.api';
+import { deleteEmployee, downloadEmployeeProfilePdf, generateJobDescription, getEmployee, getEmployees, updateEmployee } from '../api/employees.api';
 import type { Employee } from '../types/employee.types';
 import { getCompanySettings } from '../../companySettings/api/companySettings.api';
 import { Loading } from '../../../components/Loading';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalPortal } from '../../../components/ModalPortal';
 
-type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'tckn' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'jobDescription' | 'startDate' | 'status' | 'employmentType'>>;
+type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'tckn' | 'managerUserId' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'jobDescription' | 'startDate' | 'status' | 'employmentType'>>;
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [employee, setEmployee] = useState<Employee | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<string[]>([]);
   const [form, setForm] = useState<EmployeeForm | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -40,10 +41,11 @@ export function EmployeeDetailPage() {
   useEffect(() => {
     if (!id) return;
     setLoading(true);
-    Promise.all([getEmployee(id), getCompanySettings()])
-      .then(([employeeData, settings]) => {
+    Promise.all([getEmployee(id), getCompanySettings(), getEmployees('')])
+      .then(([employeeData, settings, employeeItems]) => {
         setEmployee(employeeData);
         setDepartments(settings?.departments || []);
+        setEmployees(employeeItems);
       })
       .catch(() => setError('Personel detay bilgileri yüklenemedi.'))
       .finally(() => setLoading(false));
@@ -55,6 +57,7 @@ export function EmployeeDetailPage() {
       firstName: employee.firstName,
       lastName: employee.lastName,
       tckn: employee.tckn || '',
+      managerUserId: typeof employee.managerUserId === 'string' ? employee.managerUserId : employee.managerUserId?._id || '',
       birthDate: employee.birthDate || '',
       workEmail: employee.workEmail,
       phone: employee.phone || '',
@@ -77,6 +80,10 @@ export function EmployeeDetailPage() {
 
     if (!isValidTckn(form.tckn)) {
       setFormError('Geçerli bir TCKN girin.');
+      return;
+    }
+    if (managerOptions.length > 0 && !form.managerUserId) {
+      setFormError('Yönetici seçimi zorunludur.');
       return;
     }
 
@@ -148,6 +155,8 @@ export function EmployeeDetailPage() {
 
   const avatarUrl = employee.businessCard?.avatarPublicUrl || employee.businessCard?.avatarUrl || '';
   const initials = `${employee.firstName?.[0] || ''}${employee.lastName?.[0] || ''}`.toUpperCase() || 'P';
+  const manager = typeof employee.managerUserId === 'object' ? employee.managerUserId : null;
+  const managerOptions = employees.filter((item) => item._id !== employee._id);
 
   return (
     <div className="animate-slide-in-right space-y-5">
@@ -177,6 +186,8 @@ export function EmployeeDetailPage() {
           <DetailItem label="Doğum Tarihi" value={employee.birthDate ? employee.birthDate.slice(0, 10) : undefined} />
           <DetailItem label="Telefon" value={employee.phone} />
           <DetailItem label="Departman" value={employee.department} />
+          <DetailItem label="Bağlı Yönetici" value={manager ? `${manager.firstName || ''} ${manager.lastName || ''}`.trim() : undefined} />
+          <DetailItem label="Yönetici TCKN" value={manager?.tckn} />
           <DetailItem label="Çalışma Tipi" value={translateEmploymentType(employee.employmentType)} />
           <DetailItem label="İşe Başlangıç" value={employee.startDate ? employee.startDate.slice(0, 10) : undefined} />
           <DetailItem label="Durum" value={employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif'} />
@@ -194,6 +205,14 @@ export function EmployeeDetailPage() {
               <input className="input" type="date" value={(form.birthDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, birthDate: e.target.value ? new Date(e.target.value).toISOString() : null })} />
               <input className="input" placeholder="E-posta" value={form.workEmail || ''} onChange={(e) => setForm({ ...form, workEmail: e.target.value })} required />
               <input className="input" placeholder="Telefon" value={form.phone || ''} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+              <select className="input" value={typeof form.managerUserId === 'string' ? form.managerUserId : form.managerUserId?._id || ''} onChange={(e) => setForm({ ...form, managerUserId: e.target.value })} required={managerOptions.length > 0}>
+                <option value="">{managerOptions.length > 0 ? 'Yönetici seçin' : 'Başka personel yok'}</option>
+                {managerOptions.map((item) => (
+                  <option key={item._id} value={item._id}>
+                    {item.firstName} {item.lastName} {item.department ? `- ${item.department}` : ''}
+                  </option>
+                ))}
+              </select>
               <select className="input" value={form.department || ''} onChange={(e) => setForm({ ...form, department: e.target.value })}>
                 <option value="">Departman seçin</option>
                 {departments.map((department) => <option key={department} value={department}>{department}</option>)}

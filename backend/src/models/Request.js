@@ -5,6 +5,7 @@ const REQUEST_TYPES = {
   LEAVE: 'LEAVE',
   MATERIAL: 'MATERIAL',
   EXPENSE: 'EXPENSE',
+  ADVANCE: 'ADVANCE',
   ASSET: 'ASSET'
 };
 
@@ -65,6 +66,9 @@ const requestSchema = new mongoose.Schema(
     expenseCurrency: { type: String, trim: true, uppercase: true, default: 'TRY' },
     expenseDescription: { type: String, trim: true },
     expenseAttachments: { type: [requestAttachmentSchema], default: [] },
+    advanceAmount: { type: Number, min: 0 },
+    advanceCurrency: { type: String, trim: true, uppercase: true, default: 'TRY' },
+    advanceDescription: { type: String, trim: true },
     approvalAction: { type: approvalActionSchema, default: null }
   },
   {

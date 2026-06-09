@@ -204,13 +204,14 @@ type FeedPostItem = {
   createdAt: string;
 };
 
-type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE';
+type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE' | 'ADVANCE';
 
 const requestTypeOptions: Array<{ type: RequestType; badge: string; description: string }> = [
   { type: 'VEHICLE', badge: 'AR', description: 'Şirket aracı için tarih aralığı seçin' },
   { type: 'LEAVE', badge: 'İZ', description: 'İzin için başlangıç ve bitiş seçin' },
   { type: 'MATERIAL', badge: 'ML', description: 'İhtiyaç duyulan malzemeyi yazın' },
-  { type: 'EXPENSE', badge: 'MS', description: 'Harcama tutarı ve açıklamasını girin' }
+  { type: 'EXPENSE', badge: 'MS', description: 'Harcama tutarı ve açıklamasını girin' },
+  { type: 'ADVANCE', badge: 'AV', description: 'Avans tutarı ve açıklamasını girin' }
 ];
 type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 
@@ -224,6 +225,9 @@ type RequestItem = {
   expenseAmount?: number;
   expenseCurrency?: string;
   expenseDescription?: string;
+  advanceAmount?: number;
+  advanceCurrency?: string;
+  advanceDescription?: string;
   expenseAttachments?: Array<{
     url: string;
     fileName?: string;
@@ -292,7 +296,7 @@ const employeeDocumentTypes: Array<{ type: EmployeeDocumentType; title: string; 
   { type: 'ID_CARD_BACK', title: 'TC Kimlik Arka Yüz', description: 'Kimliği çerçeveye ortalayarak çekin.', captureMode: 'ID_CARD' }
 ];
 
-const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL'];
+const approvalPermissions = ['VEHICLE_APPROVAL', 'LEAVE_APPROVAL', 'MATERIAL_APPROVAL', 'EXPENSE_APPROVAL', 'ADVANCE_APPROVAL'];
 
 function userCanAssignTasks(user?: AuthUser | null) {
   return user?.role === 'ADMIN' || Boolean(user?.departmentRoleId?.permissions?.includes('TASK_ASSIGNMENT'));
@@ -2477,6 +2481,7 @@ function RequestRow({ item }: { item: RequestItem }) {
       {item.vehicleId ? <Text style={styles.infoLine}>{item.vehicleId.plate} - {item.vehicleId.brand} {item.vehicleId.model}</Text> : null}
       {item.materialText ? <Text style={styles.infoLine}>{item.materialText}</Text> : null}
       {item.type === 'EXPENSE' ? <Text style={styles.infoLine}>{formatMoney(item.expenseAmount, item.expenseCurrency)} • {item.expenseDescription || '-'}</Text> : null}
+      {item.type === 'ADVANCE' ? <Text style={styles.infoLine}>{formatMoney(item.advanceAmount, item.advanceCurrency)} • {item.advanceDescription || '-'}</Text> : null}
       {item.type === 'EXPENSE' && item.expenseAttachments?.length ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.expenseAttachmentList}>
           {item.expenseAttachments.map((attachment, index) => (
@@ -2513,6 +2518,9 @@ function RequestForm({
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCurrency, setExpenseCurrency] = useState('TRY');
   const [expenseDescription, setExpenseDescription] = useState('');
+  const [advanceAmount, setAdvanceAmount] = useState('');
+  const [advanceCurrency, setAdvanceCurrency] = useState('TRY');
+  const [advanceDescription, setAdvanceDescription] = useState('');
   const [expensePhotos, setExpensePhotos] = useState<ExpensePhoto[]>([]);
   const [photoSourceVisible, setPhotoSourceVisible] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -2622,6 +2630,16 @@ function RequestForm({
         return;
       }
 
+      if (type === 'ADVANCE') {
+        await onSubmit({
+          type,
+          advanceAmount: Number(advanceAmount),
+          advanceCurrency,
+          advanceDescription
+        });
+        return;
+      }
+
       const payload =
         type === 'MATERIAL'
           ? { type, materialText }
@@ -2667,7 +2685,7 @@ function RequestForm({
         </View>
       ) : null}
 
-      {type !== 'MATERIAL' && type !== 'EXPENSE' ? (
+      {type !== 'MATERIAL' && type !== 'EXPENSE' && type !== 'ADVANCE' ? (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Tarih Aralığı</Text>
           <DateTimeField label="Başlangıç" value={startAt} onPress={() => setActiveDateField('start')} />
@@ -2707,7 +2725,7 @@ function RequestForm({
           <Text style={styles.sectionTitle}>Malzeme Talebi</Text>
           <TextInput style={[styles.input, styles.noteInput]} placeholder="Talep edilen malzemeyi yazın" value={materialText} onChangeText={setMaterialText} multiline />
         </View>
-      ) : (
+      ) : type === 'EXPENSE' ? (
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Masraf Talebi</Text>
           <TextInput style={styles.input} placeholder="Tutar" value={expenseAmount} onChangeText={setExpenseAmount} keyboardType="decimal-pad" />
@@ -2736,6 +2754,13 @@ function RequestForm({
           ) : (
             <Text style={styles.actionLogSubtitle}>Fiş veya belge fotoğrafı ekleyebilirsiniz. En fazla 5 fotoğraf.</Text>
           )}
+        </View>
+      ) : (
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>Avans Talebi</Text>
+          <TextInput style={styles.input} placeholder="Tutar" value={advanceAmount} onChangeText={setAdvanceAmount} keyboardType="decimal-pad" />
+          <TextInput style={styles.input} placeholder="Para birimi" value={advanceCurrency} onChangeText={(value) => setAdvanceCurrency(value.toUpperCase().slice(0, 3))} autoCapitalize="characters" />
+          <TextInput style={[styles.input, styles.noteInput]} placeholder="Avans açıklaması" value={advanceDescription} onChangeText={setAdvanceDescription} multiline />
         </View>
       )}
 
@@ -3132,6 +3157,7 @@ function requestTypeLabel(value: RequestType) {
   if (value === 'VEHICLE') return 'Araç Talebi';
   if (value === 'LEAVE') return 'İzin Talebi';
   if (value === 'MATERIAL') return 'Malzeme Talebi';
+  if (value === 'ADVANCE') return 'Avans Talebi';
   return 'Masraf Talebi';
 }
 

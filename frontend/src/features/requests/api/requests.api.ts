@@ -66,6 +66,14 @@ export async function createExpenseRequest(payload: { expenseAmount: number; exp
   return data;
 }
 
+export async function createAdvanceRequest(payload: { advanceAmount: number; advanceCurrency: string; advanceDescription: string }) {
+  const { data } = await api.post<RequestItem>('/requests', {
+    type: 'ADVANCE',
+    ...payload
+  });
+  return data;
+}
+
 export async function approveRequest(id: string, note?: string) {
   const { data } = await api.patch<RequestItem>(`/requests/${id}/approve`, { note });
   return data;

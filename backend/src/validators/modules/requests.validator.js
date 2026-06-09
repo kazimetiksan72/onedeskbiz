@@ -15,7 +15,10 @@ const createRequestSchema = z.object({
       materialText: z.string().min(1).max(2000).optional(),
       expenseAmount: z.coerce.number().positive().optional(),
       expenseCurrency: z.string().min(3).max(3).default('TRY').optional(),
-      expenseDescription: z.string().min(1).max(2000).optional()
+      expenseDescription: z.string().min(1).max(2000).optional(),
+      advanceAmount: z.coerce.number().positive().optional(),
+      advanceCurrency: z.string().min(3).max(3).default('TRY').optional(),
+      advanceDescription: z.string().min(1).max(2000).optional()
     })
     .superRefine((body, ctx) => {
       if (body.type === REQUEST_TYPES.VEHICLE && (!body.vehicleId || !body.startAt || !body.endAt)) {
@@ -35,6 +38,9 @@ const createRequestSchema = z.object({
       }
       if (body.type === REQUEST_TYPES.EXPENSE && (!body.expenseAmount || !body.expenseDescription)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Masraf tutarı ve açıklaması zorunludur.' });
+      }
+      if (body.type === REQUEST_TYPES.ADVANCE && (!body.advanceAmount || !body.advanceDescription)) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Avans tutarı ve açıklaması zorunludur.' });
       }
     }),
   params: z.object({}),

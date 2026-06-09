@@ -2,7 +2,7 @@ import type { Vehicle } from '../../vehicles/types/vehicle.types';
 import type { Asset, AssetAssignmentType } from '../../assets/types/asset.types';
 
 export type RequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
-export type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE' | 'ASSET';
+export type RequestType = 'VEHICLE' | 'LEAVE' | 'MATERIAL' | 'EXPENSE' | 'ADVANCE' | 'ASSET';
 
 export interface RequestItem {
   _id: string;
@@ -24,6 +24,9 @@ export interface RequestItem {
   expenseAmount?: number;
   expenseCurrency?: string;
   expenseDescription?: string;
+  advanceAmount?: number;
+  advanceCurrency?: string;
+  advanceDescription?: string;
   expenseAttachments?: Array<{
     url: string;
     fileName?: string;

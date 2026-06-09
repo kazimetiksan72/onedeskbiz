@@ -47,6 +47,7 @@ function pickUserProfileFields(payload) {
     firstName: payload.firstName,
     lastName: payload.lastName,
     tckn: payload.tckn,
+    managerUserId: payload.managerUserId,
     birthDate: payload.birthDate,
     workEmail: payload.workEmail,
     email: payload.workEmail,
@@ -191,6 +192,7 @@ function createEmployeeProfilePdf({ employee, settings, logoBuffer }) {
     const document = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true, bufferPages: true });
     const billingInfo = settings?.billingInfo || {};
     const companyName = settings?.companyName || billingInfo.legalCompanyName || 'Şirket';
+    const manager = employee.managerUserId && typeof employee.managerUserId === 'object' ? employee.managerUserId : null;
 
     document.on('data', (chunk) => chunks.push(chunk));
     document.on('end', () => resolve(Buffer.concat(chunks)));
@@ -237,6 +239,8 @@ function createEmployeeProfilePdf({ employee, settings, logoBuffer }) {
       { label: 'İşe Başlangıç', value: formatDate(employee.startDate) },
       { label: 'Departman', value: employee.department || '-' },
       { label: 'Ünvan', value: employee.title || '-' },
+      { label: 'Bağlı Yönetici', value: manager ? getFullName(manager) : '-' },
+      { label: 'Yönetici TCKN', value: manager?.tckn || '-' },
       { label: 'Çalışma Tipi', value: translateEmploymentType(employee.employmentType) },
       { label: 'Durum', value: employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif' }
     ], 48, y);
@@ -320,16 +324,52 @@ async function ensureUniqueEmail(workEmail, excludeUserId) {
   }
 }
 
+async function resolveManagerUserId(managerUserId, excludeUserId = null) {
+  const normalizedManagerUserId = managerUserId || null;
+  const otherEmployeeQuery = { role: ROLES.EMPLOYEE };
+
+  if (excludeUserId) {
+    otherEmployeeQuery._id = { $ne: excludeUserId };
+  }
+
+  const hasOtherEmployee = await User.exists(otherEmployeeQuery);
+  if (!normalizedManagerUserId) {
+    if (hasOtherEmployee) {
+      throw new ApiError(400, 'Yönetici seçimi zorunludur.');
+    }
+
+    return null;
+  }
+
+  if (excludeUserId && String(normalizedManagerUserId) === String(excludeUserId)) {
+    throw new ApiError(400, 'Personel kendi yöneticisi olarak seçilemez.');
+  }
+
+  const manager = await User.findOne({
+    _id: normalizedManagerUserId,
+    role: ROLES.EMPLOYEE,
+    isActive: true
+  }).select('_id').lean();
+
+  if (!manager) {
+    throw new ApiError(400, 'Geçerli bir yönetici seçin.');
+  }
+
+  return manager._id;
+}
+
 async function createEmployee(payload) {
   const { temporaryPassword, ...rawProfile } = payload;
   const normalizedWorkEmail = normalizeWorkEmail(rawProfile.workEmail);
 
   await ensureUniqueEmail(normalizedWorkEmail);
+  const managerUserId = await resolveManagerUserId(rawProfile.managerUserId);
 
   const passwordHash = await bcrypt.hash(temporaryPassword, env.bcryptSaltRounds);
   const profile = syncBusinessCard({
     ...rawProfile,
-    workEmail: normalizedWorkEmail
+    workEmail: normalizedWorkEmail,
+    managerUserId
   });
 
   const created = await User.create({
@@ -360,6 +400,7 @@ async function listEmployees({ page, limit, search }) {
   const [items, total] = await Promise.all([
     User.find(query)
       .select('-passwordHash')
+      .populate('managerUserId', 'firstName lastName workEmail tckn department title')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -373,6 +414,7 @@ async function listEmployees({ page, limit, search }) {
 async function getEmployeeById(id) {
   const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
     .select('-passwordHash')
+    .populate('managerUserId', 'firstName lastName workEmail tckn department title')
     .lean();
   if (!employee) {
     throw new ApiError(404, 'Employee not found');
@@ -391,11 +433,16 @@ async function updateEmployee(id, payload) {
 
   const mergedWorkEmail = normalizeWorkEmail(rawProfile.workEmail || current.workEmail);
   await ensureUniqueEmail(mergedWorkEmail, current._id);
+  const managerUserId = await resolveManagerUserId(
+    Object.prototype.hasOwnProperty.call(rawProfile, 'managerUserId') ? rawProfile.managerUserId : current.managerUserId,
+    current._id
+  );
 
   const mergedPayload = {
     firstName: rawProfile.firstName ?? current.firstName,
     lastName: rawProfile.lastName ?? current.lastName,
     tckn: rawProfile.tckn ?? current.tckn,
+    managerUserId,
     birthDate: rawProfile.birthDate ?? current.birthDate,
     workEmail: mergedWorkEmail,
     personalEmail: rawProfile.personalEmail ?? current.personalEmail,
@@ -488,6 +535,7 @@ async function generateJobDescription(payload) {
 async function generateEmployeeProfilePdf(id) {
   const employee = await User.findOne({ _id: id, role: ROLES.EMPLOYEE })
     .select('-passwordHash')
+    .populate('managerUserId', 'firstName lastName workEmail tckn department title')
     .lean();
 
   if (!employee) {

@@ -17,6 +17,7 @@ const employeeBody = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   tckn: z.string().optional().or(z.literal('')).refine(isValidTckn, 'Geçerli bir TCKN girin.'),
+  managerUserId: objectId.optional().nullable().or(z.literal('')),
   birthDate: z.string().datetime().optional().nullable(),
   workEmail: z.string().email(),
   personalEmail: z.string().email().optional().or(z.literal('')),

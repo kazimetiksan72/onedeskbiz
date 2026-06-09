@@ -22,6 +22,7 @@ const initialForm: Partial<Employee> = {
   firstName: '',
   lastName: '',
   tckn: '',
+  managerUserId: '',
   workEmail: '',
   phone: '',
   department: '',
@@ -79,6 +80,10 @@ export function EmployeesPage() {
 
     if (!isValidTckn(form.tckn)) {
       setFormError('Geçerli bir TCKN girin.');
+      return;
+    }
+    if (items.length > 0 && !form.managerUserId) {
+      setFormError('Yönetici seçimi zorunludur.');
       return;
     }
 
@@ -236,6 +241,19 @@ export function EmployeesPage() {
               value={form.tckn || ''}
               onChange={(e) => setForm({ ...form, tckn: e.target.value.replace(/\D/g, '').slice(0, 11) })}
             />
+            <select
+              className="input"
+              value={typeof form.managerUserId === 'string' ? form.managerUserId : form.managerUserId?._id || ''}
+              onChange={(e) => setForm({ ...form, managerUserId: e.target.value })}
+              required={items.length > 0}
+            >
+              <option value="">{items.length > 0 ? 'Yönetici seçin' : 'Henüz personel yok'}</option>
+              {items.map((employee) => (
+                <option key={employee._id} value={employee._id}>
+                  {employee.firstName} {employee.lastName} {employee.department ? `- ${employee.department}` : ''}
+                </option>
+              ))}
+            </select>
             <input
               className="input"
               placeholder="E-posta"

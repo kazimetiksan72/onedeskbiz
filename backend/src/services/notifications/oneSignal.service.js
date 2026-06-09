@@ -122,6 +122,7 @@ const requestTypeLabels = {
   LEAVE: 'İzin talebi',
   MATERIAL: 'Malzeme talebi',
   EXPENSE: 'Masraf talebi',
+  ADVANCE: 'Avans talebi',
   ASSET: 'Demirbaş talebi'
 };
 

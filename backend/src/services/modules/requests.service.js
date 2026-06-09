@@ -23,6 +23,7 @@ const permissionByRequestType = {
   [REQUEST_TYPES.LEAVE]: PERMISSIONS.LEAVE_APPROVAL,
   [REQUEST_TYPES.MATERIAL]: PERMISSIONS.MATERIAL_APPROVAL,
   [REQUEST_TYPES.EXPENSE]: PERMISSIONS.EXPENSE_APPROVAL,
+  [REQUEST_TYPES.ADVANCE]: PERMISSIONS.ADVANCE_APPROVAL,
   [REQUEST_TYPES.ASSET]: PERMISSIONS.ASSET_APPROVAL
 };
 
@@ -128,6 +129,9 @@ async function createRequest(user, payload, files = []) {
     expenseAmount: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseAmount : undefined,
     expenseCurrency: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseCurrency || 'TRY' : undefined,
     expenseDescription: payload.type === REQUEST_TYPES.EXPENSE ? payload.expenseDescription : '',
+    advanceAmount: payload.type === REQUEST_TYPES.ADVANCE ? payload.advanceAmount : undefined,
+    advanceCurrency: payload.type === REQUEST_TYPES.ADVANCE ? payload.advanceCurrency || 'TRY' : undefined,
+    advanceDescription: payload.type === REQUEST_TYPES.ADVANCE ? payload.advanceDescription : '',
     expenseAttachments
   });
 

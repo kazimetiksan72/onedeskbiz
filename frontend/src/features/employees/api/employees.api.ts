@@ -8,7 +8,7 @@ export type EmployeePayload = Partial<Employee> & {
 
 export async function getEmployees(search = '') {
   const { data } = await api.get<ApiListResponse<Employee>>('/employees', {
-    params: { search, page: 1, limit: 50 }
+    params: { search, page: 1, limit: 500 }
   });
   return data.items;
 }

@@ -49,6 +49,13 @@ const homeCards = [
     accent: 'from-fuchsia-500 to-rose-700'
   },
   {
+    to: '/advance-requests',
+    title: 'Avans Talepleri',
+    description: 'Avans ihtiyacınızı onaya gönderin.',
+    icon: ReceiptIcon,
+    accent: 'from-emerald-600 to-slate-800'
+  },
+  {
     to: '/tasks',
     title: 'Görevlerim',
     description: 'Size atanan görevleri ve son tarihleri takip edin.',

@@ -3,6 +3,7 @@ export interface Employee {
   firstName: string;
   lastName: string;
   tckn?: string;
+  managerUserId?: Pick<Employee, '_id' | 'firstName' | 'lastName' | 'workEmail' | 'tckn' | 'department' | 'title'> | string | null;
   birthDate?: string | null;
   workEmail: string;
   personalEmail?: string;
