@@ -211,6 +211,7 @@ async function generateJobDescription(payload) {
     },
     body: JSON.stringify({
       model: env.openai.model,
+      reasoning: { effort: 'minimal' },
       instructions: [
         'Sen KOBİ insan kaynakları süreçleri için profesyonel görev tanımları yazan bir asistansın.',
         'Yanıtı yalnızca Türkçe görev tanımı metni olarak ver.',
@@ -223,7 +224,7 @@ async function generateJobDescription(payload) {
         `Personel adı: ${employeeName || 'Belirtilmedi'}`,
         'Bu personele atanabilecek görev ve sorumlulukları tek paragraf halinde yaz.'
       ].join('\n'),
-      max_output_tokens: 260
+      max_output_tokens: 700
     })
   });
 
