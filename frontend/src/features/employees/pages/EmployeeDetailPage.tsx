@@ -177,10 +177,10 @@ export function EmployeeDetailPage() {
           <DetailItem label="Doğum Tarihi" value={employee.birthDate ? employee.birthDate.slice(0, 10) : undefined} />
           <DetailItem label="Telefon" value={employee.phone} />
           <DetailItem label="Departman" value={employee.department} />
-          <DetailItem label="Görev Tanımı" value={employee.jobDescription} />
           <DetailItem label="Çalışma Tipi" value={translateEmploymentType(employee.employmentType)} />
           <DetailItem label="İşe Başlangıç" value={employee.startDate ? employee.startDate.slice(0, 10) : undefined} />
           <DetailItem label="Durum" value={employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif'} />
+          <DetailItem label="Görev Tanımı" value={employee.jobDescription} className="md:col-span-2" />
         </div>
       </section>
 
@@ -227,8 +227,8 @@ export function EmployeeDetailPage() {
   );
 }
 
-function DetailItem({ label, value }: { label: string; value?: string }) {
-  return <div className="rounded-lg border border-slate-200 p-3"><p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 break-words text-slate-900">{value || '-'}</p></div>;
+function DetailItem({ label, value, className = '' }: { label: string; value?: string; className?: string }) {
+  return <div className={`rounded-lg border border-slate-200 p-3 ${className}`}><p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p><p className="mt-1 break-words text-slate-900">{value || '-'}</p></div>;
 }
 
 function translateEmploymentType(value: Employee['employmentType']) {

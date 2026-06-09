@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const path = require('path');
 const PDFDocument = require('pdfkit');
 const { User } = require('../../models/User');
 const { CompanySettings } = require('../../models/CompanySettings');
@@ -100,113 +101,205 @@ async function fetchImageBuffer(url) {
   }
 }
 
-function addLabelValue(document, label, value, options = {}) {
-  const x = options.x || document.x;
-  const y = options.y || document.y;
-  const labelWidth = options.labelWidth || 130;
-  const valueWidth = options.valueWidth || 360;
+const regularFontPath = path.resolve(__dirname, '../../assets/fonts/NotoSans-Regular.ttf');
+const boldFontPath = path.resolve(__dirname, '../../assets/fonts/NotoSans-Bold.ttf');
 
-  document
-    .font('Helvetica-Bold')
-    .fontSize(10)
-    .fillColor('#334155')
-    .text(label, x, y, { width: labelWidth });
+function registerPdfFonts(document) {
+  document.registerFont('AppRegular', regularFontPath);
+  document.registerFont('AppBold', boldFontPath);
+}
 
+function drawRoundedRect(document, x, y, width, height, options = {}) {
   document
-    .font('Helvetica')
-    .fontSize(10)
+    .roundedRect(x, y, width, height, options.radius || 8)
+    .fillAndStroke(options.fill || '#ffffff', options.stroke || '#e2e8f0');
+}
+
+function drawSectionTitle(document, title, y) {
+  document
+    .font('AppBold')
+    .fontSize(11)
     .fillColor('#0f172a')
-    .text(value || '-', x + labelWidth + 8, y, { width: valueWidth });
+    .text(title, 48, y);
 
-  document.moveDown(0.65);
+  document
+    .moveTo(48, y + 20)
+    .lineTo(547, y + 20)
+    .strokeColor('#dbe4ef')
+    .lineWidth(1)
+    .stroke();
+}
+
+function drawInfoCell(document, item, x, y, width) {
+  document
+    .font('AppBold')
+    .fontSize(7.8)
+    .fillColor('#64748b')
+    .text(item.label.toLocaleUpperCase('tr-TR'), x, y, { width });
+
+  document
+    .font('AppRegular')
+    .fontSize(9.8)
+    .fillColor('#0f172a')
+    .text(item.value || '-', x, y + 13, { width, lineGap: 1 });
+}
+
+function drawInfoGrid(document, items, x, y) {
+  const cardWidth = 499;
+  const columnWidth = 217;
+  const rowHeight = 43;
+  const gap = 24;
+  const rows = Math.ceil(items.length / 2);
+  const cardHeight = rows * rowHeight + 24;
+
+  drawRoundedRect(document, x, y, cardWidth, cardHeight, { fill: '#f8fafc', stroke: '#dbe4ef' });
+
+  items.forEach((item, index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const cellX = x + 18 + column * (columnWidth + gap);
+    const cellY = y + 15 + row * rowHeight;
+    drawInfoCell(document, item, cellX, cellY, columnWidth);
+  });
+
+  return y + cardHeight;
+}
+
+function drawFooter(document, settings) {
+  const billingInfo = settings?.billingInfo || {};
+  const footerParts = [
+    billingInfo.legalCompanyName || settings?.companyName,
+    billingInfo.address,
+    [billingInfo.city, billingInfo.country].filter(Boolean).join(' / '),
+    billingInfo.phone,
+    billingInfo.billingEmail,
+    settings?.website,
+    billingInfo.taxNumber ? `Vergi No: ${billingInfo.taxNumber}` : '',
+    billingInfo.taxOffice ? `Vergi Dairesi: ${billingInfo.taxOffice}` : ''
+  ].filter(Boolean);
+
+  document
+    .font('AppRegular')
+    .fontSize(6.8)
+    .fillColor('#64748b')
+    .text(footerParts.join(' | '), 48, 764, { width: 499, align: 'center', lineGap: 1 });
 }
 
 function createEmployeeProfilePdf({ employee, settings, logoBuffer }) {
   return new Promise((resolve, reject) => {
     const chunks = [];
-    const document = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true });
+    const document = new PDFDocument({ size: 'A4', margin: 48, autoFirstPage: true, bufferPages: true });
     const billingInfo = settings?.billingInfo || {};
     const companyName = settings?.companyName || billingInfo.legalCompanyName || 'Şirket';
 
     document.on('data', (chunk) => chunks.push(chunk));
     document.on('end', () => resolve(Buffer.concat(chunks)));
     document.on('error', reject);
+    registerPdfFonts(document);
 
+    document.rect(0, 0, 595.28, 108).fill('#f8fafc');
+    document.moveTo(48, 108).lineTo(547, 108).strokeColor('#dbe4ef').lineWidth(1).stroke();
+
+    document.fillColor('#0f172a');
     if (logoBuffer) {
       try {
-        document.image(logoBuffer, 48, 42, { fit: [96, 52], align: 'left' });
+        document.image(logoBuffer, 48, 34, { fit: [104, 44], align: 'left' });
       } catch {
-        document.font('Helvetica-Bold').fontSize(12).text(companyName, 48, 52, { width: 160 });
+        document.font('AppBold').fontSize(12).text(companyName, 48, 44, { width: 180 });
       }
     } else {
-      document.font('Helvetica-Bold').fontSize(12).text(companyName, 48, 52, { width: 160 });
+      document.font('AppBold').fontSize(12).text(companyName, 48, 44, { width: 180 });
     }
 
     document
-      .font('Helvetica-Bold')
-      .fontSize(17)
+      .font('AppBold')
+      .fontSize(16)
       .fillColor('#0f172a')
-      .text('Personel Bilgi ve Görev Tanımı Formu', 170, 50, { align: 'right', width: 377 });
+      .text('Personel Bilgi ve Görev Tanımı Formu', 210, 34, { align: 'right', width: 337 });
 
     document
-      .font('Helvetica')
-      .fontSize(9)
+      .font('AppRegular')
+      .fontSize(8.5)
       .fillColor('#64748b')
-      .text(`Düzenleme Tarihi: ${formatDate(new Date())}`, 170, 78, { align: 'right', width: 377 });
+      .text(`Belge No: ${employee._id.toString().slice(-8).toUpperCase()}`, 210, 60, { align: 'right', width: 337 })
+      .text(`Düzenleme Tarihi: ${formatDate(new Date())}`, 210, 75, { align: 'right', width: 337 });
 
-    document.moveTo(48, 116).lineTo(547, 116).strokeColor('#cbd5e1').stroke();
-    document.y = 138;
+    let y = 132;
+    drawSectionTitle(document, 'Personel Bilgileri', y);
+    y += 35;
 
-    document.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a').text('Personel Bilgileri');
-    document.moveDown(0.8);
-    addLabelValue(document, 'Ad Soyad', getFullName(employee));
-    addLabelValue(document, 'TCKN', employee.tckn || '-');
-    addLabelValue(document, 'E-posta', employee.workEmail || employee.email || '-');
-    addLabelValue(document, 'Telefon', employee.phone || '-');
-    addLabelValue(document, 'Doğum Tarihi', formatDate(employee.birthDate));
-    addLabelValue(document, 'Departman', employee.department || '-');
-    addLabelValue(document, 'Ünvan', employee.title || '-');
-    addLabelValue(document, 'Çalışma Tipi', translateEmploymentType(employee.employmentType));
-    addLabelValue(document, 'İşe Başlangıç', formatDate(employee.startDate));
-    addLabelValue(document, 'Durum', employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif');
+    y = drawInfoGrid(document, [
+      { label: 'Ad Soyad', value: getFullName(employee) },
+      { label: 'TCKN', value: employee.tckn || '-' },
+      { label: 'E-posta', value: employee.workEmail || employee.email || '-' },
+      { label: 'Telefon', value: employee.phone || '-' },
+      { label: 'Doğum Tarihi', value: formatDate(employee.birthDate) },
+      { label: 'İşe Başlangıç', value: formatDate(employee.startDate) },
+      { label: 'Departman', value: employee.department || '-' },
+      { label: 'Ünvan', value: employee.title || '-' },
+      { label: 'Çalışma Tipi', value: translateEmploymentType(employee.employmentType) },
+      { label: 'Durum', value: employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif' }
+    ], 48, y);
 
-    document.moveDown(1.1);
-    document.font('Helvetica-Bold').fontSize(12).fillColor('#0f172a').text('Görev Tanımı');
-    document.moveDown(0.5);
+    y += 28;
+    drawSectionTitle(document, 'Görev Tanımı', y);
+    y += 35;
+
+    const description = employee.jobDescription || '-';
+    const descriptionHeight = document
+      .font('AppRegular')
+      .fontSize(9.5)
+      .heightOfString(description, { width: 459, lineGap: 3 });
+    const descriptionCardHeight = Math.min(Math.max(descriptionHeight + 32, 130), 265);
+
+    drawRoundedRect(document, 48, y, 499, descriptionCardHeight, { fill: '#ffffff', stroke: '#dbe4ef' });
     document
-      .font('Helvetica')
-      .fontSize(10)
+      .font('AppRegular')
+      .fontSize(9.5)
       .fillColor('#0f172a')
-      .text(employee.jobDescription || '-', { width: 499, align: 'left', lineGap: 3 });
+      .text(description, 68, y + 18, {
+        width: 459,
+        height: descriptionCardHeight - 34,
+        align: 'left',
+        lineGap: 3,
+        ellipsis: true
+      });
 
-    if (document.y > 610) {
+    y += descriptionCardHeight + 18;
+    if (y > 666) {
       document.addPage();
-      document.y = 80;
+      y = 72;
     }
 
-    const signatureY = Math.max(document.y + 42, 610);
-    document.font('Helvetica-Bold').fontSize(10).fillColor('#0f172a');
-    document.text('Personel İmzası', 48, signatureY, { width: 190, align: 'center' });
-    document.text('Yetkili İmzası', 357, signatureY, { width: 190, align: 'center' });
-    document.moveTo(58, signatureY + 54).lineTo(228, signatureY + 54).strokeColor('#94a3b8').stroke();
-    document.moveTo(367, signatureY + 54).lineTo(537, signatureY + 54).strokeColor('#94a3b8').stroke();
-
-    const footerParts = [
-      billingInfo.legalCompanyName || settings?.companyName,
-      billingInfo.address,
-      [billingInfo.city, billingInfo.country].filter(Boolean).join(' / '),
-      billingInfo.phone,
-      billingInfo.billingEmail,
-      settings?.website,
-      billingInfo.taxNumber ? `Vergi No: ${billingInfo.taxNumber}` : '',
-      billingInfo.taxOffice ? `Vergi Dairesi: ${billingInfo.taxOffice}` : ''
-    ].filter(Boolean);
-
     document
-      .font('Helvetica')
-      .fontSize(7)
-      .fillColor('#64748b')
-      .text(footerParts.join(' | '), 48, 762, { width: 499, align: 'center' });
+      .font('AppRegular')
+      .fontSize(8.3)
+      .fillColor('#475569')
+      .text('Yukarıdaki personel bilgileri ve görev tanımı okunmuş, taraflarca kabul edilmiştir.', 48, y, {
+        width: 499,
+        align: 'center'
+      });
+
+    y += 24;
+    const signatureBoxWidth = 220;
+    const signatureBoxHeight = 64;
+    drawRoundedRect(document, 48, y, signatureBoxWidth, signatureBoxHeight, { fill: '#ffffff', stroke: '#cbd5e1' });
+    drawRoundedRect(document, 327, y, signatureBoxWidth, signatureBoxHeight, { fill: '#ffffff', stroke: '#cbd5e1' });
+
+    document.font('AppBold').fontSize(9).fillColor('#0f172a');
+    document.text('Personel', 66, y + 10, { width: signatureBoxWidth - 36, align: 'center' });
+    document.text('Yetkili', 345, y + 10, { width: signatureBoxWidth - 36, align: 'center' });
+    document.font('AppRegular').fontSize(8).fillColor('#64748b');
+    document.text(getFullName(employee), 66, y + 27, { width: signatureBoxWidth - 36, align: 'center' });
+    document.text(companyName, 345, y + 27, { width: signatureBoxWidth - 36, align: 'center' });
+    document.moveTo(76, y + 49).lineTo(250, y + 49).strokeColor('#94a3b8').lineWidth(1).stroke();
+    document.moveTo(355, y + 49).lineTo(529, y + 49).strokeColor('#94a3b8').lineWidth(1).stroke();
+
+    const pageRange = document.bufferedPageRange();
+    for (let index = pageRange.start; index < pageRange.start + pageRange.count; index += 1) {
+      document.switchToPage(index);
+      drawFooter(document, settings);
+    }
 
     document.end();
   });
