@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { deleteEmployee, getEmployee, updateEmployee } from '../api/employees.api';
+import { deleteEmployee, generateJobDescription, getEmployee, updateEmployee } from '../api/employees.api';
 import type { Employee } from '../types/employee.types';
 import { getCompanySettings } from '../../companySettings/api/companySettings.api';
 import { Loading } from '../../../components/Loading';
@@ -19,6 +19,8 @@ export function EmployeeDetailPage() {
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +49,7 @@ export function EmployeeDetailPage() {
       status: employee.status,
       employmentType: employee.employmentType
     });
+    setAiError('');
     setIsEditOpen(true);
   };
 
@@ -62,6 +65,30 @@ export function EmployeeDetailPage() {
     if (!id) return;
     await deleteEmployee(id);
     navigate('/admin/employees');
+  };
+
+  const createJobDescriptionWithAI = async () => {
+    if (!form?.department) {
+      setAiError('AI ile görev tanımı oluşturmak için önce departman seçin.');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError('');
+
+    try {
+      const jobDescription = await generateJobDescription({
+        department: form.department,
+        title: form.title,
+        firstName: form.firstName,
+        lastName: form.lastName
+      });
+      setForm((current) => (current ? { ...current, jobDescription } : current));
+    } catch (requestError: any) {
+      setAiError(requestError?.response?.data?.message || 'AI görev tanımı oluşturamadı.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (loading) return <Loading />;
@@ -125,7 +152,17 @@ export function EmployeeDetailPage() {
                 {departments.map((department) => <option key={department} value={department}>{department}</option>)}
               </select>
               <input className="input" placeholder="Ünvan" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-              <textarea className="input min-h-28 resize-y md:col-span-2" placeholder="Görev Tanımı" value={form.jobDescription || ''} onChange={(e) => setForm({ ...form, jobDescription: e.target.value })} maxLength={4000} />
+              <div className="rounded-lg border border-slate-200 bg-white p-3 md:col-span-2">
+                <label className="mb-2 block text-xs font-medium text-slate-500">Görev Tanımı</label>
+                <textarea className="input min-h-28 resize-y" placeholder="Görev Tanımı" value={form.jobDescription || ''} onChange={(e) => setForm({ ...form, jobDescription: e.target.value })} maxLength={4000} />
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <button type="button" className="btn-secondary w-fit disabled:cursor-not-allowed disabled:opacity-60" onClick={createJobDescriptionWithAI} disabled={aiLoading || !form.department}>
+                    {aiLoading ? 'AI yazıyor...' : 'AI'}
+                  </button>
+                  <span className="text-xs text-slate-400">{(form.jobDescription || '').length}/4000</span>
+                </div>
+                {aiError ? <p className="mt-2 text-xs text-red-600">{aiError}</p> : null}
+              </div>
               <input className="input" type="date" value={(form.startDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, startDate: new Date(e.target.value).toISOString() })} />
               <select className="input" value={form.status || 'ACTIVE'} onChange={(e) => setForm({ ...form, status: e.target.value as Employee['status'] })}>
                 <option value="ACTIVE">Aktif</option>
