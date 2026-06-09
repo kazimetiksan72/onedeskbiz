@@ -7,7 +7,7 @@ import { Loading } from '../../../components/Loading';
 import { ConfirmDialog } from '../../../components/ConfirmDialog';
 import { ModalPortal } from '../../../components/ModalPortal';
 
-type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'startDate' | 'status' | 'employmentType'>>;
+type EmployeeForm = Partial<Pick<Employee, 'firstName' | 'lastName' | 'birthDate' | 'workEmail' | 'phone' | 'department' | 'title' | 'jobDescription' | 'startDate' | 'status' | 'employmentType'>>;
 
 export function EmployeeDetailPage() {
   const { id } = useParams();
@@ -42,6 +42,7 @@ export function EmployeeDetailPage() {
       phone: employee.phone || '',
       department: employee.department || '',
       title: employee.title || '',
+      jobDescription: employee.jobDescription || '',
       startDate: employee.startDate,
       status: employee.status,
       employmentType: employee.employmentType
@@ -101,6 +102,7 @@ export function EmployeeDetailPage() {
           <DetailItem label="Doğum Tarihi" value={employee.birthDate ? employee.birthDate.slice(0, 10) : undefined} />
           <DetailItem label="Telefon" value={employee.phone} />
           <DetailItem label="Departman" value={employee.department} />
+          <DetailItem label="Görev Tanımı" value={employee.jobDescription} />
           <DetailItem label="Çalışma Tipi" value={translateEmploymentType(employee.employmentType)} />
           <DetailItem label="İşe Başlangıç" value={employee.startDate ? employee.startDate.slice(0, 10) : undefined} />
           <DetailItem label="Durum" value={employee.status === 'ACTIVE' ? 'Aktif' : 'Pasif'} />
@@ -123,6 +125,7 @@ export function EmployeeDetailPage() {
                 {departments.map((department) => <option key={department} value={department}>{department}</option>)}
               </select>
               <input className="input" placeholder="Ünvan" value={form.title || ''} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+              <textarea className="input min-h-28 resize-y md:col-span-2" placeholder="Görev Tanımı" value={form.jobDescription || ''} onChange={(e) => setForm({ ...form, jobDescription: e.target.value })} maxLength={4000} />
               <input className="input" type="date" value={(form.startDate || '').slice(0, 10)} onChange={(e) => setForm({ ...form, startDate: new Date(e.target.value).toISOString() })} />
               <select className="input" value={form.status || 'ACTIVE'} onChange={(e) => setForm({ ...form, status: e.target.value as Employee['status'] })}>
                 <option value="ACTIVE">Aktif</option>

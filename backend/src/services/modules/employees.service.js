@@ -7,6 +7,21 @@ const { getPagination } = require('../../utils/pagination');
 const { DepartmentRoleAssignment } = require('../../models/DepartmentRoleAssignment');
 const { attachDepartmentRole, attachDepartmentRoles } = require('./departmentRoleAssignments.service');
 
+function extractOpenAIText(response) {
+  if (response.output_text) return response.output_text;
+
+  const chunks = [];
+  for (const item of response.output || []) {
+    for (const content of item.content || []) {
+      if (content.type === 'output_text' && content.text) {
+        chunks.push(content.text);
+      }
+    }
+  }
+
+  return chunks.join('\n').trim();
+}
+
 function syncBusinessCard(userPayload) {
   const existingCard = userPayload.businessCard || {};
   const displayName = `${userPayload.firstName || ''} ${userPayload.lastName || ''}`.trim();
@@ -35,6 +50,7 @@ function pickUserProfileFields(payload) {
     phone: payload.phone,
     department: payload.department,
     title: payload.title,
+    jobDescription: payload.jobDescription,
     employmentType: payload.employmentType,
     startDate: payload.startDate,
     status: payload.status,
@@ -144,6 +160,7 @@ async function updateEmployee(id, payload) {
     phone: rawProfile.phone ?? current.phone,
     department: rawProfile.department ?? current.department,
     title: rawProfile.title ?? current.title,
+    jobDescription: rawProfile.jobDescription ?? current.jobDescription,
     employmentType: rawProfile.employmentType ?? current.employmentType,
     startDate: rawProfile.startDate ?? current.startDate,
     status: rawProfile.status ?? current.status,
@@ -177,10 +194,59 @@ async function deleteEmployee(id) {
   await DepartmentRoleAssignment.deleteOne({ userId: id });
 }
 
+async function generateJobDescription(payload) {
+  if (!env.openai.apiKey) {
+    throw new ApiError(500, 'OpenAI API anahtarı yapılandırılmamış.');
+  }
+
+  const department = String(payload.department || '').trim();
+  const title = String(payload.title || '').trim();
+  const employeeName = `${payload.firstName || ''} ${payload.lastName || ''}`.trim();
+
+  const response = await fetch('https://api.openai.com/v1/responses', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.openai.apiKey}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      model: env.openai.model,
+      instructions: [
+        'Sen KOBİ insan kaynakları süreçleri için profesyonel görev tanımları yazan bir asistansın.',
+        'Yanıtı yalnızca Türkçe görev tanımı metni olarak ver.',
+        'Başlık, markdown, madde işareti veya açıklama ekleme.',
+        'Metin 90-130 kelime arasında, kurumsal, net ve uygulanabilir olsun.'
+      ].join(' '),
+      input: [
+        `Departman: ${department}`,
+        `Ünvan: ${title || 'Belirtilmedi'}`,
+        `Personel adı: ${employeeName || 'Belirtilmedi'}`,
+        'Bu personele atanabilecek görev ve sorumlulukları tek paragraf halinde yaz.'
+      ].join('\n'),
+      max_output_tokens: 260
+    })
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const message = data?.error?.message || 'Görev tanımı OpenAI üzerinden oluşturulamadı.';
+    throw new ApiError(response.status >= 500 ? 502 : 400, message);
+  }
+
+  const jobDescription = extractOpenAIText(data).trim();
+  if (!jobDescription) {
+    throw new ApiError(502, 'OpenAI boş görev tanımı döndürdü.');
+  }
+
+  return { jobDescription };
+}
+
 module.exports = {
   createEmployee,
   listEmployees,
   getEmployeeById,
   updateEmployee,
-  deleteEmployee
+  deleteEmployee,
+  generateJobDescription
 };

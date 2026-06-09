@@ -25,6 +25,11 @@ const updateEmployee = asyncHandler(async (req, res) => {
   res.json(item);
 });
 
+const generateJobDescription = asyncHandler(async (req, res) => {
+  const result = await employeesService.generateJobDescription(req.body);
+  res.json(result);
+});
+
 const deleteEmployee = asyncHandler(async (req, res) => {
   await employeesService.deleteEmployee(req.params.id);
   res.status(204).send();
@@ -35,5 +40,6 @@ module.exports = {
   listEmployees,
   getEmployee,
   updateEmployee,
+  generateJobDescription,
   deleteEmployee
 };

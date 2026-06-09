@@ -60,6 +60,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, trim: true },
     department: { type: String, trim: true, index: true },
     title: { type: String, trim: true, index: true },
+    jobDescription: { type: String, trim: true, maxlength: 4000 },
     employmentType: {
       type: String,
       enum: ['FULL_TIME', 'PART_TIME', 'CONTRACTOR'],

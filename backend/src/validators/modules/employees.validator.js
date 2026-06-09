@@ -9,6 +9,7 @@ const employeeBody = z.object({
   phone: z.string().optional(),
   department: z.string().optional(),
   title: z.string().optional(),
+  jobDescription: z.string().max(4000).optional(),
   employmentType: z.enum(['FULL_TIME', 'PART_TIME', 'CONTRACTOR']).optional(),
   startDate: z.string().datetime(),
   status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
@@ -42,8 +43,20 @@ const employeeParamsSchema = z.object({
   query: z.object({})
 });
 
+const generateJobDescriptionSchema = z.object({
+  body: z.object({
+    department: z.string().min(1),
+    title: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional()
+  }),
+  params: z.object({}),
+  query: z.object({})
+});
+
 module.exports = {
   createEmployeeSchema,
   updateEmployeeSchema,
-  employeeParamsSchema
+  employeeParamsSchema,
+  generateJobDescriptionSchema
 };

@@ -70,5 +70,9 @@ module.exports = {
     appId: process.env.ONESIGNAL_APP_ID || '',
     apiKey: process.env.ONESIGNAL_REST_API_KEY || '',
     apiUrl: process.env.ONESIGNAL_API_URL || 'https://api.onesignal.com/notifications'
+  },
+  openai: {
+    apiKey: process.env.OPENAI_API_KEY || '',
+    model: process.env.OPENAI_MODEL || 'gpt-5-mini'
   }
 };

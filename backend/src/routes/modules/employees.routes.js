@@ -6,12 +6,19 @@ const { ROLES } = require('../../constants/roles');
 const {
   createEmployeeSchema,
   updateEmployeeSchema,
-  employeeParamsSchema
+  employeeParamsSchema,
+  generateJobDescriptionSchema
 } = require('../../validators/modules/employees.validator');
 
 const router = express.Router();
 
 router.get('/', controller.listEmployees);
+router.post(
+  '/generate-job-description',
+  requireRole(ROLES.ADMIN),
+  validate(generateJobDescriptionSchema),
+  controller.generateJobDescription
+);
 router.post('/', requireRole(ROLES.ADMIN), validate(createEmployeeSchema), controller.createEmployee);
 router.get('/:id', validate(employeeParamsSchema), controller.getEmployee);
 router.patch('/:id', requireRole(ROLES.ADMIN), validate(updateEmployeeSchema), controller.updateEmployee);

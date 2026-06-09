@@ -28,6 +28,16 @@ export async function updateEmployee(id: string, payload: EmployeePayload) {
   return data;
 }
 
+export async function generateJobDescription(payload: {
+  department: string;
+  title?: string;
+  firstName?: string;
+  lastName?: string;
+}) {
+  const { data } = await api.post<{ jobDescription: string }>('/employees/generate-job-description', payload);
+  return data.jobDescription;
+}
+
 export async function deleteEmployee(id: string) {
   await api.delete(`/employees/${id}`);
 }

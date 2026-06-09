@@ -4,6 +4,7 @@ import PhoneInputImport from 'react-phone-input-2';
 import 'react-phone-input-2/lib/style.css';
 import {
   createEmployee,
+  generateJobDescription,
   getEmployees,
   updateEmployee,
   type EmployeePayload
@@ -24,6 +25,7 @@ const initialForm: Partial<Employee> = {
   phone: '',
   department: '',
   title: '',
+  jobDescription: '',
   startDate: new Date().toISOString(),
   status: 'ACTIVE',
   employmentType: 'FULL_TIME'
@@ -40,6 +42,8 @@ export function EmployeesPage() {
   const [temporaryPassword, setTemporaryPassword] = useState('');
   const [search, setSearch] = useState('');
   const [departments, setDepartments] = useState<string[]>([]);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   const load = async () => {
     const result = await getEmployees(search);
@@ -80,6 +84,7 @@ export function EmployeesPage() {
     setSelected(null);
     setForm(initialForm);
     setTemporaryPassword('');
+    setAiError('');
     setIsFormOpen(true);
   };
 
@@ -87,7 +92,32 @@ export function EmployeesPage() {
     setSelected(null);
     setForm(initialForm);
     setTemporaryPassword('');
+    setAiError('');
     setIsFormOpen(false);
+  };
+
+  const createJobDescriptionWithAI = async () => {
+    if (!form.department) {
+      setAiError('AI ile görev tanımı oluşturmak için önce departman seçin.');
+      return;
+    }
+
+    setAiLoading(true);
+    setAiError('');
+
+    try {
+      const jobDescription = await generateJobDescription({
+        department: form.department,
+        title: form.title,
+        firstName: form.firstName,
+        lastName: form.lastName
+      });
+      setForm((current) => ({ ...current, jobDescription }));
+    } catch (requestError: any) {
+      setAiError(requestError?.response?.data?.message || 'AI görev tanımı oluşturamadı.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   return (
@@ -229,6 +259,30 @@ export function EmployeesPage() {
               value={form.title || ''}
               onChange={(e) => setForm({ ...form, title: e.target.value })}
             />
+            <div className="md:col-span-2">
+              <div className="rounded-lg border border-slate-200 bg-white p-3">
+                <label className="mb-2 block text-xs font-medium text-slate-500">Görev Tanımı</label>
+                <textarea
+                  className="input min-h-32 resize-y"
+                  placeholder="Personelin görev ve sorumluluklarını yazın veya AI ile oluşturun."
+                  value={form.jobDescription || ''}
+                  onChange={(e) => setForm({ ...form, jobDescription: e.target.value })}
+                  maxLength={4000}
+                />
+                <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <button
+                    type="button"
+                    className="btn-secondary w-fit disabled:cursor-not-allowed disabled:opacity-60"
+                    onClick={createJobDescriptionWithAI}
+                    disabled={aiLoading || !form.department}
+                  >
+                    {aiLoading ? 'AI yazıyor...' : 'AI'}
+                  </button>
+                  <span className="text-xs text-slate-400">{(form.jobDescription || '').length}/4000</span>
+                </div>
+                {aiError ? <p className="mt-2 text-xs text-red-600">{aiError}</p> : null}
+              </div>
+            </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500">İşe başlangıç tarihi</label>
               <input

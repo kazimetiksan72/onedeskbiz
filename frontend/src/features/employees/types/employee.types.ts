@@ -14,6 +14,7 @@ export interface Employee {
     permissions: string[];
   } | null;
   title?: string;
+  jobDescription?: string;
   employmentType: 'FULL_TIME' | 'PART_TIME' | 'CONTRACTOR';
   startDate: string;
   status: 'ACTIVE' | 'INACTIVE';
